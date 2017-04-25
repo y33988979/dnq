@@ -1,0 +1,13 @@
+{
+    "mac": "AABBCCDDEEFF",
+    "rooms": [
+        {
+            "id": 0,
+            "value": 23
+         },
+        {
+            "id": 1,
+           "value": 56
+        }
+    ]
+}

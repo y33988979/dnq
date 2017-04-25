@@ -1,0 +1,33 @@
+{
+    "type": "power",
+    "time": "20170420084640",
+    "mode": 0,
+    "rooms": [
+        {
+            "id": 8,
+            "configs": [
+                {
+                    "power": 800,
+                    "num": 1
+                },
+                {
+                    "power": 1000,
+                    "num": 3
+                }
+            ]
+        },
+        {
+            "id": 9,
+            "configs": [
+                {
+                    "power": 1200,
+                    "num": 2
+                },
+                {
+                    "power": 1400,
+                    "num": 4
+                }
+            ]
+        }
+    ]
+}

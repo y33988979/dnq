@@ -1,0 +1,19 @@
+{
+    "type": "correct",
+    "time": "20170420091256",
+    "mode": 0,
+    "rooms": [
+        {
+            "id": 0,
+            "correct": -10
+        },
+        {
+            "id": 2,
+            "correct": -5
+        },
+        {
+            "id": 4,
+            "correct": 6
+        }
+    ]
+}

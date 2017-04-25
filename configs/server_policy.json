@@ -1,0 +1,39 @@
+{
+    "type": "control",
+    "time": "20170424202811",
+    "mode": 0,
+    "rooms": [
+        {
+            "id": 0,
+            "dpid": 0,
+            "timesettings": [
+                {
+                    "starttime": "0900",
+                    "endtime": "2230",
+                    "degrees": "25"
+                },
+                {
+                    "starttime": "2300",
+                    "endtime": "0630",
+                    "degrees": "28"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "dpid": 0,
+            "timesettings": [
+                {
+                    "starttime": "0900",
+                    "endtime": "2230",
+                    "degrees": "22"
+                },
+                {
+                    "starttime": "2300",
+                    "endtime": "0630",
+                    "degrees": "26"
+                }
+            ]
+        }
+    ]
+}

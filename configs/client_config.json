@@ -1,0 +1,23 @@
+{
+    "mac": "334455667788",
+    "rooms": [
+        {
+            "id": 1,
+            "degreePolicy": 22,
+            "maxDegree": 30,
+            "minDegree": 22,
+            "error": 4,
+            "correct": -2,
+            "power": 1200
+        },
+        {
+            " id": 2,
+            "degreePolicy": 22,
+            "maxDegree": 30,
+            "minDegree": 22,
+            "error": 2,
+            "correct": -2,
+            "power": 1400
+        }
+    ]
+}
