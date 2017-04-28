@@ -11,6 +11,7 @@
 #include "dnq_lcd.h"
 #include "dnq_log.h"
 #include "dnq_uart.h"
+#include "dnq_config.h"
 
 #define SIZE   1024
 
@@ -33,10 +34,8 @@
 #define LCD_ROOM_SIZE         0x100
 #define LCD_ROOM_END_ADDR     0xD00
 
-
-#define ROOM_CNT              12
 #define ROOM_ITEM_CNT         12
-#define LCD_ROOM_ITEM_CNT     (ROOM_CNT*ROOM_ITEM_CNT)
+#define LCD_ROOM_ITEM_CNT     (DNQ_ROOM_CNT*ROOM_ITEM_CNT)
 
 #define LCD_ID_ROOM_ITEM_START    3
 #define LCD_ID_ROOM_ITEM_END     (LCD_ID_ROOM_ITEM_START + LCD_ROOM_ITEM_CNT -1)
@@ -160,7 +159,7 @@ S32 dnq_lcd_items_init()
     i++;
 
     /* rooms */
-    for(i=0; i<ROOM_CNT; i++)
+    for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         item_offset = 0;
         for(j=0; j<ROOM_ITEM_CNT; j++)
@@ -525,7 +524,7 @@ S32 dnq_lcd_clear_all()
     ret = dnq_lcd_item_clear(ITEM_ID_DATE);
     ret = dnq_lcd_item_clear(ITEM_ID_HEADER);
     
-    for(i=0; i<ROOM_CNT; i++)
+    for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         for(j=0; j<ROOM_ITEM_CNT; j++)
         {
@@ -549,7 +548,7 @@ S32 dnq_lcd_update_all()
     tt;
     ret = dnq_lcd_header_update(HEADER_STR);
 
-    for(i=0; i<ROOM_CNT; i++)
+    for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         for(j=0; j<ROOM_ITEM_CNT; j++)
         {
