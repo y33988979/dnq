@@ -36,6 +36,13 @@
 #define CMD_IDX_ALL_CTRL       0
 #define CMD_IDX_SINGLE_CTRL    1
 
+/* mcu response data lenght */
+#define MCU_RESPONSE_LEN_REPLY    12
+#define MCU_RESPONSE_LEN_GETTIME  18
+#define MCU_RESPONSE_LEN_HEART    12
+
+/* sensor response data lenght */
+#define SENSOR_RESPONSE_LEN       12
 
 /* error code */
 #define ERR_HEADER     -1
@@ -47,13 +54,13 @@
 #define ERR_FOOTER     -7
 #define ERR_AGAIN      -8
 
-typedef enum cmdbuf_id
+typedef enum cmd_id
 {
-    CMDBUF_CTRL_ALL,
-    CMDBUF_CTRL_SINGLE,
-    CMDBUF_SET_TIME,
-    CMDBUF_GET_TIME
-}cmdbuf_e;
+    CMD_ID_CTRL_ALL,
+    CMD_ID_CTRL_SINGLE,
+    CMD_ID_SET_TIME,
+    CMD_ID_GET_TIME
+}cmd_id_e;
 
 typedef struct uart_data
 {
@@ -127,13 +134,21 @@ static char g_rs232_databuf[5][64] =
     
 };
 
-
-static char g_rs485_cmdbuf[][5] =
+static char g_rs485_cmdbuf[2][64] =
 {
-  0  
+    // 0: get room temperature
+    {
+        0xFF,0xFE,0xFE,0xFF,  
+        0xA0,                 
+        0x0C,                 
+        0xB2,                 
+                             
+        0x00,0x00,            
+        0xFE,0xFF,0xFF,0xFE   
+    },
 };
 
-S32 cmdbuf_update_time(cmdbuf_e cmd_id, U8 *datetime)
+S32 cmdbuf_update_time(cmd_id_e cmd_id, U8 *datetime)
 {
     U32  pos = 0;
     char *cmdbuf = g_rs232_databuf[cmd_id];
@@ -147,33 +162,33 @@ S32 cmdbuf_update_time(cmdbuf_e cmd_id, U8 *datetime)
     return 0;
 }
 
-S32 cmdbuf_update_crc(cmdbuf_e cmd_id)
+S32 cmdbuf_update_crc(cmd_id_e cmd_id)
 {
     U32  pos = 0;
     char *cmdbuf = g_rs232_databuf[cmd_id];
 
-    if(cmd_id == CMDBUF_CTRL_ALL)
+    if(cmd_id == CMD_ID_CTRL_ALL)
         pos = 24;
-    else if(cmd_id == CMDBUF_CTRL_SINGLE)
+    else if(cmd_id == CMD_ID_CTRL_SINGLE)
         pos = 9;
-    else if(cmd_id == CMDBUF_SET_TIME)
+    else if(cmd_id == CMD_ID_SET_TIME)
         pos = 13;
-    else if(cmd_id == CMDBUF_GET_TIME)
+    else if(cmd_id == CMD_ID_GET_TIME)
         pos = 7;
     cmdbuf[pos] = crc16(cmdbuf, cmdbuf[5], 0);
     return 0;
 }
 
-S32 cmdbuf_update_single_room_config(cmdbuf_e cmd_id, U32 id, U32 mode, U32 value)
+S32 cmdbuf_update_single_room_config(cmd_id_e cmd_id, U32 id, U32 mode, U32 value)
 {
     char *cmdbuf = g_rs232_databuf[cmd_id];
 
-    if(cmd_id == CMDBUF_CTRL_ALL)
+    if(cmd_id == CMD_ID_CTRL_ALL)
     {
         cmdbuf[6] = mode;
         cmdbuf[8+id] = value;  /* ID=0~16*/
     }
-    else if(cmd_id == CMDBUF_CTRL_SINGLE)
+    else if(cmd_id == CMD_ID_CTRL_SINGLE)
     {
         cmdbuf[6] = mode;
         cmdbuf[7] = id;
@@ -188,7 +203,7 @@ S32 cmdbuf_update_single_room_config(cmdbuf_e cmd_id, U32 id, U32 mode, U32 valu
     return 0;
 }
 
-S32 cmdbuf_update_whole_room_config(cmdbuf_e cmd_id, U32 mode, U32 value)
+S32 cmdbuf_update_whole_room_config(cmd_id_e cmd_id, U32 mode, U32 value)
 {
     int  i;
     char *cmdbuf = g_rs232_databuf[cmd_id];
@@ -201,7 +216,7 @@ S32 cmdbuf_update_whole_room_config(cmdbuf_e cmd_id, U32 mode, U32 value)
     return 0;
 }
 
-S32 recv_data_verify(cmdbuf_e cmd_id, U8 *data, U32 len)
+S32 recv_data_verify(cmd_id_e cmd_id, U8 *data, U32 len)
 {
     U16 CRC1 = 0;
     U16 CRC2 = 0;
@@ -212,9 +227,9 @@ S32 recv_data_verify(cmdbuf_e cmd_id, U8 *data, U32 len)
     CRC1 = crc16(data, len, 0);
     switch(cmd_id)
     {
-        case CMDBUF_CTRL_ALL:
-        case CMDBUF_CTRL_SINGLE:
-        case CMDBUF_SET_TIME:
+        case CMD_ID_CTRL_ALL:
+        case CMD_ID_CTRL_SINGLE:
+        case CMD_ID_SET_TIME:
             CRC2 = *(U16*)&data[7];
             flag = data[4];
             value = data[5];
@@ -227,7 +242,7 @@ S32 recv_data_verify(cmdbuf_e cmd_id, U8 *data, U32 len)
             else if(value == 0x11)
                 error_code = ERR_AGAIN;
             break;
-        case CMDBUF_GET_TIME:
+        case CMD_ID_GET_TIME:
             CRC2 = *(U16*)&data[13];
             flag = data[4];
             if(CRC1 != CRC2)
@@ -268,14 +283,14 @@ S32 recv_data_verify(cmdbuf_e cmd_id, U8 *data, U32 len)
     return error_code;
 }
 
-S32 send_cmd_to_mcu(cmdbuf_e cmd_id)
+S32 send_cmd_to_mcu(cmd_id_e cmd_id)
 {
     S32 ret;
     ret = dnq_mcu_uart_write(g_rs232_databuf[cmd_id], g_rs232_databuf[cmd_id][5]);
     return ret;
 }
 
-S32 recv_cmd_from_mcu(cmdbuf_e cmd_id, U8 *recvbuf, U32 len)
+S32 recv_cmd_from_mcu(cmd_id_e cmd_id, U8 *recvbuf, U32 len)
 {
     U32 time = 5;
     S32 ret = 0;
@@ -291,7 +306,7 @@ S32 recv_cmd_from_mcu(cmdbuf_e cmd_id, U8 *recvbuf, U32 len)
             return -1;
         }
         total_len + rlen;
-        if(total_len == len)  /* recv complete */
+        if(total_len >= len)  /* recv complete */
             break;
         usleep(10*1000);
     }
@@ -301,6 +316,15 @@ S32 recv_cmd_from_mcu(cmdbuf_e cmd_id, U8 *recvbuf, U32 len)
         DNQ_ERROR(DNQ_MOD_MCU, "uart recv data timeout! received %d bytes!", total_len);
         return -1;
     }
+    if(total_len > len)
+    {
+        DNQ_ERROR(DNQ_MOD_MCU, "uart recv data error! received %d bytes, \
+            datalen is expect equal to %d!", total_len, len);
+        return -1;
+    }  
+
+    /* date verify */
+    recv_data_verify(cmd_id, recvbuf, len);
     
     return 0;
 }
@@ -308,9 +332,9 @@ S32 recv_cmd_from_mcu(cmdbuf_e cmd_id, U8 *recvbuf, U32 len)
 S32 dnq_heater_ctrl_single(U32 id, U32 mode, U32 value)
 {
     S32 ret;
-    ret = cmdbuf_update_single_room_config(CMDBUF_CTRL_SINGLE, id, mode, value);
-    ret = cmdbuf_update_crc(CMDBUF_CTRL_SINGLE);
-    ret = send_cmd_to_mcu(CMDBUF_CTRL_SINGLE);
+    ret = cmdbuf_update_single_room_config(CMD_ID_CTRL_SINGLE, id, mode, value);
+    ret = cmdbuf_update_crc(CMD_ID_CTRL_SINGLE);
+    ret = send_cmd_to_mcu(CMD_ID_CTRL_SINGLE);
     return ret;
 }
 
@@ -320,10 +344,10 @@ S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array)
     S32 ret;
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
-        cmdbuf_update_single_room_config(CMDBUF_CTRL_ALL, i, mode, value_array[i]);
+        cmdbuf_update_single_room_config(CMD_ID_CTRL_ALL, i, mode, value_array[i]);
     }
-    ret = cmdbuf_update_crc(CMDBUF_CTRL_ALL);
-    ret = send_cmd_to_mcu(CMDBUF_CTRL_ALL);
+    ret = cmdbuf_update_crc(CMD_ID_CTRL_ALL);
+    ret = send_cmd_to_mcu(CMD_ID_CTRL_ALL);
     return ret;
 }
 
@@ -332,14 +356,10 @@ S32 dnq_rtc_set_time(U8 *datetime)
     S32 ret;
     U8  recvbuf[64];
 
-    ret = cmdbuf_update_time(CMDBUF_SET_TIME, datetime);
-    ret = cmdbuf_update_crc(CMDBUF_SET_TIME);
-    ret = send_cmd_to_mcu(CMDBUF_SET_TIME);
-    ret = recv_cmd_from_mcu(CMDBUF_SET_TIME, recvbuf, 13);
-    if(ret < 0)
-        return -1;
-    /* data verify */
-    ret = recv_data_verify(CMDBUF_SET_TIME, recvbuf, 13);
+    ret = cmdbuf_update_time(CMD_ID_SET_TIME, datetime);
+    ret = cmdbuf_update_crc(CMD_ID_SET_TIME);
+    ret = send_cmd_to_mcu(CMD_ID_SET_TIME);
+    ret = recv_cmd_from_mcu(CMD_ID_SET_TIME, recvbuf, MCU_RESPONSE_LEN_REPLY);
     if(ret < 0)
         return -1;
     return ret;
@@ -349,17 +369,49 @@ S32 dnq_rtc_get_time(U8 *datetime)
 {
     S32 ret;
     U8  recvbuf[64];
-    ret = send_cmd_to_mcu(CMDBUF_GET_TIME);
-    ret = recv_cmd_from_mcu(recvbuf, sizeof(recvbuf));
+    ret = send_cmd_to_mcu(CMD_ID_GET_TIME);
+    ret = recv_cmd_from_mcu(CMD_ID_GET_TIME, recvbuf, MCU_RESPONSE_LEN_GETTIME);
     if(ret < 0)
         return -1;
-    strncpy(datetime, recvbuf[7], 6);
+    strncpy(datetime, &recvbuf[7], 6);
     return ret;
+}
+
+S32 dnq_room_temperature_get(U32 room_id)
+{
+    S32   ret;
+    S32   temperature;
+    char *cmdbuf = g_rs485_cmdbuf[0];
+    char  recvbuf[64] = {0};
+
+    cmdbuf[2] = room_id; /* Fixed! */
+    
+    ret = dnq_sensor_uart_write(cmdbuf, SENSOR_RESPONSE_LEN);
+    
+    ret = dnq_sensor_uart_read(recvbuf, SENSOR_RESPONSE_LEN);
+
+    temperature = recvbuf[5];
+    DNQ_INFO(DNQ_MOD_MCU, "room %d temperature is %d'C!", room_id, temperature);
+
+    return temperature;
 }
 
 void *dnq_mcu_task()
 {
-    //dnq_os_task_create();
+    S32 i;
+
+    
+    
+    while(1)
+    {
+        for(i=0; i<DNQ_ROOM_CNT; i++)
+        {
+            dnq_room_temperature_get(i);
+            
+            
+        }
+        
+    }
 }
 
 S32 dnq_mcu_init()

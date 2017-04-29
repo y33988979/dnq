@@ -65,7 +65,7 @@ int dnq_log_open(U8 *filename)
     fp = fopen(filename, "w+");
     if(pf == NULL)
     {
-        dnq_error(-1, "fopen error");
+        DNQ_PRINT(DNQ_MOD_ALL, "fopen error: %s", strerror(errno));
     }
     return fp;
 }
@@ -80,7 +80,7 @@ int dnq_log_write(char *buffer)
     int len ;
     len = fwrite(buffer, 1, strlen(buffer), fp);
     if(len < 0)
-        dnq_error(len, "fwrite error");
+        DNQ_PRINT(DNQ_MOD_ALL, "fwrite error: %s", strerror(errno));
     return len;
 }
 #endif
@@ -89,7 +89,7 @@ int dnq_log_write(char *buffer)
 int dnq_debug_setlever(U32 module_id, U32 lever)
 {
     /*
-    * 0:NONE 1:ERROR, 2:WARN, 3:DEBUG, 4:INFO 5:ALL
+    * 0:NONE 1:ERROR, 2:WARN, 3:INFO, 4:DEBUG 5:ALL
     */
     g_dnq_dbg_lever[module_id] = lever;
     return lever;

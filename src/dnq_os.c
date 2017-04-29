@@ -36,8 +36,8 @@ dnq_task_t* dnq_os_task_create(U8 *name, U32 stack_size, void *func, void *param
     ret = pthread_attr_init(&attr);
     if (ret != 0)
     {
-        fprintf(stderr, "pthread_attr_init error: %s\n", strerror(errno));
-        dnq_error(ret, "pthread_attr_init");
+        DNQ_ERROR(DNQ_MOD_OS, "pthread_attr_init error: %s\n", strerror(errno));
+        return NULL;
     }
 
     if (stack_size > 0)
@@ -45,21 +45,25 @@ dnq_task_t* dnq_os_task_create(U8 *name, U32 stack_size, void *func, void *param
         ret = pthread_attr_setstacksize(&attr, stack_size);
         if(ret != 0)
         {
-            dnq_error(ret, "pthread_attr_setstacksize error");
+            DNQ_ERROR(DNQ_MOD_OS, "pthread_attr_setstacksize error: %s\n", strerror(errno));
+            return NULL;
         }
     }
-    
+
+    task->stacksize = stack_size;
     ret = pthread_create(&task->tid, NULL, func, param);
     if(ret < 0)
     {
-        perror("pthread_create error");
-        dnq_error(ret, "pthread_create error");
+        DNQ_ERROR(DNQ_MOD_OS, "pthread_create error: %s\n", strerror(errno));
         return NULL;
     }
 
     ret = pthread_attr_destroy(&attr);
     if(ret != 0)
-        dnq_error(ret, "pthread_attr_destroy error");
+    {
+        DNQ_ERROR(DNQ_MOD_OS, "pthread_attr_destroy error: %s\n", strerror(errno));
+        //return NULL;
+    }
 
     return task;
 }
@@ -71,9 +75,8 @@ S32 dnq_os_task_exit(dnq_task_t  *task)
     ret = pthread_kill(&task->tid, NULL);
     if(ret < 0)
     {
-        perror("pthread_kill error");
-        dnq_error(ret, "pthread_kill error");
-        return NULL;
+        DNQ_ERROR(DNQ_MOD_OS, "pthread_kill error: %s\n", strerror(errno));
+        return -1;
     }
 
     free(task);

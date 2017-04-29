@@ -27,7 +27,6 @@ S32 dnq_uart_open(U8 *dev)
     fd = open(dev, O_RDWR | O_NOCTTY | O_NDELAY);
     if(-1 == fd)
     {
-        //dnq_error_en(fd, "Open Serial Port Error!\n");
         DNQ_ERROR(DNQ_MOD_UART, "Open Serial \"%s\" Port failed! errno:%s", \
         dev, strerror(errno));
         return -1;
@@ -35,7 +34,6 @@ S32 dnq_uart_open(U8 *dev)
     if( (fcntl(fd, F_SETFL, 0)) < 0 )
     {
         close(fd);
-        //dnq_error_en(fd, "Fcntl F_SETFL Error!\n");
         DNQ_ERROR(DNQ_MOD_UART, "Fcntl \"%s\" F_SETFL error! errno:%s", \
         dev, strerror(errno));
         return -1;
@@ -43,7 +41,6 @@ S32 dnq_uart_open(U8 *dev)
     if(tcgetattr(fd, &stOld) != 0)
     {
         close(fd);
-        //dnq_error_en(fd, "tcgetattr error!\n");
         DNQ_ERROR(DNQ_MOD_UART, "tcgetattr \"%s\" error! errno:%s", \
         dev, strerror(errno));
         return -1;
@@ -74,7 +71,6 @@ S32 dnq_uart_open(U8 *dev)
     if( tcsetattr(fd,TCSANOW,&stNew) != 0 )
     {
         close(fd);
-        dnq_error_en(fd, "tcsetattr error!\n");
         DNQ_ERROR(DNQ_MOD_UART, "tcsetattr \"%s\" error! errno:%s", \
         dev, strerror(errno));
         return -1;
@@ -144,7 +140,6 @@ static S32 dnq_uart_read(U32 fd, U8 *buffer, U32 len)
     rlen = read(fd, buffer, len);
     if(rlen < 0)
     {
-        dnq_error_en(fd, "read error");
         DNQ_ERROR(DNQ_MOD_UART, "read error! errno:%s", strerror(errno));
         return rlen;
     }
@@ -169,15 +164,14 @@ static S32 dnq_uart_write(U32 fd, U8 *buffer, U32 len)
     wlen = write(fd, buffer, len);
     if(wlen < 0)
     {
-        dnq_error_en(fd, "write error");
         DNQ_ERROR(DNQ_MOD_UART, "write error! errno:%s", strerror(errno));
         return wlen;
     }
     
     DNQ_DEBUG(DNQ_MOD_UART, "send len=%d, data:", wlen);
     for(i=0; i<wlen; i++)
-        DNQ_PRINT(DNQ_MOD_UART, "%02x ", buffer[i]);
-    DNQ_PRINT(DNQ_MOD_UART, "\n\n");
+        DNQ_DEBUG(DNQ_MOD_UART, "%02x ", buffer[i]);
+    DNQ_DEBUG(DNQ_MOD_UART, "\n\n");
     return wlen;
 }
 

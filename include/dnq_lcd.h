@@ -40,7 +40,7 @@ typedef struct lcd_desc
     
 }lcd_desc_t;
 
-typedef struct _item
+typedef struct room_item
 {
     int      id;
     char     name[16];
@@ -48,9 +48,8 @@ typedef struct _item
     float    set_temp;
     char     status[16];
     char     sn[16];
-    int      offset;
-    char     command[64];
-}house_item_t;
+    int      correct;
+}room_item_t;
 
 
 
@@ -59,6 +58,8 @@ typedef struct lcd_item
     U8    id;
     U8    size;
     U16   addr;
+    U16   addr2;
+    U8    content[64];
     
 }lcd_item_t;
 

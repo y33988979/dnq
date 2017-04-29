@@ -2,6 +2,7 @@
 #define _DNQ_LOG_H_
 
 #include "common.h"
+#include <errno.h>
 
 
 typedef enum dnq_debug_module
