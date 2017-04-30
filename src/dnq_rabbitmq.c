@@ -1423,9 +1423,7 @@ int main_()
 {
     ngx_pool_t *pool = NULL;
     
-    pool = dnq_mempool_init(1024*1024);
-    cJSON_Hooks hooks = {dnq_malloc, dnq_free};
-    cJSON_InitHooks(&hooks);
+    dnq_init();
     dnq_debug_setlever(1, 5);
     
     dnq_os_task_create("rabbitmq_test", 0, rabbitmq_test, NULL);

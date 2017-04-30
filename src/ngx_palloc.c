@@ -48,6 +48,7 @@ void dnq_free(void *ptr)
 {
     //printf("dnq_free: ptr=0x%08x\n", p);
     ngx_pfree(dnq_mempool, ptr);
+    ptr = NULL;
     return ;
 }
     

@@ -12,133 +12,146 @@
 #include <sys/ioctl.h>
 #include <linux/input.h>
 
-#include "common.h"
+#include "dnq_common.h"
+#include "dnq_os.h"
 #include "dnq_log.h"
 #include "dnq_keypad.h"
 
-#define DEVINPUT "/dev/input/event1"
-
-/*
-* =============keypad 4*8================
-* key up      = 46  0x2e
-* key down    = 48  0x30
-* key left    = 30  0x1e
-* key right   = 16  0x10
-* 
-* key 1       = 36  0x22     //44
-* key 2       = 37  0x23     //2
-* key 3       = 23  0x17     //21
-* key 4       = 31  0x1F     //2
-* key 5(ok)   = 19  0x13     //44
-*
-*/
-
-/*
-* =============keypad 4*4================
-* key up      = 46  0x2e     //2
-* key down    = 48  0x30     //44,19
-* key left    = 30  0x1e     //21,16
-* key right   = 16  0x10
-* 
-* key 1       = 36  0x22     //44
-* key 2       = 37  0x23     //2
-* key 3       = 23  0x17     //21
-* key 4       = 31  0x1F     //2
-* key 5(ok)   = 19  0x13     //44
-*
-*/
-
-/*
-* =============keypad 4*2================
-* key up      = none
-* key down    = 48  0x30
-* key left    = 30  0x1e
-* key right   = 16  0x10
-* 
-* key 1       = 36  0x22     //44
-* key 2       = none
-* key 3       = none
-* key 4       = 31  0x1F     //2
-* key 5(ok)   = 19  0x13     //44
-*
-*/
-
+#define DEVINPUT "/dev/input/event0"
 #define NUM 1
-void* dnq_keypad_thread(void *args)
-{	
-	int fb = -1;
-	ssize_t rb;
-    char device[64] = {0};
-	
-	struct input_event ev[NUM];	
-	int yalv;
-	
-    strcpy(device, DEVINPUT);
-    if(argc > 1)
-        strcpy(device, argv[1]);
-	
-	
-	if ((fb = open(device, O_RDONLY | O_NDELAY)) < 0) {
-		printf("cannot open %s\n", DEVINPUT);
-		exit(0);
+
+static int keypad_fd;
+
+static void keypad_default_callback(U32 key, U32 status)
+{
+    switch (key)
+    {
+        case DNQ_KEY_UP:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [up]!", status);
+            break;
+        case DNQ_KEY_DOWN:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [down]!", status);
+        break;
+        case DNQ_KEY_LEFT:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [left]!", status);
+        break;
+        case DNQ_KEY_RIGHT:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [right]!", status);
+        break;
+        case DNQ_KEY_MENU:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [menu]!", status);
+        break;
+        case DNQ_KEY_SCAN:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [scan]!", status);
+        break;
+        case DNQ_KEY_EXIT:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [exit]!", status);
+        break;
+        case DNQ_KEY_OK:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [ok]!", status);
+        break;
+        case DNQ_KEY_SELF_CHECK:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "key [self_check]!", status);
+        break;
+        default:
+            DNQ_INFO(DNQ_MOD_KEYPAD, "unknown key!! val=%d.", key);
+        break;
     }
-    
-	 while (1) {
-	 	if((rb = read(fb, ev, sizeof(struct input_event) * NUM))>0)
-	 	{
-	 		for (yalv = 0; yalv < (int) (rb / sizeof(struct input_event));yalv++) {
-	 			switch (ev[yalv].type) {
-		    case EV_SYN:
-				printf("EV_TYPE = EV_SYN\n");
-				break;
-		    case EV_KEY:					
-			    switch(ev[yalv].code)
-			    {
-			    	case BTN_TOUCH:
-			    		printf("EV_KEY : BTN_TOUCH value %d \n",ev[yalv].value);
-			    	break;
-			    	default:
-			    		printf("EV_KEY : code %d value %d \n", ev[yalv].code,ev[yalv].value);
-			    	break;
-			    }						
-				break;
-		    case EV_LED:
-					printf("EV_TYPE = EV_LED\n");
-				break;
-		    case EV_REP:
-					printf("EV_TYPE = EV_REP\n");
-				break;
-		    case EV_ABS:					
-			    switch(ev[yalv].type)
-			    {
-			    	case ABS_X:
-			    		printf("EV_ABS : ABS_X value %d \n",ev[yalv].value);
-			    	break;
-			    	case ABS_Y:
-			    		printf("EV_ABS : ABS_Y value %d \n",ev[yalv].value);
-			    	break;		    	
-			    	default:
-			    		printf("EV_ABS : code %d value %d \n",ev[yalv].code,ev[yalv].value);
-			    	break;
-			    }					
-				break;					
-		    default:
-					printf("EV_TYPE = %x\n", ev[yalv].type);
-				break;
-		    }
-		    //printf("time= %1d.%061d \n", ev[yalv].time.tv_sec,ev[yalv].time.tv_usec);		    		    
-	 		}	 					
-	 	}
-	}
-	return 0;
 }
 
+KeypadCallback  fKeypadCallback = keypad_default_callback;
+void dnq_keypad_callback_enable(KeypadCallback callback)
+{
+    if(callback == NULL)
+        callback = keypad_default_callback;
+    fKeypadCallback = callback;
+}
+
+void* dnq_keypad_thread(void *args)
+{	
+    int fb = keypad_fd;
+    ssize_t rb;
+
+    struct input_event ev[NUM];	
+    int yalv;
+
+    while (1) 
+    {
+        if((rb = read(fb, ev, sizeof(struct input_event) * NUM))>0)
+        {
+            for (yalv = 0; yalv < (int) (rb / sizeof(struct input_event));yalv++) 
+            {
+                switch (ev[yalv].type) 
+                {
+                    case EV_SYN:
+                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = EV_SYN\n");
+                    break;
+                    
+                    case EV_KEY:					
+                    switch(ev[yalv].code)
+                    {
+                        case BTN_TOUCH:
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_KEY : BTN_TOUCH value %d \n",ev[yalv].value);
+                        break;
+                        default:
+                            /* callback when key release */
+                            if(ev[yalv].value == DNQ_KEY_RELEASE) 
+                                fKeypadCallback(ev[yalv].code, ev[yalv].value);
+                        //DNQ_INFO(DNQ_MOD_KEYPAD, "EV_KEY : code %d value %d \n", ev[yalv].code,ev[yalv].value);
+                        break;
+                    }						
+                    break;
+                    
+                    case EV_LED:
+                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = EV_LED");
+
+                    break;
+                    
+                    case EV_REP:
+                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = EV_REP");
+
+                    break;
+                    
+                    case EV_ABS:					
+                    switch(ev[yalv].type)
+                    {
+                        case ABS_X:
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : ABS_X value %d \n",ev[yalv].value);
+                        break;
+                        
+                        case ABS_Y:
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : ABS_Y value %d \n",ev[yalv].value);
+                        break;
+                        
+                        default:
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : code %d value %d \n",ev[yalv].code,ev[yalv].value);
+                        break;
+                    }
+                    break;
+                    
+                    default:
+                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = %x\n", ev[yalv].type);
+                    break;
+                }
+            //printf("time= %1d.%061d \n", ev[yalv].time.tv_sec,ev[yalv].time.tv_usec);		    		    
+            }	 					
+        }
+    }
+    return 0;
+}
 
 S32 dnq_keypad_init()
 {
-    int keypad_fd;
     dnq_task_t  *task = NULL;
-    task = dnq_os_task_create("keypad", 2048, 0, dnq_keypad_thread, NULL);
+    
+	if ((keypad_fd = open(DEVINPUT, O_RDONLY | O_NDELAY)) < 0) 
+    {
+		DNQ_ERROR(DNQ_MOD_KEYPAD, "open \"%s\" error! %s",\
+          DEVINPUT, strerror(errno));
+		return -1;
+    }
+    
+    task = dnq_os_task_create("keypad", 2048*16, dnq_keypad_thread, NULL);
     if(!task)
     {
         DNQ_ERROR(DNQ_MOD_KEYPAD, "dnq_keypad_init error!");
@@ -149,10 +162,13 @@ S32 dnq_keypad_init()
     return 0;
 }
 
-S32 dnq_keypad_deinit()
+S32 dnq_keypad_deinit(dnq_task_t *task)
 {
-    task = dnq_os_task_exit(task);
-    if(!task)
+    S32 ret;
+    
+    close(keypad_fd);
+    ret = dnq_os_task_exit(task);
+    if(ret < 0)
     {
         DNQ_ERROR(DNQ_MOD_KEYPAD, "dnq_keypad_deinit error!");
         return -1;

@@ -12,6 +12,7 @@
 #include "dnq_log.h"
 #include "dnq_uart.h"
 #include "dnq_config.h"
+#include "dnq_os.h"
 
 #define SIZE   1024
 
@@ -287,7 +288,7 @@ S32 dnq_lcd_uart_cmd_prepare(U32 item_id, char *content, U32 color)
         }
     }
     
-    //printf("g_lcd_items[%d].addr == 0x%04x\n",item_id, addr );
+    printf("g_lcd_items[%d].addr == 0x%04x\n",item_id, addr );
     
     cmd[4] = (addr >> 8) & 0xFF;
     cmd[5] = addr & 0xFF;
@@ -300,15 +301,7 @@ S32 dnq_lcd_uart_cmd_prepare(U32 item_id, char *content, U32 color)
     return (len+6);
     
 }
-S32 dnq_lcd_init()
-{
-    
-}
 
-S32 dnq_lcd_deinit()
-{
-
-}
 
 S32 lcd_item_get_title(U8 *name)
 {
@@ -678,6 +671,44 @@ S32 dnq_lcd_update_all()
     return ret;
 }
 
+
+
+void *lcd_task(void *args)
+{
+    dnq_task_t *lcd_task;
+    dnq_msg_t  sendMsg;
+    dnq_msg_t  recvMsg;
+    dnq_msg_t *pSendMsg = &sendMsg;
+    dnq_msg_t *pRecvMsg = &recvMsg;
+
+    lcd_task = (dnq_task_t*)args;
+    while(1)
+    {
+        dnq_msg_recv_timeout(NULL, pRecvMsg, 400);
+
+        switch(pRecvMsg->type)
+        {
+            case 1:
+                break;
+        }
+    }
+
+    dnq_free(lcd_task);
+}
+
+S32 dnq_lcd_init()
+{
+    dnq_task_t *lcd_task;
+    
+    lcd_task = dnq_os_task_create("lcd", 16*2048, lcd_task, (void*)lcd_task);
+    if(lcd_task == NULL)
+    {
+        DNQ_ERROR(DNQ_MOD_LCD, "lcd task create error: %s", strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
 
 int lcd_test()
 {

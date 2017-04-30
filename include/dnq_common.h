@@ -1,5 +1,5 @@
-#ifndef _DNQ_OS_H_
-#define _DNQ_OS_H_
+#ifndef _DNQ_COMMON_H_
+#define _DNQ_COMMON_H_
 
 #include "common.h"
 #include <pthread.h>
@@ -12,5 +12,5 @@ S32 dnq_init();
 S32 dnq_deinit();
 
 
-#endif /* _DNQ_OS_H_ */
+#endif /* _DNQ_COMMON_H_ */
 

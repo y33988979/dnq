@@ -11,6 +11,7 @@
 
 #include "dnq_common.h"
 #include "ngx_palloc.h"
+#include "cJSON.h"
 
 static ngx_pool_t *mem_pool;
 
@@ -47,6 +48,10 @@ S32 dnq_init()
     pool = dnq_mempool_init(1024*1024);
     if(!pool)
         return -1;
+    
+    cJSON_Hooks hooks = {dnq_malloc, dnq_free};
+    cJSON_InitHooks(&hooks);
+    
     mem_pool = pool;
     return 0;
 }
