@@ -101,6 +101,7 @@ typedef enum room_item_id
 
 static U8   uart_command[256];
 static U32  lcd_current_page = 0;
+static dnq_appinfo_t  *lcd_appinfo;
 
 room_item_t g_items[16] = 
 {
@@ -233,10 +234,11 @@ S32 dnq_lcd_items_init()
     items[i].size = LCD_TITLE_SIZE*2;
     i++;
 
+#if 0
     DNQ_PRINT(DNQ_MOD_LCD, "items:\n id    addr\n");
     for(j=0; j<i; j++)
         DNQ_PRINT(DNQ_MOD_LCD, "%02d    0x%04x\n",items[j].id, items[j].addr);
-
+#endif
     DNQ_INFO(DNQ_MOD_LCD, "all item init ok!");
     return 0;
 }
@@ -288,7 +290,7 @@ S32 dnq_lcd_uart_cmd_prepare(U32 item_id, char *content, U32 color)
         }
     }
     
-    printf("g_lcd_items[%d].addr == 0x%04x\n",item_id, addr );
+    //printf("g_lcd_items[%d].addr == 0x%04x\n",item_id, addr );
     
     cmd[4] = (addr >> 8) & 0xFF;
     cmd[5] = addr & 0xFF;
@@ -675,38 +677,87 @@ S32 dnq_lcd_update_all()
 
 void *lcd_task(void *args)
 {
-    dnq_task_t *lcd_task;
+    S32  ret;
+    dnq_queue_t *lcd_queue;
     dnq_msg_t  sendMsg;
     dnq_msg_t  recvMsg;
     dnq_msg_t *pSendMsg = &sendMsg;
     dnq_msg_t *pRecvMsg = &recvMsg;
 
-    lcd_task = (dnq_task_t*)args;
+    lcd_queue = (dnq_queue_t*)lcd_appinfo->queue;
     while(1)
     {
-        dnq_msg_recv_timeout(NULL, pRecvMsg, 400);
-
-        switch(pRecvMsg->type)
+        ret = dnq_msg_recv_timeout(lcd_queue, pRecvMsg, 400);
+        if(ret < 0)
         {
-            case 1:
-                break;
+            continue;
+        }
+
+        /*
+        * 1. 接收云端消息，更新屏幕状态
+        * 2. 接收键盘消息，进行查看及设置操作
+        */
+        
+        switch(pRecvMsg->Class)
+        {
+            case MSG_CLASS_KEYPAD:
+                DNQ_INFO(DNQ_MOD_KEYPAD, "recv keypad msg: val=%d, status=%d",\
+                    pRecvMsg->code, pRecvMsg->payload);
+            break;
+            case MSG_CLASS_RABBITMQ:
+                DNQ_INFO(DNQ_MOD_KEYPAD, "recv rabbitmq msg: val=%d, status=%d",\
+                    pRecvMsg->code, pRecvMsg->payload);
+            break;
         }
     }
 
     dnq_free(lcd_task);
 }
 
+S32 send_msg_to_lcd(dnq_msg_t *msg)
+{
+    S32 ret;
+    dnq_queue_t *queue = NULL;
+        
+    queue = lcd_appinfo->queue;
+    ret = dnq_msg_send(queue, msg);
+
+    return ret;
+}
+
 S32 dnq_lcd_init()
 {
-    dnq_task_t *lcd_task;
-    
-    lcd_task = dnq_os_task_create("lcd", 16*2048, lcd_task, (void*)lcd_task);
-    if(lcd_task == NULL)
+    dnq_appinfo_t *appinfo = NULL;
+
+    dnq_lcd_items_init();
+    dnq_lcd_clear_all();
+    dnq_lcd_update_all();
+
+    appinfo = dnq_app_task_create("lcd", 2048*16, \
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, (void*)&appinfo);
+    if(!appinfo)
     {
-        DNQ_ERROR(DNQ_MOD_LCD, "lcd task create error: %s", strerror(errno));
+        DNQ_ERROR(DNQ_MOD_LCD, "dnq_app_task_create error!");
         return -1;
     }
 
+    lcd_appinfo = appinfo;
+    DNQ_INFO(DNQ_MOD_LCD, "dnq_lcd_init ok!");
+    return 0;
+}
+
+S32 dnq_lcd_deinit()
+{
+    S32 ret;
+    
+    ret = dnq_app_task_exit(lcd_appinfo);
+    if(ret < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_KEYPAD, "dnq_lcd_deinit error!");
+        return -1;
+    }
+    
+    DNQ_INFO(DNQ_MOD_KEYPAD, "dnq_lcd_deinit ok!");
     return 0;
 }
 

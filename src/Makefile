@@ -17,15 +17,19 @@ LDFLAGS = -lm -lrabbitmq -lpthread
 LDPATH = -L$(TOP_DIR)/lib
 LIBS = 
 
+AT := @
 TARGET = dnq_manage
 
 all: $(OBJS)
-	$(CC) $(INCLUDES) $(LDPATH) -static $^ -o $(TARGET) $(LDFLAGS)
+	$(AT)$(CC) $(INCLUDES) $(LDPATH) -static $^ -o $(TARGET) $(LDFLAGS)
+	@echo " LD   $^ "
+	@echo " Create $(TARGET) success!"
 
 %.o: %.c
-	$(CC) $(INCLUDES) -c $^ -o $@
+	$(AT)$(CC) $(INCLUDES) -c $^ -o $@
+	@echo " CC   $@ "
 
 #.PHONY clean
 clean:
-	-@rm *.o
-	-@rm $(TARGET)
+	-$(AT)rm *.o
+	-$(AT)rm $(TARGET)

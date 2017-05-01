@@ -3,8 +3,6 @@
 
 #include "common.h"
 
-#define BAUDRATE   115200
-
 #define DNQ_UART_PORT0      "/dev/ttyS0"
 #define DNQ_UART_PORT1      "/dev/ttyS1"
 #define DNQ_UART_PORT2      "/dev/ttyS2"

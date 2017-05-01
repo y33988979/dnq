@@ -51,8 +51,6 @@ typedef struct room_item
     int      correct;
 }room_item_t;
 
-
-
 typedef struct lcd_item
 {
     U8    id;
@@ -62,6 +60,9 @@ typedef struct lcd_item
     U8    content[64];
     
 }lcd_item_t;
+
+S32 dnq_lcd_init();
+S32 dnq_lcd_deinit();
 
 
 #endif /* _DNQ_LCD_H_ */

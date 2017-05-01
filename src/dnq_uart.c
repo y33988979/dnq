@@ -19,6 +19,8 @@ static int sensor_uart_fd = 0;
 
 struct termios stNew;
 struct termios stOld;
+
+#define BAUDRATE   B115200
  
 //Open Port & Set Port
 S32 dnq_uart_open(U8 *dev)
@@ -31,6 +33,7 @@ S32 dnq_uart_open(U8 *dev)
         dev, strerror(errno));
         return -1;
     }
+    
     if( (fcntl(fd, F_SETFL, 0)) < 0 )
     {
         close(fd);
@@ -38,6 +41,7 @@ S32 dnq_uart_open(U8 *dev)
         dev, strerror(errno));
         return -1;
     }
+    
     if(tcgetattr(fd, &stOld) != 0)
     {
         close(fd);
@@ -45,7 +49,7 @@ S32 dnq_uart_open(U8 *dev)
         dev, strerror(errno));
         return -1;
     }
- 
+
     stNew = stOld;
     cfmakeraw(&stNew);//将终端设置为原始模式，该模式下所有的输入数据以字节为单位被处理
  
@@ -67,6 +71,9 @@ S32 dnq_uart_open(U8 *dev)
     stNew.c_cc[VTIME]=0;    //指定所要读取字符的最小数量
     stNew.c_cc[VMIN]=1; //指定读取第一个字符的等待时间，时间的单位为n*100ms
                 //如果设置VTIME=0，则无字符输入时read（）操作无限期的阻塞
+
+    stNew.c_cflag = 0x1cb2;
+    stNew.c_iflag = 0;
     tcflush(fd,TCIFLUSH);  //清空终端未完成的输入/输出请求及数据。
     if( tcsetattr(fd,TCSANOW,&stNew) != 0 )
     {
@@ -75,7 +82,7 @@ S32 dnq_uart_open(U8 *dev)
         dev, strerror(errno));
         return -1;
     }
- 
+
     return fd;
 }
 
@@ -164,7 +171,7 @@ static S32 dnq_uart_write(U32 fd, U8 *buffer, U32 len)
     wlen = write(fd, buffer, len);
     if(wlen < 0)
     {
-        DNQ_ERROR(DNQ_MOD_UART, "write error! errno:%s", strerror(errno));
+        DNQ_ERROR(DNQ_MOD_UART, "write error:%s", strerror(errno));
         return wlen;
     }
     

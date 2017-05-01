@@ -1426,7 +1426,7 @@ int main_()
     dnq_init();
     dnq_debug_setlever(1, 5);
     
-    dnq_os_task_create("rabbitmq_test", 0, rabbitmq_test, NULL);
+    dnq_task_create("rabbitmq_test", 0, rabbitmq_test, NULL);
     rabbitmq_start();
 }
 

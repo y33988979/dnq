@@ -22,8 +22,12 @@
 
 static int keypad_fd;
 
+static dnq_appinfo_t *keypad_appinfo ;
+
+extern S32 send_msg_to_lcd(dnq_msg_t *msg);
 static void keypad_default_callback(U32 key, U32 status)
 {
+    dnq_msg_t sendmsg;
     switch (key)
     {
         case DNQ_KEY_UP:
@@ -57,6 +61,12 @@ static void keypad_default_callback(U32 key, U32 status)
             DNQ_INFO(DNQ_MOD_KEYPAD, "unknown key!! val=%d.", key);
         break;
     }
+
+    sendmsg.Class = MSG_CLASS_KEYPAD;
+    sendmsg.code = key;  /* key */
+    sendmsg.payload = (void*)status; /* status */
+    send_msg_to_lcd(&sendmsg);
+
 }
 
 KeypadCallback  fKeypadCallback = keypad_default_callback;
@@ -67,7 +77,7 @@ void dnq_keypad_callback_enable(KeypadCallback callback)
     fKeypadCallback = callback;
 }
 
-void* dnq_keypad_thread(void *args)
+void* keypad_task(void *args)
 {	
     int fb = keypad_fd;
     ssize_t rb;
@@ -84,7 +94,7 @@ void* dnq_keypad_thread(void *args)
                 switch (ev[yalv].type) 
                 {
                     case EV_SYN:
-                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = EV_SYN\n");
+                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = EV_SYN");
                     break;
                     
                     case EV_KEY:					
@@ -143,31 +153,38 @@ void* dnq_keypad_thread(void *args)
 S32 dnq_keypad_init()
 {
     dnq_task_t  *task = NULL;
-    
+    dnq_queue_t *queue = NULL;
+    dnq_appinfo_t *appinfo = NULL;
+
+    appinfo = keypad_appinfo;
+
 	if ((keypad_fd = open(DEVINPUT, O_RDONLY | O_NDELAY)) < 0) 
     {
 		DNQ_ERROR(DNQ_MOD_KEYPAD, "open \"%s\" error! %s",\
           DEVINPUT, strerror(errno));
 		return -1;
     }
-    
-    task = dnq_os_task_create("keypad", 2048*16, dnq_keypad_thread, NULL);
-    if(!task)
+
+    appinfo = dnq_app_task_create("keypad", 2048*16, \
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, keypad_task, (void*)&appinfo);
+    if(!appinfo)
     {
+        close(keypad_fd);
         DNQ_ERROR(DNQ_MOD_KEYPAD, "dnq_keypad_init error!");
         return -1;
     }
-    
+
+    keypad_appinfo = appinfo;
     DNQ_INFO(DNQ_MOD_KEYPAD, "dnq_keypad_init ok!");
     return 0;
 }
 
-S32 dnq_keypad_deinit(dnq_task_t *task)
+S32 dnq_keypad_deinit()
 {
     S32 ret;
     
     close(keypad_fd);
-    ret = dnq_os_task_exit(task);
+    ret = dnq_app_task_exit(keypad_appinfo);
     if(ret < 0)
     {
         DNQ_ERROR(DNQ_MOD_KEYPAD, "dnq_keypad_deinit error!");

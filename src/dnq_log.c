@@ -117,7 +117,7 @@ void dnq_debug_control()
             continue;
         }
 
-        printf("input=%s", cmdline);
+        //printf("input=%s", cmdline);
         if(strncmp(cmdline, "help", 4) == 0)
         {
             debug_help();
@@ -164,12 +164,12 @@ void dnq_debug_control()
 S32 dnq_debug_init()
 {
     dnq_debug_setlever(1, 3);
-    if(dnq_os_task_create("debug_ctrl", 16*2048, dnq_debug_control, NULL) == NULL)
+    if(dnq_task_create("debug_ctrl", 16*2048, dnq_debug_control, NULL) == NULL)
     {
         DNQ_PRINT(DNQ_MOD_ALL, "debug_ctrl task create error: %s", strerror(errno));
         return -1;
     }
-    DNQ_PRINT(DNQ_MOD_ALL, "debug_ctrl task create success!");
+    DNQ_PRINT(DNQ_MOD_ALL, "debug_ctrl task create success!\n");
     return 0;
 }
 

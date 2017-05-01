@@ -30,7 +30,7 @@ typedef enum dnq_debug_lever
 
 }dnq_dbg_lever_e;
 
-#define tt printf("[ychen]:%s:%d: test!\n", __func__,__LINE__)
+#define tt printf("[ychen]:%s: line:%d  __test__!\n", __func__,__LINE__)
 
 #define dnq_error_en(en, msg) \
     do { errno = en; perror(msg); return (en); } while (0)

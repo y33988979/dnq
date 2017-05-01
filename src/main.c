@@ -20,8 +20,6 @@
 #include "dnq_lcd.h"
 #include "dnq_os.h"
 
-
-
 void *send_test(void *args)
 {
     int n = 0;
@@ -30,16 +28,17 @@ void *send_test(void *args)
     dnq_msg_t send_msg;
 
     queue = (dnq_queue_t *)args;
-    send_msg.type = 15;
+    send_msg.Class= 15;
     send_msg.code = 16;
-    send_msg.datalen = 17;
+    send_msg.lenght= 17;
     strcpy(send_msg.data, "nihao wjehzoq,!");
-    sleep(1111);
+    //sleep(1111);
+ 
     while(1)
     {
-        send_msg.type = n+1;
+        send_msg.Class = n+1;
         send_msg.code = n+2;
-        send_msg.datalen = n+3;
+        send_msg.lenght = n+3;
         strcpy(send_msg.data, "8982ssaadhjh222989");
 
         dnq_msg_send(queue, &send_msg);
@@ -48,7 +47,7 @@ void *send_test(void *args)
         n += 100;
         usleep(200*1000);
         if(cnt++ % 5 == 0)
-            sleep(2);
+            sleep(20);
     }
 }
 
@@ -62,28 +61,28 @@ int main()
 
     dnq_debug_init();
     dnq_uart_init();
-    dnq_lcd_items_init();
+    dnq_lcd_init();
     dnq_keypad_init();
 
-    queue = dnq_queue_create(15);
+    queue = dnq_queue_create(QUEUE_SIZE_MAX);
     if(queue == NULL)
         goto exit;
 
-    dnq_os_task_create("send", 0, send_test, (void*)queue);
+    dnq_task_create("send", 0, send_test, (void*)queue);
+
     dnq_msg_t recv_msg;
     while(1)
     {
         //event_input();
         //event_proc();
-        //sleep(1000);
+        //sleep(11);
         if(dnq_msg_recv_timeout(queue, &recv_msg, 3000) < 0)
             continue;
         
-        
         DNQ_PRINT(DNQ_MOD_ALL, "recv mgs:\n");
         DNQ_PRINT(DNQ_MOD_ALL,"type=%d, code=%d, len=%d, data=%s\n",\
-            recv_msg.type, recv_msg.code, recv_msg.datalen, recv_msg.data);
-        
+            recv_msg.Class, recv_msg.code, recv_msg.lenght, recv_msg.data);
+
     }
     
 exit:

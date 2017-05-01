@@ -13,7 +13,6 @@
 #include "dnq_os.h"
 #include "dnq_log.h"
 
-
 dnq_queue_t *dnq_queue_create(U32 queue_size)
 {
     S32  ret;
@@ -21,7 +20,8 @@ dnq_queue_t *dnq_queue_create(U32 queue_size)
     dnq_queue_t *queue = NULL;
     pthread_mutex_t attr;
     
-    malloc_size = sizeof(dnq_queue_t) + sizeof(dnq_msg_t)*queue_size;
+    malloc_size = \
+        sizeof(dnq_queue_t) + sizeof(dnq_msg_t)*queue_size;
     queue = dnq_malloc(malloc_size);
     if(queue == NULL)
     {
@@ -35,7 +35,7 @@ dnq_queue_t *dnq_queue_create(U32 queue_size)
     queue->used = 0;
     queue->head = 0;
     queue->tail = 0;
-    queue->msg = (dnq_msg_t*)(queue + sizeof(dnq_msg_t));
+    queue->msg = (dnq_msg_t*)(queue + sizeof(dnq_queue_t));
 
     ret = pthread_mutex_init(&queue->mutex, NULL);
     if(ret != 0)
@@ -55,6 +55,59 @@ dnq_queue_t *dnq_queue_create(U32 queue_size)
     }
     return queue;
 }
+
+#if 0
+dnq_queue_t *dnq_queue_create1(U32 element_size, U32 queue_size)
+{
+    S32  i, ret;
+    U32  malloc_size;
+    dnq_queue_t *queue = NULL;
+    pthread_mutex_t attr;
+    
+    malloc_size = \
+        sizeof(dnq_queue_t) + (sizeof(dnq_msg_t)+element_size)*queue_size;
+    queue = dnq_malloc(malloc_size);
+    if(queue == NULL)
+    {
+        DNQ_ERROR(DNQ_MOD_OS, "malloc error: %s\n", strerror(errno));
+        return NULL;
+    }
+
+    memset(queue, 0, malloc_size);
+    
+    queue->size = queue_size;
+    queue->used = 0;
+    queue->head = 0;
+    queue->tail = 0;
+    queue->msg = (dnq_msg_t*)(queue + sizeof(dnq_msg_t));
+
+    for(i=0; i<queue_size; i++)
+    {
+        /* static ptr inside the message buffer, Not allowed to be changed!! */
+        queue->msg[i].data = (U8*)((S32)&queue->msg[i] + sizeof(dnq_msg_t));
+        /* dynamic ptr , allowed to be changed */
+        queue->msg[i].payload = NULL;
+    }
+
+    ret = pthread_mutex_init(&queue->mutex, NULL);
+    if(ret != 0)
+    {
+        dnq_free(queue);
+        DNQ_ERROR(DNQ_MOD_OS, "pthread_mutex_init error: %s\n", strerror(errno));
+        return NULL;
+    }
+
+    ret = sem_init(&queue->sem, 0, 0);
+    if(ret != 0)
+    {
+        dnq_free(queue);
+        pthread_mutex_destroy(&queue ->mutex);
+        DNQ_ERROR(DNQ_MOD_OS, "sem_init error: %s\n", strerror(errno));
+        return NULL;
+    }
+    return queue;
+}
+#endif
 
 void dnq_queue_delete(dnq_queue_t *queue)
 {
@@ -81,6 +134,7 @@ S32 dnq_msg_send(dnq_queue_t *queue, dnq_msg_t *msg)
     }
 
     memcpy(&queue->msg[queue->tail], msg, sizeof(dnq_msg_t));
+    //memcpy(&queue->msg[queue->tail].data, msg->data, msg->lenght);
     queue->tail = (queue->tail+1) % queue->size;
     queue->used++;
 
@@ -106,6 +160,7 @@ S32 dnq_msg_send_timeout(dnq_queue_t *queue, dnq_msg_t *msg, U32 timeout)
     }
 
     memcpy(&queue->msg[queue->tail], msg, sizeof(dnq_msg_t));
+    //memcpy(&queue->msg[queue->tail].data, msg->data, msg->lenght);
     queue->tail = (queue->tail+1) % queue->size;
     queue->used++;
     
@@ -137,6 +192,7 @@ S32 dnq_msg_recv(dnq_queue_t *queue, dnq_msg_t *msg)
     }
 
     memcpy(msg, &queue->msg[queue->head], sizeof(dnq_msg_t));
+    //memcpy(msg.data, &queue->msg[queue->head].data, msg->lenght);
     queue->head = (queue->head+1) % queue->size;
     queue->used--;
     
@@ -179,6 +235,7 @@ S32 dnq_msg_recv_timeout(dnq_queue_t *queue, dnq_msg_t *msg, U32 timeout)
     }
 
     memcpy(msg, &queue->msg[queue->head], sizeof(dnq_msg_t));
+    //memcpy(msg.data, &queue->msg[queue->head].data, msg->lenght);
     queue->head = (queue->head+1) % queue->size;
     queue->used--;
     
@@ -186,12 +243,12 @@ S32 dnq_msg_recv_timeout(dnq_queue_t *queue, dnq_msg_t *msg, U32 timeout)
     return 0;
 }
 
-dnq_task_t* dnq_os_task_create(U8 *name, U32 stack_size, void *func, void *param)
+dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
 {
     S32          ret;
     dnq_task_t  *task;
     pthread_attr_t attr;
-    
+
     task = (dnq_task_t *)dnq_malloc(sizeof(dnq_task_t));
     if(!task)
     {
@@ -220,7 +277,7 @@ dnq_task_t* dnq_os_task_create(U8 *name, U32 stack_size, void *func, void *param
     }
 
     task->stacksize = stack_size;
-    ret = pthread_create(&task->tid, NULL, func, param);
+    ret = pthread_create(&task->tid, &attr, func, param);
     if(ret < 0)
     {
         dnq_free(task);
@@ -238,18 +295,81 @@ dnq_task_t* dnq_os_task_create(U8 *name, U32 stack_size, void *func, void *param
     return task;
 }
 
-S32 dnq_os_task_exit(dnq_task_t  *task)
+U32 dnq_task_isExit(dnq_task_t *task)
+{
+    S32 ret;
+    ret = pthread_kill(task, 0);
+    if(ret == ESRCH)
+        return 1;
+    DNQ_ERROR(DNQ_MOD_OS, "the %s task is not exit!!", task->name);
+    return 0;
+}
+
+
+S32 dnq_task_exit(dnq_task_t *task)
 {
     S32            ret;
-    
-    ret = pthread_kill(&task->tid, NULL);
+
+    ret = pthread_cancel(task->tid);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_OS, "pthread_kill error: %s\n", strerror(errno));
+        DNQ_ERROR(DNQ_MOD_OS, "name %s: pthread_cancel error: %s\n",\
+            task->name, strerror(errno));
+        return -1;
+    }
+    ret = pthread_join(task->tid, NULL);
+    //ret = pthread_timedjoin_np(task->tid, NULL ,ts);
+    if(ret < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_OS, "pthread_join error: %s\n", strerror(errno));
         return -1;
     }
 
     free(task);
+    return ret;
+}
+
+dnq_appinfo_t * dnq_app_task_create(
+    U8 *name, 
+    U32 stack_size,
+    U32 msg_size,
+    U32 queue_size,
+    void *func, 
+    void *param)
+{
+    dnq_appinfo_t *appinfo = NULL;
+
+    appinfo = (dnq_appinfo_t *)dnq_malloc(sizeof(dnq_appinfo_t));
+    if(appinfo == NULL)
+    {
+        DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_malloc appinfo error!", name);
+        return NULL;
+    }
+    appinfo->msg_size = msg_size;
+    appinfo->queue_size = queue_size;
+    appinfo->queue = dnq_queue_create(queue_size);
+    if(appinfo->queue == NULL)
+    {
+        DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_queue_create error!", name);
+        return NULL;
+    }
+    
+    appinfo->task = dnq_task_create(name, stack_size, func, (void*)appinfo);
+    if(appinfo->task == NULL)
+    {
+        dnq_free(appinfo->queue);
+        DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_task_create error!", name);
+        return NULL;
+    }
+
+    return appinfo;
+}
+
+S32 dnq_app_task_exit(dnq_appinfo_t *pAppinfo)
+{
+    S32 ret;
+    dnq_queue_delete(pAppinfo->queue);
+    ret = dnq_task_exit(pAppinfo->task);
     return ret;
 }
 
