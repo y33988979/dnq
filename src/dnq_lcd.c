@@ -13,94 +13,13 @@
 #include "dnq_uart.h"
 #include "dnq_config.h"
 #include "dnq_os.h"
+#include "dnq_keypad.h"
 
 #define SIZE   1024
 
-#define ITEM_ADDR_OFFSET      0x20
-
-/* All items's address define */ 
-
-/* title, datetime, header */
-#define ITEM_ADDR_TITLE       0x00
-#define ITEM_ADDR_DATE        0x40
-#define ITEM_ADDR_HEADER      0x80
-
-/* mac, command, network, system info */
-#define ITEM_ADDR_MAC_INFO    0x0A00
-#define ITEM_ADDR_NET_INFO    0x0A80
-#define ITEM_ADDR_CMD_INFO    0x0B00
-#define ITEM_ADDR_SYS_INFO    0x0B80
-
-#define ITEM_ADDR_HELP_INFO   0x0C00
-
-#define LCD_TITLE_SIZE        0x40
-#define LCD_ITEM_SIZE         0x10
-#define LCD_ITEM_NAME_SIZE    0x20
-
-#define LCD_ROOM_START_ADDR   0x100
-#define LCD_ROOM_SIZE         0x100
-#define LCD_ROOM_END_ADDR     0x900
-
-#define ROOM_CNT_PER_PAGE     8
-#define ONE_ROOM_ITEM_CNT     12
-#define ALL_ROOM_ITEM_CNT     (ONE_ROOM_ITEM_CNT*ROOM_CNT_PER_PAGE)
-
-#define LCD_ID_ROOM_ITEM_START    3
-#define LCD_ID_ROOM_ITEM_END     (LCD_ID_ROOM_ITEM_START + ALL_ROOM_ITEM_CNT -1)
-#define LCD_ITEM_MAX          188
-
-#define DEFAULT_COLOR         0
-#define SECOND_COLOR          1
-
-#define SELECT_FLAG           "-->"
-#define SETTING_FLAG          "↑↓"
-
-#define SOME_SPACE            "                                         "
-
-#define TITLE_STR " 松花江小学-主楼-三楼西/一号箱  2017年5月15日 18:33:33"
-#define HEADER_STR " 序号     房间       室温   设置温度    状态     SN    温度校准 "
-#define DATE_STR "2017年5月15日 18:33:33"
-     
-#define MAC_INFO_STR "MAC：20-21-3E-43-FE-47-29 "
-#define NET_INFO_STR "网络状态：    正常 "
-#define CMD_INFO_STR "当前执行命令：加热 "
-#define SYS_INFO_STR "火娃电采暖智能控制器 "
-#define HELP_INFO_STR "↑:上一页  ↓:下一页  OK:设置  EXIT:返回"
-
-typedef enum lcd_item_id
-{
-    ITEM_ID_TITLE = 0,
-    ITEM_ID_DATE,
-    ITEM_ID_HEADER,
-    ITEM_ID_ROOM1 = LCD_ID_ROOM_ITEM_START, // 3
-    ITEM_ID_ROOM2 = 15,
-    ITEM_ID_ROOM3 = 27,
-    
-    /* .... */
-    
-    ITEM_ID_ROOM12 = LCD_ID_ROOM_ITEM_END, // 
-    ITEM_ID_MAC_INFO,
-    ITEM_ID_CMD_INFO,
-    ITEM_ID_NET_INFO,
-    ITEM_ID_SYS_INFO,
-    ITEM_ID_HELP_INFO,
-}lcd_item_id_e;
-
-
-typedef enum room_item_id
-{
-    ROOM_ITEM_ID,
-    ROOM_ITEM_NAME,
-    ROOM_ITEM_CURRENT_TEMP,
-    ROOM_ITEM_SETTING_TEMP,
-    ROOM_ITEM_WORK_STATUS,
-    ROOM_ITEM_SN_STATUS,
-    ROOM_ITEM_TEMP_CORRECT,
-    ROOM_ITEM_SELECT_FLAG
-}room_item_id_e;
-
 static U8   uart_command[256];
 static U32  lcd_current_page = 0;
+static lcd_status_t  lcd_status = {LCD_STATUS_SHOWING, 0, 0, 0};
 static dnq_appinfo_t  *lcd_appinfo;
 
 room_item_t g_items[16] = 
@@ -673,11 +592,114 @@ S32 dnq_lcd_update_all()
     return ret;
 }
 
+U32 lcd_get_operate_status()
+{
+    return lcd_status.status;
+}
 
+U32 lcd_set_operate_status(U32 status)
+{
+    lcd_status.status = status;
+}
+
+U32 lcd_get_current_room()
+{
+    return lcd_status.current_room;
+}
+
+U32 lcd_set_current_room(U32 current_room)
+{
+    lcd_status.current_room = current_room;
+}
+
+U32 lcd_get_current_foucs()
+{
+    return lcd_status.current_foucs;
+}
+
+U32 lcd_set_current_foucs(U32 current_foucs)
+{
+    lcd_status.current_room = current_foucs;
+}
+
+S32 lcd_showing_key_process(U32 key_code, U32 key_status)
+{
+    switch (key_code)
+    {
+        case DNQ_KEY_OK:
+
+            break;
+        case DNQ_KEY_DOWN:
+        break;
+        case DNQ_KEY_LEFT:
+        break;
+        case DNQ_KEY_RIGHT:
+        break;
+        case DNQ_KEY_MENU:
+            /* entry to setting status */
+            lcd_set_operate_status(LCD_STATUS_SETTING);
+            lcd_set_current_room(0);
+            lcd_set_current_foucs(ROOM_ITEM_SELECT_FLAG);
+
+            /* flag icon show for setting status */
+            dnq_lcd_room_select_flag_update(ROOM_ITEM_SELECT_FLAG, SELECT_FLAG);
+
+        break;
+    }
+ 
+}
+
+S32 lcd_setting_key_process(U32 key_code, U32 key_status)
+{
+    S32 ret;
+    switch (key_code)
+    {
+        case DNQ_KEY_OK:
+            break;
+        case DNQ_KEY_DOWN:
+        break;
+        case DNQ_KEY_LEFT:
+            //dnq_lcd_room_setting_temp_update(U32 room_id, float degree, U32 color);
+            //dnq_lcd_room_temp_correct_update(U32 room_id, S32 correct, U32 color);
+        break;
+        case DNQ_KEY_RIGHT:
+        break;
+        case DNQ_KEY_MENU:
+        break;
+    }
+
+    return ret;
+}
+
+S32 lcd_key_process(U32 key_code, U32 key_status)
+{
+
+    U32   status = lcd_get_operate_status();
+    
+    /* lcd show state machine */
+    switch (status)
+    {
+        case LCD_STATUS_SHOWING:
+
+            lcd_showing_key_process(key_code, key_status);
+            break;
+            
+        case LCD_STATUS_SETTING:
+
+            lcd_setting_key_process(key_code, key_status);
+            break;
+        default:
+            DNQ_ERROR(DNQ_MOD_LCD, "unkown lcd status!");
+            break;
+    }
+    
+    
+}    
 
 void *lcd_task(void *args)
 {
     S32  ret;
+    S32  status;
     dnq_queue_t *lcd_queue;
     dnq_msg_t  sendMsg;
     dnq_msg_t  recvMsg;
@@ -703,6 +725,9 @@ void *lcd_task(void *args)
             case MSG_CLASS_KEYPAD:
                 DNQ_INFO(DNQ_MOD_KEYPAD, "recv keypad msg: val=%d, status=%d",\
                     pRecvMsg->code, pRecvMsg->payload);
+
+                lcd_key_process(pRecvMsg->code, (U32)pRecvMsg->payload);
+                
             break;
             case MSG_CLASS_RABBITMQ:
                 DNQ_INFO(DNQ_MOD_KEYPAD, "recv rabbitmq msg: val=%d, status=%d",\

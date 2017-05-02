@@ -15,10 +15,15 @@ LDFLAGS := -lm -lrabbitmq -lpthread
 LDPATH := -L$(TOP_DIR)/lib
 LIBS = 
 
+
+DEPEND_LIB := lib/librabbitmq.so
 TARGET = dnq
 
-all:
+all: $(DEPEND_LIB)
 	make -C src all
+
+$(DEPEND_LIB):
+	make -C extern
 
 test:
 	make -C tests all
