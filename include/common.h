@@ -11,7 +11,7 @@
 
 #include <typedef.h>
 
-
+#include "dnq_config.h"
         
 
 #endif /* _COMMON_H_ */

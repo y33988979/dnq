@@ -62,7 +62,7 @@ int main()
     dnq_debug_init();
     dnq_uart_init();
     dnq_lcd_init();
-    dnq_keypad_init();
+    //dnq_keypad_init();
 
     queue = dnq_queue_create(QUEUE_SIZE_MAX);
     if(queue == NULL)

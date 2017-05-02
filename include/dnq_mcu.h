@@ -2,14 +2,7 @@
 #define _DNQ_MCU_H_
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
-#include <errno.h>
-
-#include <typedef.h>
+#include "common.h"
 
 
         

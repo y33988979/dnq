@@ -243,6 +243,15 @@ S32 dnq_msg_recv_timeout(dnq_queue_t *queue, dnq_msg_t *msg, U32 timeout)
     return 0;
 }
 
+void *test1(void *args)
+{
+    while(1) 
+        {
+        printf("test thread!\n");
+        sleep(2);
+        }
+}
+
 dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
 {
     S32          ret;
@@ -277,14 +286,17 @@ dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
     }
 
     task->stacksize = stack_size;
+    tt;
+    pthread_t tid;
     ret = pthread_create(&task->tid, &attr, func, param);
+    //ret = pthread_create(&tid, NULL, test1, NULL);//&attr
     if(ret < 0)
     {
         dnq_free(task);
         DNQ_ERROR(DNQ_MOD_OS, "pthread_create error: %s\n", strerror(errno));
         return NULL;
     }
-
+tt;
     ret = pthread_attr_destroy(&attr);
     if(ret != 0)
     {
@@ -345,23 +357,26 @@ dnq_appinfo_t * dnq_app_task_create(
         DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_malloc appinfo error!", name);
         return NULL;
     }
+    
     appinfo->msg_size = msg_size;
     appinfo->queue_size = queue_size;
     appinfo->queue = dnq_queue_create(queue_size);
     if(appinfo->queue == NULL)
     {
+        dnq_free(appinfo);
         DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_queue_create error!", name);
         return NULL;
     }
-    
+    tt;
     appinfo->task = dnq_task_create(name, stack_size, func, (void*)appinfo);
     if(appinfo->task == NULL)
     {
         dnq_free(appinfo->queue);
+        dnq_free(appinfo);
         DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_task_create error!", name);
         return NULL;
     }
-
+tt;
     return appinfo;
 }
 

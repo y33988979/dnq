@@ -14,7 +14,6 @@
 
 
 #include "dnq_common.h"
-#include "dnq_config.h"
 #include "ngx_palloc.h"
 #include "dnq_uart.h"
 #include "dnq_log.h"

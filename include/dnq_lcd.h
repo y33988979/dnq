@@ -39,11 +39,12 @@
 
 /* font color, support two colors */
 #define DEFAULT_COLOR         0
-#define SECOND_COLOR          1
+#define FOUCS_COLOR           1
 
 /* show flag for setting params by keypad */
 #define SELECT_FLAG           "-->"
 #define SETTING_FLAG          "¡ü¡ý"
+#define HIDE_FLAG             "     "
 
 /* lcd status */
 #define LCD_STATUS_SHOWING    0
@@ -148,15 +149,15 @@ typedef struct lcd_item
     U8    size;
     U16   addr;
     U16   addr2;
+    U32   color;
     U8    content[64];
     
 }lcd_item_t;
 
-
-#define FOUCS_SETTING_TEMP   0
-#define FOUCS_CORRECT_TEMP   0
-#define FOUCS_SELECT_FLAG    0
-
+#define FOUCS_ITEM_SELECT_FLAG    0
+#define FOUCS_ITEM_SETTING_TEMP   1
+#define FOUCS_ITEM_CORRECT_TEMP   2
+#define FOUCS_ITEM_MAX            3
 typedef struct lcd_status
 {
     U32   status;

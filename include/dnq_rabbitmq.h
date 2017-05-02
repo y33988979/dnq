@@ -3,9 +3,7 @@
 
 #include "common.h"
 
-
 #define SIZE      32
-#define DNQ_ROOM_MAX   24
 
 /*
 * cjson convert to struct, authorization manage
