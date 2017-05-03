@@ -86,6 +86,8 @@ int main()
     }
     
 exit:
+    dnq_keypad_deinit();
+    dnq_lcd_deinit();
     dnq_uart_deinit();
     dnq_deinit();
 #endif

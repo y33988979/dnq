@@ -53,7 +53,6 @@ typedef struct dnq_task
     U8            name[32];
     U32           stacksize;
     U32           pri;
-    dnq_queue_t  *queue;
     
     pthread_t     tid;
     
@@ -79,8 +78,9 @@ S32 dnq_msg_send_timeout(dnq_queue_t *queue, dnq_msg_t *msg, U32 timeout);
 S32 dnq_msg_recv_timeout(dnq_queue_t *queue, dnq_msg_t *msg, U32 timeout);
     
 dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param);
+S32 dnq_task_delete(dnq_task_t *task);
+S32 dnq_task_isExit(dnq_task_t *task);
 S32 dnq_task_exit(dnq_task_t  *task);
-U32 dnq_task_isExit(dnq_task_t *task);
 dnq_appinfo_t * dnq_app_task_create(
     U8 *name, 
     U32 stack_size,
@@ -88,6 +88,7 @@ dnq_appinfo_t * dnq_app_task_create(
     U32 queue_size,
     void *func, 
     void *param);
+S32 dnq_app_task_delete(dnq_appinfo_t *pAppinfo);
 S32 dnq_app_task_exit(dnq_appinfo_t *pAppinfo);
 
 #endif /* _DNQ_OS_H_ */

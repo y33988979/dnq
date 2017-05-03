@@ -265,7 +265,7 @@ dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
         return NULL;
     }
 
-    strcpy(task->name, name);
+    strncpy(task->name, name, 32);
     ret = pthread_attr_init(&attr);
     if (ret != 0)
     {
@@ -286,7 +286,7 @@ dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
     }
 
     task->stacksize = stack_size;
-    tt;
+
     pthread_t tid;
     ret = pthread_create(&task->tid, &attr, func, param);
     //ret = pthread_create(&tid, NULL, test1, NULL);//&attr
@@ -296,7 +296,7 @@ dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
         DNQ_ERROR(DNQ_MOD_OS, "pthread_create error: %s\n", strerror(errno));
         return NULL;
     }
-tt;
+
     ret = pthread_attr_destroy(&attr);
     if(ret != 0)
     {
@@ -307,7 +307,13 @@ tt;
     return task;
 }
 
-U32 dnq_task_isExit(dnq_task_t *task)
+S32 dnq_task_delete(dnq_task_t *task)
+{
+    dnq_free(task);
+    return 0;
+}
+
+S32 dnq_task_isExit(dnq_task_t *task)
 {
     S32 ret;
     ret = pthread_kill(task, 0);
@@ -316,7 +322,6 @@ U32 dnq_task_isExit(dnq_task_t *task)
     DNQ_ERROR(DNQ_MOD_OS, "the %s task is not exit!!", task->name);
     return 0;
 }
-
 
 S32 dnq_task_exit(dnq_task_t *task)
 {
@@ -367,8 +372,8 @@ dnq_appinfo_t * dnq_app_task_create(
         DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_queue_create error!", name);
         return NULL;
     }
-    tt;
-    appinfo->task = dnq_task_create(name, stack_size, func, (void*)appinfo);
+
+    appinfo->task = dnq_task_create(name, stack_size, func, param);
     if(appinfo->task == NULL)
     {
         dnq_free(appinfo->queue);
@@ -376,15 +381,35 @@ dnq_appinfo_t * dnq_app_task_create(
         DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_task_create error!", name);
         return NULL;
     }
-tt;
+
     return appinfo;
+}
+
+S32 dnq_app_task_delete(dnq_appinfo_t *pAppinfo)
+{
+    if(pAppinfo)
+    {
+        dnq_task_delete(pAppinfo->task);
+        dnq_queue_delete(pAppinfo->queue);
+        dnq_free(pAppinfo);
+        return 0;
+    }
+    DNQ_ERROR(DNQ_MOD_OS, "pAppinfo == NULL!!");
+    return -1;
 }
 
 S32 dnq_app_task_exit(dnq_appinfo_t *pAppinfo)
 {
     S32 ret;
-    dnq_queue_delete(pAppinfo->queue);
-    ret = dnq_task_exit(pAppinfo->task);
-    return ret;
+    if(pAppinfo)
+    {
+        ret = dnq_task_exit(pAppinfo->task);
+        dnq_queue_delete(pAppinfo->queue);
+        dnq_free(pAppinfo);
+        return ret;
+    }
+    
+    DNQ_ERROR(DNQ_MOD_OS, "pAppinfo == NULL!!");
+    return -1;
 }
 

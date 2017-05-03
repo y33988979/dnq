@@ -13,9 +13,9 @@
 */
 typedef struct server_authorization
 {
-    char    type[SIZE];
-    char    time[SIZE];
-    char    authorization[SIZE];
+    U8      type[SIZE];
+    U8      time[SIZE];
+    U8      authorization[SIZE];
 }server_authorization_t;
 
 /*
@@ -26,26 +26,26 @@ typedef struct server_authorization
 */
 typedef struct timesetting
 {
-    char starttime[SIZE];
-    char endtime[SIZE];
-    char degrees[SIZE];
+    U8   starttime[SIZE];
+    U8   endtime[SIZE];
+    U8   degrees[SIZE];
 }timesetting_t;
 
 typedef struct room_temp_policy
 {
-    int            room_id;
-    int            dpid;
-    int            time_setting_cnt;
+    U16            room_id;
+    U16            dpid;
+    U16            time_setting_cnt;
     timesetting_t  time_setting[5];
 }room_temp_policy_t;
 
 typedef struct server_temp_policy
 {
-    char      type[SIZE];
-    char      time[SIZE];
-    char      ctrl_id[SIZE];
-    int       mode;
-    int       rooms_cnt;
+    U8        type[SIZE];
+    U8        time[SIZE];
+    U8        ctrl_id[SIZE];
+    U16       mode;
+    U16       rooms_cnt;
     room_temp_policy_t    rooms[DNQ_ROOM_MAX];
 }server_temp_policy_t;
 
@@ -57,18 +57,18 @@ typedef struct server_temp_policy
 */
 typedef struct room_temp_limit
 {
-    int       room_id;  
-    int       max;  
-    int       min;  
+    U16       room_id;  
+    U16       max;  
+    U16       min;  
 }room_temp_limit_t;
 
 typedef struct server_temp_limit
 {
-    char      type[SIZE];
-    char      time[SIZE];
-    char      ctrl_id[SIZE];
-    int       mode;
-    int       rooms_cnt;
+    U8        type[SIZE];
+    U8        time[SIZE];
+    U8        ctrl_id[SIZE];
+    U16       mode;
+    U16       rooms_cnt;
     room_temp_limit_t      rooms[DNQ_ROOM_MAX];
 }server_temp_limit_t;
 
@@ -81,17 +81,17 @@ typedef struct server_temp_limit
 
 typedef struct room_temp_error
 {
-    int       room_id;
-    int       error;
+    U16       room_id;
+    U16       error;
 }room_temp_error_t;
 
 typedef struct server_temp_error
 {
-    char      type[SIZE];
-    char      time[SIZE];
-    char      ctrl_id[SIZE];
-    int       mode;
-    int       rooms_cnt;
+    U8        type[SIZE];
+    U8        time[SIZE];
+    U8        ctrl_id[SIZE];
+    U16       mode;
+    U16       rooms_cnt;
     room_temp_error_t      rooms[DNQ_ROOM_MAX];
 }server_temp_error_t;
 
@@ -104,19 +104,19 @@ typedef struct server_temp_error
 
 typedef struct room_power_config
 {
-    int       room_id;
-    int       config_cnt;
-    int       power[5];   /* need fixed?  */
-    int       num[5];     /* need fixed?  */
+    U16       room_id;
+    U16       config_cnt;
+    U16       power[5];   /* need fixed?  */
+    U16       num[5];     /* need fixed?  */
 }room_power_config_t;
 
 typedef struct server_power_config
 {
-    char      type[SIZE];
-    char      time[SIZE];
-    char      ctrl_id[SIZE];
-    int       mode;
-    int       rooms_cnt;
+    U8        type[SIZE];
+    U8        time[SIZE];
+    U8        ctrl_id[SIZE];
+    U16       mode;
+    U16       rooms_cnt;
     room_power_config_t      rooms[DNQ_ROOM_MAX];
 }server_power_config_t;
 
@@ -128,9 +128,9 @@ typedef struct server_power_config
 */
 typedef struct server_response
 {
-    char      type[SIZE];
-    char      time[SIZE];
-    char      status[SIZE];
+    U8        type[SIZE];
+    U8        time[SIZE];
+    U8        status[SIZE];
 }server_response_t;
 
 
@@ -143,19 +143,61 @@ typedef struct server_response
 
 typedef struct room_temp_correct
 {
-    int       room_id;
-    int       correct;
+    U16       room_id;
+    S16       correct;
 }room_temp_correct_t;
 
 typedef struct server_temp_correct
 {
-    char      type[SIZE];
-    char      time[SIZE];
-    char      ctrl_id[SIZE];
-    int       mode;
-    int       rooms_cnt;
+    U8        type[SIZE];
+    U8        time[SIZE];
+    U8        ctrl_id[SIZE];
+    U16       mode;
+    U16       rooms_cnt;
     room_temp_correct_t  rooms[DNQ_ROOM_MAX];
 }server_temp_correct_t;
+
+/*
+* cjson convert to struct, initialize device install info 
+*
+* cjson数据的C结构体，云端向控制器 初始化房间信息，设备安装信息。
+*
+*/
+typedef struct partition_info
+{
+    U8        no[SIZE];
+    U32       id;
+    U8        memo[SIZE];
+    U8        name[SIZE];
+    U32       isDelete;
+    
+}partition_info_t;
+
+typedef struct room_info
+{
+    U8        error;
+    U8        max;
+    U8        min;
+    U8        correct;
+    U8        room_id;
+    U8        room_order;
+    U8        room_floor;
+    U16       position;
+}room_info_t;
+
+typedef struct server_init_info
+{
+    U8        type[SIZE];
+    partition_info_t partition;
+    U32       project_id;
+    U32       building_id;
+    U32       equipment_id;
+    U8        project_name[SIZE];
+    U8        building_name[SIZE];
+    U8        equipment_mac[SIZE];
+    room_info_t    rooms[DNQ_ROOM_MAX];
+    
+}server_init_info_t;
 
 
 /*

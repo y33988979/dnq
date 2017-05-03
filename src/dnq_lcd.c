@@ -734,6 +734,11 @@ S32 lcd_key_process(U32 key_code, U32 key_status)
     return 0;
 }    
 
+S32 lcd_rabbitmq_process()
+{
+
+}
+
 void *lcd_task(void *args)
 {
     S32  ret;
@@ -745,16 +750,15 @@ void *lcd_task(void *args)
     dnq_msg_t *pRecvMsg = &recvMsg;
 
     lcd_queue = (dnq_queue_t*)lcd_appinfo->queue;
-    tt;
+
     while(1)
     {
-    tt;
+
         ret = dnq_msg_recv_timeout(lcd_queue, pRecvMsg, 400);
         if(ret < 0)
         {
             continue;
         }
-        tt;
 
         /*
         * 1. 接收云端消息，更新屏幕状态
@@ -764,20 +768,22 @@ void *lcd_task(void *args)
         switch(pRecvMsg->Class)
         {
             case MSG_CLASS_KEYPAD:
-                DNQ_INFO(DNQ_MOD_KEYPAD, "recv keypad msg: val=%d, status=%d",\
+                DNQ_INFO(DNQ_MOD_LCD, "recv keypad msg: val=%d, status=%d",\
                     pRecvMsg->code, pRecvMsg->payload);
 
                 lcd_key_process(pRecvMsg->code, (U32)pRecvMsg->payload);
                 
             break;
             case MSG_CLASS_RABBITMQ:
-                DNQ_INFO(DNQ_MOD_KEYPAD, "recv rabbitmq msg: val=%d, status=%d",\
+                DNQ_INFO(DNQ_MOD_LCD, "recv rabbitmq msg: val=%d, status=%d",\
                     pRecvMsg->code, pRecvMsg->payload);
+                
+                lcd_rabbitmq_process();
             break;
         }
     }
 
-    dnq_free(lcd_task);
+    dnq_app_task_delete(lcd_appinfo);
 }
 
 S32 send_msg_to_lcd(dnq_msg_t *msg)
@@ -793,21 +799,22 @@ S32 send_msg_to_lcd(dnq_msg_t *msg)
 
 S32 dnq_lcd_init()
 {
-    dnq_appinfo_t *appinfo = NULL;
+    dnq_appinfo_t **appinfo = &lcd_appinfo;
 
     lcd_items_init();
     lcd_clear_all();
     lcd_update_all();
 
-    appinfo = dnq_app_task_create("lcd", 2048*16, \
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, (void*)&appinfo);
-    if(!appinfo)
+    printf("func1=0x%x\n", lcd_task);
+    *appinfo = dnq_app_task_create("lcd", 2048*1600,\
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, NULL);
+    if(!*appinfo)
     {
         DNQ_ERROR(DNQ_MOD_LCD, "dnq_app_task_create error!");
         return -1;
     }
-    sleep(2);
-    lcd_appinfo = appinfo;
+    printf("pAppinfo0=0x%x\n", lcd_appinfo);
+    
     DNQ_INFO(DNQ_MOD_LCD, "lcd_init ok!");
     return 0;
 }

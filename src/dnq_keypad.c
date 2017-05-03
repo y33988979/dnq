@@ -154,9 +154,9 @@ S32 dnq_keypad_init()
 {
     dnq_task_t  *task = NULL;
     dnq_queue_t *queue = NULL;
-    dnq_appinfo_t *appinfo = NULL;
+    dnq_appinfo_t **appinfo = NULL;
 
-    appinfo = keypad_appinfo;
+    appinfo = &keypad_appinfo;
 
 	if ((keypad_fd = open(DEVINPUT, O_RDONLY | O_NDELAY)) < 0) 
     {
@@ -165,16 +165,16 @@ S32 dnq_keypad_init()
 		return -1;
     }
 
-    appinfo = dnq_app_task_create("keypad", 2048*16, \
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, keypad_task, (void*)&appinfo);
-    if(!appinfo)
+    *appinfo = dnq_app_task_create("keypad", 2048*16, \
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, keypad_task, (void*)appinfo);
+    if(!*appinfo)
     {
         close(keypad_fd);
         DNQ_ERROR(DNQ_MOD_KEYPAD, "dnq_keypad_init error!");
         return -1;
     }
 
-    keypad_appinfo = appinfo;
+    keypad_appinfo = *appinfo;
     DNQ_INFO(DNQ_MOD_KEYPAD, "dnq_keypad_init ok!");
     return 0;
 }

@@ -89,7 +89,8 @@ typedef enum json_type
     MSG_TYPE_DEGREE_ERROR,
     MSG_TYPE_POWER_CONFIG,
     MSG_TYPE_RESPONSE,
-    MSG_TYPE_CORRECT
+    MSG_TYPE_CORRECT,
+    MSG_TYPE_INIT
 }json_type_e;
 
 /*
@@ -103,6 +104,7 @@ typedef enum json_type
 #define TYPE_STR_POWER_CONFIG     "power"
 #define TYPE_STR_RESPONSE         "response"
 #define TYPE_STR_CORRECT          "rectify"
+#define TYPE_STR_INIT             "init"
 
 /*
 * json item define
@@ -128,8 +130,28 @@ typedef enum json_type
 #define JSON_ITEM_CONFIGS         "configs"
 #define JSON_ITEM_POWER           "power"
 #define JSON_ITEM_NUM             "num"
-#define JSON_ITEM_CORRECT         "rectify"
+#define JSON_ITEM_RECTIFY         "rectify"
+#define JSON_ITEM_CORRECT         "correct"
 #define JSON_ITEM_ROOM_CNT        "room_cnt"
+
+#define JSON_ITEM_PARTITION       "partition"
+#define JSON_ITEM_NO              "no"
+#define JSON_ITEM_MEMO            "memo"
+#define JSON_ITEM_NAME            "name"
+#define JSON_ITEM_IS_DELETE       "isDelete"
+#define JSON_ITEM_PROJECT_ID      "projectId"
+#define JSON_ITEM_BUILDING_ID     "buildingId"
+#define JSON_ITEM_EQUIPMENT_ID    "equipmentId"
+#define JSON_ITEM_PROJECT_NAME    "projectName"
+#define JSON_ITEM_BUILDING_NAME   "buildingName"
+#define JSON_ITEM_EQUIPMENT_MAC   "equipmentMac"
+
+#define JSON_ITEM_ID              "id"
+#define JSON_ITEM_ROOM_NAME       "roomName"
+#define JSON_ITEM_ROOM_ID         "roomId"
+#define JSON_ITEM_ROOM_ORDER      "roomOrder"
+#define JSON_ITEM_ROOM_FLOOR      "roomFloor"
+#define JSON_ITEM_ROOM_POSITION   "position"
 
 /*
 * json config define
@@ -608,13 +630,58 @@ int json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
 
         //rectify
         copy_json_item_to_struct_item(\
-        obj, room_obj, JSON_ITEM_CORRECT, &pdst->rooms[i].correct, cJSON_Number);
+        obj, room_obj, JSON_ITEM_RECTIFY, &pdst->rooms[i].correct, cJSON_Number);
         DNQ_INFO(DNQ_MOD_RABBITMQ, "error:\t%d!", pdst->rooms[i].correct);
     }
 
     return 0;
 }
 
+/*
+*  server --> controller
+*  parse a "init" message (json data)
+*
+*  2.8 初始化信息 <房间名称，小区信息，温度等>
+*  解析一个 "init" 消息结构(json)
+*
+*/
+int json_parse_init(cJSON *pjson, server_init_info_t *pdst)
+{
+    int     i = 0;
+    cJSON  *obj = NULL;
+    cJSON  *rooms = NULL;
+    cJSON  *room_obj = NULL;
+    cJSON  *partition_obj = NULL;
+
+    //type
+    strcpy(pdst->type, "init");
+
+    //partition obj
+    partition_obj = cJSON_GetObjectItem(pjson, JSON_ITEM_PARTITION);
+    if(!cJSON_IsObject(partition_obj))
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s must be a Object!", JSON_ITEM_PARTITION);
+        return -1;
+    }
+
+    //partition item
+    copy_json_item_to_struct_item(\
+    obj, partition_obj, JSON_ITEM_NO, pdst->partition.no, cJSON_String);
+    copy_json_item_to_struct_item(\
+    obj, partition_obj, JSON_ITEM_ID, &pdst->partition.id, cJSON_Number);
+    copy_json_item_to_struct_item(\
+    obj, partition_obj, JSON_ITEM_MEMO, pdst->partition.memo, cJSON_String);
+    copy_json_item_to_struct_item(\
+    obj, partition_obj, JSON_ITEM_NAME, pdst->partition.name, cJSON_String);
+    copy_json_item_to_struct_item(\
+    obj, partition_obj, JSON_ITEM_IS_DELETE, &pdst->partition.isDelete, cJSON_Number);
+
+    //projectId
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_PROJECT_ID, &pdst->project_id, cJSON_Number);
+    
+    return 0;
+}
 
 /*
 *  server --> controller
@@ -678,6 +745,11 @@ int json_parse(char *json,void *output)
         {
             json_parse_correct(pjson, output);
             msg_type = MSG_TYPE_CORRECT;
+        }
+        else if(strcmp(type, TYPE_STR_INIT) == 0)
+        {
+            json_parse_init(pjson, output);
+            msg_type = MSG_TYPE_INIT;
         }
         else
         {
@@ -958,7 +1030,6 @@ cJSON *json_data_prepare_warn(char *data)
 
     dnq_free(pstr);
     cJSON_Delete(pjson);
-    //YLOG("response str: %s\n", pstr);
 }
 
 
