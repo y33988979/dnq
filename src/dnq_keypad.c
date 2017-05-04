@@ -94,7 +94,7 @@ void* keypad_task(void *args)
                 switch (ev[yalv].type) 
                 {
                     case EV_SYN:
-                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = EV_SYN");
+                    DNQ_DEBUG(DNQ_MOD_KEYPAD, "EV_TYPE = EV_SYN");
                     break;
                     
                     case EV_KEY:					

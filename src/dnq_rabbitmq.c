@@ -1598,7 +1598,7 @@ void *rabbitmq_test()
         dnq_free(msg);
         sleep(time);
 
-        msg = json_create_init(&warn);
+        msg = json_create_init(MAC_ADDR);
         send_msg_to_server(g_conn, &channels[5], msg);
         DNQ_DEBUG(DNQ_MOD_RABBITMQ, "send init msg:\n%s", msg);
         dnq_free(msg);

@@ -287,9 +287,9 @@ dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
 
     task->stacksize = stack_size;
 
-    pthread_t tid;
+    //pthread_t tid;
     ret = pthread_create(&task->tid, &attr, func, param);
-    //ret = pthread_create(&tid, NULL, test1, NULL);//&attr
+    //ret = pthread_create(&task->tid, NULL, test1, NULL);//&attr
     if(ret < 0)
     {
         dnq_free(task);
@@ -362,7 +362,7 @@ dnq_appinfo_t * dnq_app_task_create(
         DNQ_ERROR(DNQ_MOD_OS, "name %s: dnq_malloc appinfo error!", name);
         return NULL;
     }
-    
+
     appinfo->msg_size = msg_size;
     appinfo->queue_size = queue_size;
     appinfo->queue = dnq_queue_create(queue_size);

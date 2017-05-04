@@ -45,9 +45,9 @@ void *send_test(void *args)
 
         printf("send msg!!\n");
         n += 100;
-        usleep(200*1000);
+        usleep(100*1000);
         if(cnt++ % 5 == 0)
-            sleep(20);
+            sleep(60);
     }
 }
 
@@ -62,7 +62,7 @@ int main()
     dnq_debug_init();
     dnq_uart_init();
     dnq_lcd_init();
-    //dnq_keypad_init();
+    dnq_keypad_init();
 
     queue = dnq_queue_create(QUEUE_SIZE_MAX);
     if(queue == NULL)

@@ -6,7 +6,7 @@
 CC=arm-linux-gcc
 CXX=arm-linux-g++
 
-CC=gcc
+#CC=gcc
 
 OBJS = dnq_rabbitmq.o utils.o cJSON.o ngx_palloc.o dnq_log.o dnq_os.o \
 	   dnq_lcd.o dnq_uart.c dnq_common.o dnq_mcu.o dnq_keypad.o main.o
@@ -21,7 +21,10 @@ AT := @
 TARGET = dnq_manage
 
 all: $(OBJS)
-	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $(LDPATH) -static $^ -o $(TARGET) $(LDFLAGS)
+	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $(LDPATH) -static $^ -o $(TARGET).static $(LDFLAGS)
+	@echo " LD   $^ "
+	@echo " Create $(TARGET) success! (static compile)"
+	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $^ -o $(TARGET) $(LDPATH) $(LDFLAGS) 
 	@echo " LD   $^ "
 	@echo " Create $(TARGET) success!"
 
