@@ -16,6 +16,7 @@
 
 #define SIZE   1024
 
+
 static U8   uart_command[256];
 static U32  lcd_current_page = 0;
 static lcd_status_t  lcd_status = {LCD_STATUS_SHOWING, 0, 0, 0};
@@ -68,6 +69,20 @@ lcd_item_t    g_lcd_items[LCD_ITEM_MAX] =
     
 };
 
+
+#define set_temperature_inc(room_id, step)  \
+    do\
+    {\
+        if(step > 0)\
+            g_rooms[room_id].set_temp + step;\
+    }while(0);
+    
+#define set_temperature_dec(room_id, step)  \
+    do\
+    {\
+        g_lcd_items[room_id*ROOM_CNT_PER_PAGE+ROOM_ITEM_SET_TEMP].content;\
+    }while(0);
+
 static U8 *lcd_get_item_content(U32 item_id)
 {
     return (U8*)g_lcd_items[item_id].content;
@@ -115,7 +130,7 @@ static U32 lcd_get_current_foucs()
 
 static U32 lcd_set_current_foucs(U32 current_foucs)
 {
-    lcd_status.current_room = current_foucs;
+    lcd_status.current_foucs = current_foucs;
 }
 
 S32 lcd_items_init()
@@ -235,7 +250,7 @@ S32 lcd_uart_cmd_prepare(U32 item_id, char *content, U32 color)
     room_item_idx = (item_id-LCD_ID_ROOM_ITEM_START) % ONE_ROOM_ITEM_CNT;
     switch(room_item_idx)
     {
-        case ROOM_ITEM_SETTING_TEMP:
+        case ROOM_ITEM_SET_TEMP:
         case ROOM_ITEM_WORK_STATUS:
         case ROOM_ITEM_SN_STATUS:
         case ROOM_ITEM_TEMP_CORRECT:
@@ -372,7 +387,7 @@ S32 lcd_room_item_update(U32 room_id, U32 idx, U8 *content, U32 color)
 }
 
 /* update color only, not content  */
-S32 lcd_room_update_item_color(U32 room_id, U32 item_id, U32 color)
+S32 lcd_room_item_update_color(U32 room_id, U32 item_id, U32 color)
 {
     return lcd_room_item_update(room_id, item_id, "\0", color);
 }
@@ -415,7 +430,18 @@ S32 lcd_room_setting_temp_update(U32 room_id, float degree, U32 color)
 
     g_rooms[room_id].set_temp= degree;
     sprintf(buf, "%2.1f", degree);
-    ret = lcd_room_item_update(room_id, ROOM_ITEM_SETTING_TEMP, buf, color);
+    ret = lcd_room_item_update(room_id, ROOM_ITEM_SET_TEMP, buf, color);
+    return ret;
+}
+
+S32 lcd_room_setting_temp_update_adjust(U32 room_id, float value, U32 color)
+{
+    S32 ret = 0;
+    char buf[16] = {0};
+
+    g_rooms[room_id].set_temp += value;
+    sprintf(buf, "%2.1f", g_rooms[room_id].set_temp);
+    ret = lcd_room_item_update(room_id, ROOM_ITEM_SET_TEMP, buf, color);
     return ret;
 }
 
@@ -444,6 +470,17 @@ S32 lcd_room_temp_correct_update(U32 room_id, S32 correct, U32 color)
 
     g_rooms[room_id].correct = correct;
     sprintf(buf, "%d", correct);
+    ret = lcd_room_item_update(room_id, ROOM_ITEM_TEMP_CORRECT, buf, color);
+    return ret;
+}
+
+S32 lcd_room_temp_correct_update_adjust(U32 room_id, S32 value, U32 color)
+{
+    S32 ret = 0;
+    char buf[16] = {0};
+
+    g_rooms[room_id].correct += value;
+    sprintf(buf, "%d", g_rooms[room_id].correct);
     ret = lcd_room_item_update(room_id, ROOM_ITEM_TEMP_CORRECT, buf, color);
     return ret;
 }
@@ -529,6 +566,7 @@ S32 lcd_rooms_update_by_page(U32 page_num)
         ret = lcd_room_temp_correct_update(i, g_rooms[room_offset+i].correct, DEFAULT_COLOR);
         #endif
     }
+    DNQ_INFO(DNQ_MOD_LCD, "update all rooms'item! page=%d", page_num);
     return ret;
 }
 
@@ -589,29 +627,71 @@ S32 lcd_update_all()
     return ret;
 }
 
+S32 lcd_next_room_foucs(U32 current_room, U32 direction)
+{
+    U32 current_page = lcd_get_current_page();
 
-S32 lcd_room_next_foucs(U32 current_foucs, U32 direction)
+    if(direction == DNQ_KEY_UP)
+    {
+        /* top room */
+        if(current_room%ROOM_CNT_PER_PAGE == FIRST_ROOM_IN_PAGE)
+        {   
+            if(current_room == 0)
+            {
+                DNQ_ERROR(DNQ_MOD_LCD, "can't move up foucs, this is first room!");
+                return 0;
+            }
+            /* need update page! */
+            current_page = current_page?0:1;
+            lcd_rooms_update_by_page(current_page);
+            current_room--;
+        }
+    }
+    else if(direction == DNQ_KEY_RIGHT)
+    {
+        /* bottom room */
+        if(current_room%ROOM_CNT_PER_PAGE == LAST_ROOM_IN_PAGE)
+        {   
+            if(current_room == DNQ_ROOM_CNT)
+            {
+                DNQ_ERROR(DNQ_MOD_LCD, "can't move down foucs, this is last room!");
+                return 0;
+            }
+            /* need update page! */
+            current_page = current_page?0:1;
+            lcd_rooms_update_by_page(current_page);
+            current_room++;
+        }
+    }
+    lcd_set_current_room(current_room);
+
+    return current_room;
+}
+
+
+S32 lcd_next_item_foucs(U32 current_foucs, U32 direction)
 {
     U32 new_foucs = current_foucs;
     if(direction == DNQ_KEY_LEFT)
     {
         if(current_foucs == ROOM_ITEM_SELECT_FLAG)
             new_foucs = ROOM_ITEM_TEMP_CORRECT;
-        else if(current_foucs == ROOM_ITEM_SETTING_TEMP)
+        else if(current_foucs == ROOM_ITEM_SET_TEMP)
             new_foucs = ROOM_ITEM_SELECT_FLAG;
         else if(current_foucs == ROOM_ITEM_TEMP_CORRECT)
-            new_foucs = ROOM_ITEM_SETTING_TEMP;
+            new_foucs = ROOM_ITEM_SET_TEMP;
     }
     else if(direction == DNQ_KEY_RIGHT)
     {
         if(current_foucs == ROOM_ITEM_SELECT_FLAG)
-            new_foucs = ROOM_ITEM_SETTING_TEMP;
-        else if(current_foucs == ROOM_ITEM_SETTING_TEMP)
+            new_foucs = ROOM_ITEM_SET_TEMP;
+        else if(current_foucs == ROOM_ITEM_SET_TEMP)
             new_foucs = ROOM_ITEM_TEMP_CORRECT;
         else if(current_foucs == ROOM_ITEM_TEMP_CORRECT)
             new_foucs = ROOM_ITEM_SELECT_FLAG;
     }
 
+    lcd_set_current_foucs(new_foucs);
     return new_foucs;
 }
 
@@ -641,7 +721,9 @@ S32 lcd_showing_key_process(U32 key_code, U32 key_status)
         case DNQ_KEY_RIGHT:
         break;
         case DNQ_KEY_MENU:
+            
             /* entry to setting status */
+            DNQ_INFO(DNQ_MOD_LCD, "enter lcd setting status!");
             lcd_set_operate_status(LCD_STATUS_SETTING);
             lcd_set_current_room(0);
             lcd_set_current_foucs(ROOM_ITEM_SELECT_FLAG);
@@ -656,6 +738,7 @@ S32 lcd_showing_key_process(U32 key_code, U32 key_status)
             /* rs485 check, register sensor! */
         break;
         case DNQ_KEY_SCAN:
+            /* rs485 check, register sensor! */
         break;
         case DNQ_KEY_EXIT:
         break;
@@ -666,6 +749,7 @@ S32 lcd_showing_key_process(U32 key_code, U32 key_status)
 S32 lcd_setting_key_process(U32 key_code, U32 key_status)
 {
     S32 ret;
+    U32 current_page = lcd_get_current_page();
     U32 current_room = lcd_get_current_room();
     U32 current_foucs = lcd_get_current_foucs();
     U32 next_room;
@@ -673,35 +757,75 @@ S32 lcd_setting_key_process(U32 key_code, U32 key_status)
     switch (key_code)
     {
         case DNQ_KEY_UP:
+        case DNQ_KEY_DOWN:
+
+            /* move room foucs, or adjust item value */
+            if(current_foucs == FOUCS_ITEM_SELECT_FLAG)
+            {   
+                /* move room */
+                next_room = lcd_next_room_foucs(current_room, key_code);
+                
+                lcd_room_select_flag_update(current_room, HIDE_FLAG);
+                lcd_room_select_flag_update(next_room, SELECT_FLAG);
+            }
+            else if(current_foucs == FOUCS_ITEM_SETTING_TEMP)
+            {
+                /* adjust temperature value */
+                if(key_code == DNQ_KEY_UP) 
+                    lcd_room_setting_temp_update_adjust(\
+                    current_room, DNQ_TEMP_ADJUST_STEP, FOUCS_COLOR);/* increase */
+                else
+                    lcd_room_setting_temp_update_adjust(\
+                    current_room, -DNQ_TEMP_ADJUST_STEP, FOUCS_COLOR);/* decrease */
+                
+            }
+            else if(current_foucs == FOUCS_ITEM_CORRECT_TEMP)
+            {
+                /* adjust correct value */
+                if(key_code == DNQ_KEY_UP) 
+                    lcd_room_temp_correct_update_adjust(\
+                    current_room, DNQ_CORRECT_ADJUST_STEP, FOUCS_COLOR);/* increase */
+                else
+                    lcd_room_temp_correct_update_adjust(\
+                    current_room, -DNQ_CORRECT_ADJUST_STEP, FOUCS_COLOR);/* decrease */
+            }
+            else
+                DNQ_ERROR(DNQ_MOD_LCD, "unkown item!");
             
             break;
-        case DNQ_KEY_DOWN:
-            /* move foucs */
+        
         break;
             
         case DNQ_KEY_LEFT:
-            /* move foucs */
-            next_foucs = lcd_room_next_foucs(current_foucs, DNQ_KEY_LEFT);
-            /* update color */
-            lcd_room_update_item_color(current_room, current_foucs, DEFAULT_COLOR);
-            lcd_room_update_item_color(current_room, next_foucs, FOUCS_COLOR);
+        case DNQ_KEY_RIGHT:
+            
+            /* move item foucs in room */
+            next_foucs = lcd_next_item_foucs(current_foucs, key_code);
+            
+            /* change select flag */
+            if(next_foucs == FOUCS_ITEM_SELECT_FLAG)
+            {
+                lcd_room_select_flag_update(current_room, SELECT_FLAG);
+            }
+            else
+            {
+                lcd_room_select_flag_update(current_room, SETTING_FLAG);
+            }
+            /* update foucs color */
+            lcd_room_item_update_color(current_room, current_foucs, DEFAULT_COLOR);
+            lcd_room_item_update_color(current_room, next_foucs, FOUCS_COLOR);
             
         break;
-        case DNQ_KEY_RIGHT:
-            /* move foucs */
-            next_foucs = lcd_room_next_foucs(current_foucs, DNQ_KEY_RIGHT);
-            /* update color */
-            lcd_room_update_item_color(current_room, current_foucs, DEFAULT_COLOR);
-            lcd_room_update_item_color(current_room, next_foucs, FOUCS_COLOR);
-        break;
+        
         case DNQ_KEY_MENU:
         break;
         case DNQ_KEY_EXIT:
             
             /* entry to showing status */
+            DNQ_INFO(DNQ_MOD_LCD, "enter lcd showing status!");
             lcd_set_operate_status(LCD_STATUS_SHOWING);
             
-            lcd_room_update_item_color(current_room, current_foucs, DEFAULT_COLOR);
+            lcd_room_item_update_color(current_room, current_foucs, DEFAULT_COLOR);
             lcd_room_select_flag_update(current_room, HIDE_FLAG);
         break;
     }

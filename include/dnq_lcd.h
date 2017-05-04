@@ -37,6 +37,10 @@
 #define LCD_ID_ROOM_ITEM_END     (LCD_ID_ROOM_ITEM_START + ALL_ROOM_ITEM_CNT -1)
 #define LCD_ITEM_MAX          188
 
+/* used for key process, roomid: 0~(ROOM_CNT_PER_PAGE-1) */
+#define FIRST_ROOM_IN_PAGE     0
+#define LAST_ROOM_IN_PAGE      (ROOM_CNT_PER_PAGE-1)
+
 /* font color, support two colors */
 #define DEFAULT_COLOR         0
 #define FOUCS_COLOR           1
@@ -79,7 +83,7 @@ typedef enum lcd_item_id
     ITEM_ID_CMD_INFO,
     ITEM_ID_NET_INFO,
     ITEM_ID_SYS_INFO,
-    ITEM_ID_HELP_INFO,
+    ITEM_ID_HELP_INFO, //102
 }lcd_item_id_e;
 
 
@@ -88,7 +92,7 @@ typedef enum room_item_id
     ROOM_ITEM_ID,
     ROOM_ITEM_NAME,
     ROOM_ITEM_CURRENT_TEMP,
-    ROOM_ITEM_SETTING_TEMP,
+    ROOM_ITEM_SET_TEMP,
     ROOM_ITEM_WORK_STATUS,
     ROOM_ITEM_SN_STATUS,
     ROOM_ITEM_TEMP_CORRECT,

@@ -175,13 +175,14 @@ typedef struct partition_info
 
 typedef struct room_info
 {
-    U8        error;
-    U8        max;
-    U8        min;
-    U8        correct;
-    U8        room_id;
-    U8        room_order;
-    U8        room_floor;
+    U16       error;
+    U16       max;
+    U16       min;
+    U16       correct;
+    U16       room_id;
+    U8        room_name[16];
+    U16       room_order;
+    U16       room_floor;
     U16       position;
 }room_info_t;
 
@@ -195,6 +196,7 @@ typedef struct server_init_info
     U8        project_name[SIZE];
     U8        building_name[SIZE];
     U8        equipment_mac[SIZE];
+    U16       rooms_cnt;
     room_info_t    rooms[DNQ_ROOM_MAX];
     
 }server_init_info_t;

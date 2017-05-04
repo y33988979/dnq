@@ -43,11 +43,14 @@ channel_t channels1[18] = {
 };
 
 channel_t channels[18] = {
-	{1,  "queue_host_",    "exchange_host",       ""},
+    /* server to host */
+	{1,  "queue_host_",    "exchange_host",       ""}, 
+	/* host to server */
 	{2,  "state_",         "exchange_cloud",      "state"},
 	{3,  "response_",      "exchange_cloud",      "callback"},
 	{4,  "config_",        "exchange_cloud",      "config"},
 	{5,  "warn_",          "exchange_cloud",      "warn"},
+	{6,  "init_",          "exchange_cloud",      "init"},
 	{7,  "_power",         "exchange_power",       ""}
 };
 
@@ -187,11 +190,13 @@ typedef enum json_type
         }\
         if(item_type == cJSON_String)\
         {\
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "%s:\t%s!", item_name, obj->valuestring);\
             strcpy((char*)item_addr, obj->valuestring); \
             break;\
         }\
         else if(item_type == cJSON_Number)\
         {\
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "%s:\t%d!", item_name, obj->valueint);\
             *(int*)item_addr = obj->valueint;\
             break;\
         }\
@@ -615,7 +620,7 @@ int json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
 
     //rooms size
     pdst->rooms_cnt = cJSON_GetArraySize(rooms);
-    DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
     //rooms array
     for(i=0; i<pdst->rooms_cnt; i++)
@@ -626,12 +631,12 @@ int json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
         //room ID
         copy_json_item_to_struct_item(\
         obj, room_obj, JSON_ITEM_ROOMID, &pdst->rooms[i].room_id, cJSON_Number);
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "id:\t%d!", pdst->rooms[i].room_id);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "id:\t%d!", pdst->rooms[i].room_id);
 
         //rectify
         copy_json_item_to_struct_item(\
         obj, room_obj, JSON_ITEM_RECTIFY, &pdst->rooms[i].correct, cJSON_Number);
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "error:\t%d!", pdst->rooms[i].correct);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "error:\t%d!", pdst->rooms[i].correct);
     }
 
     return 0;
@@ -679,6 +684,77 @@ int json_parse_init(cJSON *pjson, server_init_info_t *pdst)
     //projectId
     copy_json_item_to_struct_item(\
     obj, pjson, JSON_ITEM_PROJECT_ID, &pdst->project_id, cJSON_Number);
+    //buildingId
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_BUILDING_ID, &pdst->building_id, cJSON_Number);
+    //equipmentId
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_EQUIPMENT_ID, &pdst->equipment_id, cJSON_Number);
+    //projectName
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_PROJECT_NAME, pdst->project_name, cJSON_String);
+    //buildingName
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_BUILDING_NAME, pdst->building_name, cJSON_String);
+    //equipmentMac
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_EQUIPMENT_MAC, &pdst->equipment_mac, cJSON_Number);
+
+    //rooms
+    rooms = cJSON_GetObjectItem(pjson, JSON_ITEM_ROOMS);
+    if(!cJSON_IsArray(rooms))
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s must be a array!", JSON_ITEM_ROOMS);
+        return -1;
+    }
+
+    //rooms size
+    pdst->rooms_cnt = cJSON_GetArraySize(rooms);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
+
+    //rooms array
+    for(i=0; i<pdst->rooms_cnt; i++)
+    {
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "room[%02d] info:", i);
+        //item from rooms array
+        room_obj = cJSON_GetArrayItem(rooms, i);
+        //error
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_ERROR, &pdst->rooms[i].error, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] error:\t%d!", i, pdst->rooms[i].error);
+        //max
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_MAX, &pdst->rooms[i].max, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] max:\t%d!", i, pdst->rooms[i].max);
+        //min
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_MIN, &pdst->rooms[i].min, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] min:\t%d!", i, pdst->rooms[i].min);
+        //correct
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_CORRECT, &pdst->rooms[i].correct, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] correct:\t%d!", i, pdst->rooms[i].correct);
+        //room_name
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_ROOM_NAME, pdst->rooms[i].room_name, cJSON_String);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] room_name:\t%s!", i, pdst->rooms[i].room_name);
+        //room_order
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_ROOM_ORDER, &pdst->rooms[i].room_order, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] room_order:\t%s!", i, pdst->rooms[i].room_order);
+        //room_floor
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_ROOM_ORDER, &pdst->rooms[i].room_floor, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] room_floor:\t%s!", i, pdst->rooms[i].room_floor);
+        //room_floor
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_ROOM_ORDER, &pdst->rooms[i].room_floor, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] room_floor:\t%s!", i, pdst->rooms[i].room_floor);
+        //position
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_ROOM_POSITION, &pdst->rooms[i].position, cJSON_Number);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "[%02d] position:\t%s!", i, pdst->rooms[i].position);
+    }
     
     return 0;
 }
@@ -947,6 +1023,32 @@ char *json_create_warn(client_warn_t *pdst)
     return pstr;
 }
 
+char *json_create_init(U8 *MAC)
+{
+    int    i = 0;
+    cJSON *pjson = NULL;
+    char  *pstr = NULL;
+    
+    pjson = cJSON_CreateObject();
+    if(!pjson)
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "cJSON_CreateObject error!");
+        return NULL;
+    }
+
+    cJSON_AddStringToObject(pjson, "mac",  MAC);
+
+    pstr = cJSON_Print(pjson);
+    if(!pstr)
+    {
+        cJSON_Delete(pjson);
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "cJSON_Print error!");
+        return NULL;
+    }
+    cJSON_Delete(pjson);
+    return pstr;
+}
+
 int send_response_to_server(
     amqp_connection_state_t conn,
     channel_t *pchnl,
@@ -1045,7 +1147,7 @@ int json_file_read(char *filename, char *buffer, int len)
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filename, strerror(errno));
         return -1;
     }
-    ret = strlen(buffer);
+    
     ret = fread(buffer, 1, len, fp);
     if(len < 0)
     {
@@ -1070,7 +1172,7 @@ int json_file_write(char *filename, char *buffer, int len)
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filename, strerror(errno));
         return -1;
     }
-    ret = strlen(buffer);
+    
     ret = fwrite(buffer, 1, len, fp);
     if(len < 0)
     {
@@ -1086,12 +1188,12 @@ int json_file_write(char *filename, char *buffer, int len)
 int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 {
     char  *json_msg = NULL;
-    char  *message[1024];
+    char   message[1024];
     char  *json_response = NULL;
     json_type_e    type = 0;
     channel_t   *pchnl = NULL;
 
-    pchnl = &channels[2];
+    pchnl = &channels[2]; /* response  */
     json_msg = penve->message.body.bytes;
 
     type = json_parse(json_msg, message);
@@ -1169,7 +1271,19 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
-    
+    else if(type == MSG_TYPE_INIT)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: init");
+        client_response_t response;
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "init");
+        
+        json_response = json_create_response(&response);
+        send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+
+    return 0;
 }
 
 int run(amqp_connection_state_t conn)
@@ -1430,7 +1544,6 @@ int rabbitmq_start()
     }
 }
 
-
 void *rabbitmq_test()
 {
     int i = 0;
@@ -1456,6 +1569,7 @@ void *rabbitmq_test()
             sleep(1);
         }
     #else
+        /* test code: host to server */
         msg = json_create_status(&status);
         send_msg_to_server(g_conn, &channels[1], msg);
         DNQ_DEBUG(DNQ_MOD_RABBITMQ, "send status msg:\n%s", msg);
@@ -1481,6 +1595,12 @@ void *rabbitmq_test()
         msg = json_create_warn(&warn);
         send_msg_to_server(g_conn, &channels[4], msg);
         DNQ_DEBUG(DNQ_MOD_RABBITMQ, "send warn msg:\n%s", msg);
+        dnq_free(msg);
+        sleep(time);
+
+        msg = json_create_init(&warn);
+        send_msg_to_server(g_conn, &channels[5], msg);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "send init msg:\n%s", msg);
         dnq_free(msg);
         sleep(time);
     #endif
