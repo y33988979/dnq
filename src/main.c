@@ -14,6 +14,7 @@
 #include "ngx_palloc.h"
 #include "dnq_keypad.h"
 #include "dnq_rabbitmq.h"
+#include "dnq_network.h"
 #include "dnq_uart.h"
 #include "dnq_log.h"
 #include "dnq_mcu.h"
@@ -53,13 +54,16 @@ void *send_test(void *args)
 
 int main()
 {
+    
     //extern int lcd_test();
     //lcd_test();
+    network_test();
+    sleep(100);
 #if 1
     dnq_queue_t *queue = NULL;
     dnq_init();
-
     dnq_debug_init();
+    
     dnq_uart_init();
     dnq_lcd_init();
     dnq_keypad_init();

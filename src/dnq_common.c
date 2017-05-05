@@ -40,7 +40,8 @@ U16 crc16(U8 *addr, U32 num ,U32 crc)
         crc =crc^Over_crc;                  /* Ensure CRC remains 16-bit value */  
     }                               /* Loop until num=0 */  
     return(crc);                    /* Return updated CRC */  
-}  
+}
+
 
 S32 dnq_init()
 {
