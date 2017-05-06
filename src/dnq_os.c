@@ -265,6 +265,7 @@ dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
         return NULL;
     }
 
+    memset(task->name, 0, 32);
     strncpy(task->name, name, 32);
     ret = pthread_attr_init(&attr);
     if (ret != 0)

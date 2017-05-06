@@ -58,7 +58,7 @@ int main()
     //extern int lcd_test();
     //lcd_test();
     network_test();
-    sleep(100);
+    //sleep(100);
 #if 1
     dnq_queue_t *queue = NULL;
     dnq_init();

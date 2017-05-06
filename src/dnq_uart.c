@@ -152,8 +152,8 @@ static S32 dnq_uart_read(U32 fd, U8 *buffer, U32 len)
     }
     DNQ_DEBUG(DNQ_MOD_UART, "read len=%d, data:", rlen);
     for(i=0; i<rlen; i++)
-        DNQ_PRINT(DNQ_MOD_UART, "%02x ", buffer[i]);
-    DNQ_PRINT(DNQ_MOD_UART, "\n\n");
+        DNQ_PRINT2(DNQ_MOD_UART, "%02x ", buffer[i]);
+    DNQ_PRINT2(DNQ_MOD_UART, "\n\n");
     
     return rlen;
 }
@@ -177,8 +177,8 @@ static S32 dnq_uart_write(U32 fd, U8 *buffer, U32 len)
     
     DNQ_DEBUG(DNQ_MOD_UART, "send len=%d, data:", wlen);
     for(i=0; i<wlen; i++)
-        DNQ_DEBUG(DNQ_MOD_UART, "%02x ", buffer[i]);
-    DNQ_DEBUG(DNQ_MOD_UART, "\n\n");
+        DNQ_PRINT2(DNQ_MOD_UART, "%02x ", buffer[i]);
+    DNQ_PRINT2(DNQ_MOD_UART, "\n\n");
     return wlen;
 }
 

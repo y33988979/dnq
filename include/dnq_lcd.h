@@ -50,6 +50,9 @@
 #define SETTING_FLAG          "↑↓"
 #define HIDE_FLAG             "     "
 
+#define STATUS_STR_NORMAL     "正常"
+#define STATUS_STR_STOP       "正常"
+
 /* lcd status */
 #define LCD_STATUS_SHOWING    0
 #define LCD_STATUS_SETTING    1
@@ -142,8 +145,8 @@ typedef struct room_item
     char     name[16];
     float    curr_temp;
     float    set_temp;
-    char     status[16];
-    char     sn[16];
+    char     status[8];
+    char     sn[8];
     int      correct;
 }room_item_t;
 

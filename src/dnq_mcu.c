@@ -373,6 +373,7 @@ S32 dnq_rtc_get_time(U8 *datetime)
     if(ret < 0)
         return -1;
     strncpy(datetime, &recvbuf[7], 6);
+    datetime[7] = '\0';
     return ret;
 }
 

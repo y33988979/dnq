@@ -41,6 +41,7 @@ typedef enum dnq_debug_lever
 
 
 #define DNQ_PRINT(mod, msg...)   dnq_debug(mod, DNQ_DBG_ALL, msg)
+#define DNQ_PRINT2(mod, msg...)   dnq_debug(mod, DNQ_DBG_DEBUG, msg)
 
 #define DNQ_ERROR(mod, msg,...)    dnq_debug(mod, DNQ_DBG_ERROR, "[ERROR]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
 #define DNQ_WARN(mod, msg,...)   dnq_debug(mod, DNQ_DBG_WARN, "[WARN]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
