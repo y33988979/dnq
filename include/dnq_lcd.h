@@ -20,9 +20,10 @@
 #define ITEM_ADDR_HELP_INFO   0x0C00
 
 /* addr size */
-#define LCD_TITLE_SIZE        0x40
-#define LCD_ITEM_SIZE         0x10
-#define LCD_ITEM_NAME_SIZE    0x20
+#define LCD_TITLE_SIZE        0x20
+#define ROOM_ITEM_SIZE        0x06
+#define ROOM_ITEM_NAME_SIZE   0x20
+#define ROOM_ITEM_ADDR_OFFSET 0x10
 
 /* room item address  */
 #define LCD_ROOM_START_ADDR   0x100
@@ -145,8 +146,8 @@ typedef struct room_item
     char     name[16];
     float    curr_temp;
     float    set_temp;
-    char     status[8];
-    char     sn[8];
+    char     work_status[8];
+    char     sn_status[8];
     int      correct;
 }room_item_t;
 

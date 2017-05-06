@@ -101,7 +101,7 @@ void* keypad_task(void *args)
                     switch(ev[yalv].code)
                     {
                         case BTN_TOUCH:
-                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_KEY : BTN_TOUCH value %d \n",ev[yalv].value);
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_KEY : BTN_TOUCH value %d ",ev[yalv].value);
                         break;
                         default:
                             /* callback when key release */
@@ -126,21 +126,21 @@ void* keypad_task(void *args)
                     switch(ev[yalv].type)
                     {
                         case ABS_X:
-                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : ABS_X value %d \n",ev[yalv].value);
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : ABS_X value %d ",ev[yalv].value);
                         break;
                         
                         case ABS_Y:
-                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : ABS_Y value %d \n",ev[yalv].value);
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : ABS_Y value %d ",ev[yalv].value);
                         break;
                         
                         default:
-                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : code %d value %d \n",ev[yalv].code,ev[yalv].value);
+                        DNQ_INFO(DNQ_MOD_KEYPAD, "EV_ABS : code %d value %d ",ev[yalv].code,ev[yalv].value);
                         break;
                     }
                     break;
                     
                     default:
-                    DNQ_INFO(DNQ_MOD_KEYPAD, "EV_TYPE = %x\n", ev[yalv].type);
+                    DNQ_DEBUG(DNQ_MOD_KEYPAD, "EV_TYPE = %x", ev[yalv].type);
                     break;
                 }
             //printf("time= %1d.%061d \n", ev[yalv].time.tv_sec,ev[yalv].time.tv_usec);		    		    

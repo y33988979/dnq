@@ -26,15 +26,16 @@ typedef struct debug_module
 
 static debug_module_t g_dbg_modules[DNQ_MOD_CNT] =
 {
-    0,              "none",
-    DNQ_MOD_ALL,    "All Module",
-    DNQ_MOD_KEYPAD, "Keypad Module",
-    DNQ_MOD_UART,   "Uart   Module",
-    DNQ_MOD_LCD,    "LCD    Module",
-    DNQ_MOD_MCU,    "MCU    Module",
+    0,               "none",
+    DNQ_MOD_ALL,     "All Module",
+    DNQ_MOD_KEYPAD,  "Keypad Module",
+    DNQ_MOD_UART,    "Uart   Module",
+    DNQ_MOD_LCD,     "LCD    Module",
+    DNQ_MOD_MCU,     "MCU    Module",
     DNQ_MOD_RABBITMQ,"RABBITMQ Module",
-    DNQ_MOD_OS,     "OS     Module",
-    DNQ_MOD_RTC,    "RTC    Module",
+    DNQ_MOD_OS,      "OS     Module",
+    DNQ_MOD_RTC,     "RTC    Module",
+    DNQ_MOD_NETWORK, "NETWORK Module",
 };
 
 int dnq_debug(U32 module_id, U32 lever, const char *fmt, ...)
