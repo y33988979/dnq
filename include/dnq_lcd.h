@@ -15,6 +15,7 @@
 /* mac, command, network, system info */
 #define ITEM_ADDR_MAC_INFO    0x0A00
 #define ITEM_ADDR_NET_INFO    0x0A80
+//#define ITEM_ADDR_NET_STATUS  0x0A90
 #define ITEM_ADDR_CMD_INFO    0x0B00
 #define ITEM_ADDR_SYS_INFO    0x0B80
 #define ITEM_ADDR_HELP_INFO   0x0C00

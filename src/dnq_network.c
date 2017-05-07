@@ -31,9 +31,14 @@
 #include <ctype.h>
 
 #include "dnq_log.h"
+#include "dnq_lcd.h"
 #include "dnq_common.h"
 #include "dnq_network.h"
 
+//#define LINK_ON       1
+//#define LINK_OFF      0
+
+#define ETH_NAME  "eth0"
 
 
 U16 ipcfg_htons(U16 n)
@@ -899,8 +904,67 @@ U32 dnq_net_get_host_by_name(U8 *cname)
     return 0;
 }
 
+S32 dnq_dhcp_start(U8 *if_name)
+{
+    S32 ret;
+    U8 cmd[64];
+
+    sprintf(cmd, "udhcpc -i %d", if_name);
+    ret = system(cmd);
+}
+
+S32 dnq_dhcp_stop(U8 *if_name)
+{
+    S32 ret;
+    U8 cmd[64] = "killall udhcpc";
+
+    ret = system(cmd);
+    return ret;
+}
+
+static void net_status_change_callbak(net_status_e status)
+{
+    switch(status)
+    {
+        case LINK_OFF:
+            DNQ_INFO(DNQ_MOD_NETWORK, "link down!");
+        break;
+        case LINK_ON:
+            DNQ_INFO(DNQ_MOD_NETWORK, "link up!");
+            dnq_dhcp_start(ETH_NAME);
+        break;
+        case IP_BOUND:
+        break;
+        case IP_LOST:
+        break;
+        default:
+        break;
+    }
+    lcd_net_status_update(status);
+}
+
+void *network_task(void *args)
+{
+    static U32 last_status = LINK_OFF;
+    U32  current_status;
+    while(1)
+    {
+        
+        current_status = dnq_net_get_link_status(ETH_NAME);
+        if(current_status != last_status)
+        {
+            net_status_change_callbak(current_status?LINK_ON:LINK_OFF);
+            last_status = current_status;
+        }
+
+        usleep(300*1000);
+    }
+}
+
 S32 dnq_network_init()
 {
+    dnq_dhcp_start(ETH_NAME);
+    dnq_task_create("network", 32*2048, network_task, NULL);
     
     return 0;
 }
@@ -910,7 +974,7 @@ S32 dnq_network_deinit()
     return 0;
 }
 
-#define ETH_NAME  "eth0"
+
 S32 network_test()
 {
     

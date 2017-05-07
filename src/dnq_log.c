@@ -165,7 +165,7 @@ void dnq_debug_control()
 S32 dnq_debug_init()
 {
     dnq_debug_setlever(1, 3);
-    if(dnq_task_create("debug_ctrl", 16*2048, dnq_debug_control, NULL) == NULL)
+    if(dnq_task_create("debug_ctrl", 32*2048, dnq_debug_control, NULL) == NULL)
     {
         DNQ_PRINT(DNQ_MOD_ALL, "debug_ctrl task create error: %s", strerror(errno));
         return -1;

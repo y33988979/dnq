@@ -72,7 +72,7 @@ int main()
     if(queue == NULL)
         goto exit;
 
-    dnq_task_create("send", 0, send_test, (void*)queue);
+    dnq_task_create("send", 32*2048, send_test, (void*)queue);
 
     dnq_msg_t recv_msg;
     while(1)

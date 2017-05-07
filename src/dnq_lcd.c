@@ -13,6 +13,7 @@
 #include "dnq_uart.h"
 #include "dnq_os.h"
 #include "dnq_keypad.h"
+#include "dnq_network.h"
 
 
 #define SIZE   1024
@@ -612,6 +613,25 @@ S32 lcd_room_update(U32 room_id, room_item_t *room, U32 color)
     return ret;
 }
 
+S32 lcd_net_status_update(net_status_e status)
+{
+    S32 ret = 0;
+    U8  buf[32];
+    if(status == LINK_ON)
+        sprintf(buf, "网络状态: %s", "网线已连接");
+    else if(status == LINK_OFF)
+        sprintf(buf, "网络状态: %s", "网线未连接");
+    else if(status == IP_REQUEST)
+        sprintf(buf, "网络状态: %s", "正在获取IP..");
+    else if(status == IP_BOUND)
+        sprintf(buf, "网络状态: %s", "IP bound");
+    else if(status == IP_LOST)
+        sprintf(buf, "网络状态: %s", "NO IP");
+
+    ret = lcd_item_update(ITEM_ID_NET_INFO, buf, DEFAULT_COLOR);
+    return ret;
+}
+
 S32 lcd_net_info_update(U8 *string)
 {
     S32 ret = 0;
@@ -1084,7 +1104,7 @@ sleep(1);
     sleep(100);
 #endif
 
-    *appinfo = dnq_app_task_create("lcd", 2048*16,\
+    *appinfo = dnq_app_task_create("lcd", 2048*32,\
         QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, NULL);
     if(!*appinfo)
     {

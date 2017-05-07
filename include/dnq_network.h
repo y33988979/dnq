@@ -3,7 +3,14 @@
 
 #include "common.h"
 
-
+typedef enum net_status
+{
+    LINK_OFF,
+    LINK_ON,
+    IP_REQUEST,
+    IP_BOUND,
+    IP_LOST,
+}net_status_e;
 
 S32 dnq_net_ifup(U8 *if_name);
 S32 dnq_net_ifdown(U8 *if_name);
