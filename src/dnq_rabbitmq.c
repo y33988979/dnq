@@ -84,14 +84,14 @@ static char *password = "123456";
         obj = cJSON_GetObjectItem(json, item_name);\
         if(!obj)\
         {\
-            DNQ_WARN(DNQ_MOD_RABBITMQ, "item %s not found!", item_name);\
-            break;\
+            DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s not found!", item_name);\
+            return -1;\
         }\
         if(obj->type != item_type)\
         {\
-            DNQ_WARN(DNQ_MOD_RABBITMQ, "item %s type[%d] error, should be [%d]!", \
+            DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s type[%d] error, should be [%d]!", \
             item_name, obj->type, item_type);\
-            break;\
+            return -1;\
         }\
         if(item_type == cJSON_String)\
         {\
@@ -107,6 +107,97 @@ static char *password = "123456";
         }\
     }while(0);\
     obj = NULL;
+
+
+
+S32 json_file_read(char *filename, char *buffer, int len)
+{
+    S32    ret = 0;
+    FILE  *fp = NULL;
+
+    //memset(buffer, 0, len);
+    fp = fopen(filename, "r");
+    if(fp == NULL)
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filename, strerror(errno));
+        return -1;
+    }
+    
+    ret = fread(buffer, 1, len, fp);
+    if(len < 0)
+    {
+        fclose(fp);
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "read error! err=%s!", filename, strerror(errno));
+        return -1;
+    }
+    printf("read len=%d\n", ret);
+    buffer[ret] = '\0';
+
+    fclose(fp);
+    return ret; 
+}
+
+S32 json_file_write(char *filename, char *buffer, int len)
+{
+    S32    ret = 0;
+    FILE  *fp = NULL;
+    fp = fopen(filename, "w+");
+    if(fp == NULL)
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filename, strerror(errno));
+        return -1;
+    }
+    
+    ret = fwrite(buffer, 1, len, fp);
+    if(len < 0)
+    {
+        fclose(fp);
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "write error! err=%s!", filename, strerror(errno));
+        return -1;
+    }
+
+    fclose(fp);
+    return ret; 
+}
+
+S32 json_data_save(json_type_e type)
+{
+
+}
+
+S32 config_data_sync()
+{
+    
+}
+
+S32 dnq_config_update(json_type_e type, U8 *data, U32 len)
+{
+    
+    switch(type)
+    {
+        case MSG_TYPE_AUTHORRIZATION:
+            config_data_sync();
+            json_file_write(CJSON_AUTHORRIZATION, data, len);
+        break;
+        case MSG_TYPE_TEMP_POLICY:
+        break;
+        case MSG_TYPE_TEMP_LIMIT:
+        break;
+        case MSG_TYPE_DEGREE_ERROR:
+        break;
+        case MSG_TYPE_POWER_CONFIG:
+        break;
+        case MSG_TYPE_RESPONSE:
+        break;
+        case MSG_TYPE_CORRECT:
+        break;
+        case MSG_TYPE_INIT:
+        break;
+        default:
+            break;
+    
+    }
+}
     
 /*
 * server --> controller
@@ -198,6 +289,14 @@ int json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
     //rooms size
     pdst->rooms_cnt = cJSON_GetArraySize(rooms);
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
+
+    /* mode value:   0:ctrl_whole,  1:ctrl_single */
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+        ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
+    {
+        DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
+        pdst->mode?"ctrl_single":"ctrl_whole", pdst->rooms_cnt);
+    }
 
     //rooms array
     for(i=0; i<pdst->rooms_cnt; i++)
@@ -294,6 +393,14 @@ int json_parse_temp_limit(cJSON *pjson, server_temp_limit_t *pdst)
     pdst->rooms_cnt = cJSON_GetArraySize(rooms);
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
+    /* mode value:   0:ctrl_whole,  1:ctrl_single */
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+        ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
+    {
+        DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
+        pdst->mode?"ctrl_single":"ctrl_whole", pdst->rooms_cnt);
+    }
+    
     //rooms array
     for(i=0; i<pdst->rooms_cnt; i++)
     {
@@ -357,6 +464,14 @@ int json_parse_degree_error(cJSON * pjson, server_temp_error_t *pdst)
     pdst->rooms_cnt = cJSON_GetArraySize(rooms);
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
+    /* mode value:   0:ctrl_whole,  1:ctrl_single */
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+        ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
+    {
+        DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
+        pdst->mode?"ctrl_single":"ctrl_whole", pdst->rooms_cnt);
+    }
+    
     //rooms array
     for(i=0; i<pdst->rooms_cnt; i++)
     {
@@ -382,7 +497,7 @@ int json_parse_degree_error(cJSON * pjson, server_temp_error_t *pdst)
 *  server --> controller
 *  parse a "power_config" message (json data)
 *
-*  2.5 云端向控制器发送 <设置每个房间功率配置>
+*  2.5 云端向控制器发送 <设置每个房间电暖气个数，及功率配置>
 *  解析一个 "功率配置" 消息结构(json)
 *
 */
@@ -419,6 +534,14 @@ int json_parse_power_config(cJSON *pjson, server_power_config_t *pdst)
     pdst->rooms_cnt = cJSON_GetArraySize(rooms);
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
+    /* mode value:   0:ctrl_whole,  1:ctrl_single */
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+        ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
+    {
+        DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
+        pdst->mode?"ctrl_single":"ctrl_whole", pdst->rooms_cnt);
+    }
+    
     //rooms array
     for(i=0; i<pdst->rooms_cnt; i++)
     {
@@ -527,6 +650,14 @@ int json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
     pdst->rooms_cnt = cJSON_GetArraySize(rooms);
     DNQ_DEBUG(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
+    /* mode value:   0:ctrl_whole,  1:ctrl_single */
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+        ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
+    {
+        DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
+        pdst->mode?"ctrl_single":"ctrl_whole", pdst->rooms_cnt);
+    }
+    
     //rooms array
     for(i=0; i<pdst->rooms_cnt; i++)
     {
@@ -672,12 +803,13 @@ int json_parse_init(cJSON *pjson, server_init_info_t *pdst)
 *  解析消息的总入口，不同的消息类型，通过分支处理
 *
 */
-int json_parse(char *json,void *output)
+S32 json_parse(char *json,void *output)
 {
+    S32 ret;
     cJSON *pjson = NULL;
     cJSON *item = NULL;
     char  *type = NULL;
-    json_type_e  msg_type;
+    json_type_e  msg_type = -1;
 
     pjson = cJSON_Parse(json);
     if(!pjson)
@@ -694,46 +826,55 @@ int json_parse(char *json,void *output)
         type = item->valuestring;
         if(strcmp(type, TYPE_STR_AUTHORRIZATION) == 0)
         {
-            json_parse_authorization_manage(pjson, output);
-            msg_type = MSG_TYPE_AUTHORRIZATION;
+            ret = json_parse_authorization_manage(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_AUTHORRIZATION;
         }
         else if(strcmp(type, TYPE_STR_TEMP_POLICY) == 0)
         {
-            json_parse_temp_policy(pjson, output);
-            msg_type = MSG_TYPE_TEMP_POLICY;
+            ret = json_parse_temp_policy(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_TEMP_POLICY;
         }
         else if(strcmp(type, TYPE_STR_TEMP_LIMIT) == 0)
         {
-            json_parse_temp_limit(pjson, output);
-            msg_type = MSG_TYPE_TEMP_LIMIT;
+            ret = json_parse_temp_limit(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_TEMP_LIMIT;
         }
         else if(strcmp(type, TYPE_STR_DEGREE_ERROR) == 0)
         {
-            json_parse_degree_error(pjson, output);
-            msg_type = MSG_TYPE_DEGREE_ERROR;
+            ret = json_parse_degree_error(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_DEGREE_ERROR;
         }
         else if(strcmp(type, TYPE_STR_POWER_CONFIG) == 0)
         {
-            json_parse_power_config(pjson, output);
-            msg_type = MSG_TYPE_POWER_CONFIG;
+            ret = json_parse_power_config(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_POWER_CONFIG;
         }
         else if(strcmp(type, TYPE_STR_RESPONSE) == 0)
         {
-            json_parse_response(pjson, output);
-            msg_type = MSG_TYPE_RESPONSE;
+            ret = json_parse_response(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_RESPONSE;
         }
         else if(strcmp(type, TYPE_STR_CORRECT) == 0)
         {
-            json_parse_correct(pjson, output);
-            msg_type = MSG_TYPE_CORRECT;
+            ret = json_parse_correct(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_CORRECT;
         }
         else if(strcmp(type, TYPE_STR_INIT) == 0)
         {
-            json_parse_init(pjson, output);
-            msg_type = MSG_TYPE_INIT;
+            ret = json_parse_init(pjson, output);
+            if(ret == 0)
+                msg_type = MSG_TYPE_INIT;
         }
         else
         {
+            msg_type = -1;
             DNQ_ERROR(DNQ_MOD_RABBITMQ, "unkown msg! type=[%s]", item->valuestring);
         }
     }
@@ -741,8 +882,9 @@ int json_parse(char *json,void *output)
     {
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "Error: type must be string!");
     }
-    cJSON_Delete(pjson);
     
+    cJSON_Delete(pjson);
+        
     return msg_type;
 }
 
@@ -873,7 +1015,7 @@ char *json_create_config(client_config_t *pdst)
         cJSON_AddNumberToObject(room_obj, "maxDegree",  pdst->rooms[i].maxdegree);
         cJSON_AddNumberToObject(room_obj, "minDegree",  pdst->rooms[i].mindegree);
         cJSON_AddNumberToObject(room_obj, "error",  pdst->rooms[i].error);
-        cJSON_AddNumberToObject(room_obj, "correct",  pdst->rooms[i].corrent);
+        cJSON_AddNumberToObject(room_obj, "correct",  pdst->rooms[i].correct);
         cJSON_AddNumberToObject(room_obj, "power",  pdst->rooms[i].power);
         cJSON_AddItemToArray(room_array, room_obj);
     }
@@ -974,7 +1116,7 @@ int send_response_to_server(
 	                                0,
 	                                &props,
 	                                amqp_cstring_bytes(response)),
-	             "Publishing");
+	             "Publishing1");
     return 0;
 }
 
@@ -1040,70 +1182,23 @@ cJSON *json_data_prepare_warn(char *data)
 }
 
 
-int json_file_read(char *filename, char *buffer, int len)
-{
-    int    ret = 0;
-    FILE  *fp = NULL;
-
-    //memset(buffer, 0, len);
-    fp = fopen(filename, "r");
-    if(fp == NULL)
-    {
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filename, strerror(errno));
-        return -1;
-    }
-    
-    ret = fread(buffer, 1, len, fp);
-    if(len < 0)
-    {
-        fclose(fp);
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "read error! err=%s!", filename, strerror(errno));
-        return -1;
-    }
-    printf("read len=%d\n", ret);
-    buffer[ret] = '\0';
-
-    fclose(fp);
-    return ret; 
-}
-
-int json_file_write(char *filename, char *buffer, int len)
-{
-    int    ret = 0;
-    FILE  *fp = NULL;
-    fp = fopen(filename, "w+");
-    if(fp == NULL)
-    {
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filename, strerror(errno));
-        return -1;
-    }
-    
-    ret = fwrite(buffer, 1, len, fp);
-    if(len < 0)
-    {
-        fclose(fp);
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "write error! err=%s!", filename, strerror(errno));
-        return -1;
-    }
-
-    fclose(fp);
-    return ret; 
-}
-
 int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 {
     char  *json_msg = NULL;
-    char   message[1024];
+    char   c_message[2048];
     char  *json_response = NULL;
     json_type_e    type = 0;
     channel_t   *pchnl = NULL;
+    U32    json_len;
 
     pchnl = &channels[2]; /* response  */
     json_msg = penve->message.body.bytes;
-
-    type = json_parse(json_msg, message);
+    json_len = penve->message.body.len;
+    type = json_parse(json_msg, c_message);
     if(type < 0)
         return -1;
+
+    dnq_config_update(type, c_message, json_len);
 
     DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type=%d", type);
     if(type == MSG_TYPE_AUTHORRIZATION)

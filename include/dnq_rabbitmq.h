@@ -3,7 +3,12 @@
 
 #include "common.h"
 
-#define SIZE      32
+#define SIZE_16      16
+#define SIZE_32      32
+
+
+#define CTRL_WHOLE_ROOM    0
+#define CTRL_SINGLE_ROOM   1
 
 /*
 * message type define
@@ -86,6 +91,16 @@ typedef enum json_type
 * json config define
 * json配置文件 文件名称定义
 */
+
+#define CJSON_AUTHORRIZATION  "authorization.json"
+#define CJSON_POLICY          "policy.json"
+#define CJSON_LIMIT           "limit.json"
+#define CJSON_ERROR           "error.json"
+#define CJSON_POWER           "power.json"
+#define CJSON_RESPONSE        "response.json"
+#define CJSON_CORRECT         "correct.json"
+
+/* json file for test */
 #define SERVER_CFG_FILE_AUTHORRIZATION  "server_authorization.json"
 #define SERVER_CFG_FILE_POLICY          "server_policy.json"
 #define SERVER_CFG_FILE_LIMIT           "server_limit.json"
@@ -108,9 +123,9 @@ typedef enum json_type
 */
 typedef struct server_authorization
 {
-    U8      type[SIZE];
-    U8      time[SIZE];
-    U8      authorization[SIZE];
+    U8      type[SIZE_32];
+    U8      time[SIZE_32];
+    U8      authorization[SIZE_32];
 }server_authorization_t;
 
 /*
@@ -121,9 +136,9 @@ typedef struct server_authorization
 */
 typedef struct timesetting
 {
-    U8   starttime[SIZE];
-    U8   endtime[SIZE];
-    U8   degrees[SIZE];
+    U8   starttime[SIZE_32];
+    U8   endtime[SIZE_32];
+    U16  degrees;
 }timesetting_t;
 
 typedef struct room_temp_policy
@@ -136,9 +151,9 @@ typedef struct room_temp_policy
 
 typedef struct server_temp_policy
 {
-    U8        type[SIZE];
-    U8        time[SIZE];
-    U8        ctrl_id[SIZE];
+    U8        type[SIZE_32];
+    U8        time[SIZE_32];
+    U8        ctrl_id[SIZE_32];
     U16       mode;
     U16       rooms_cnt;
     room_temp_policy_t    rooms[DNQ_ROOM_MAX];
@@ -159,9 +174,9 @@ typedef struct room_temp_limit
 
 typedef struct server_temp_limit
 {
-    U8        type[SIZE];
-    U8        time[SIZE];
-    U8        ctrl_id[SIZE];
+    U8        type[SIZE_32];
+    U8        time[SIZE_32];
+    U8        ctrl_id[SIZE_32];
     U16       mode;
     U16       rooms_cnt;
     room_temp_limit_t      rooms[DNQ_ROOM_MAX];
@@ -182,9 +197,9 @@ typedef struct room_temp_error
 
 typedef struct server_temp_error
 {
-    U8        type[SIZE];
-    U8        time[SIZE];
-    U8        ctrl_id[SIZE];
+    U8        type[SIZE_32];
+    U8        time[SIZE_32];
+    U8        ctrl_id[SIZE_32];
     U16       mode;
     U16       rooms_cnt;
     room_temp_error_t      rooms[DNQ_ROOM_MAX];
@@ -207,9 +222,9 @@ typedef struct room_power_config
 
 typedef struct server_power_config
 {
-    U8        type[SIZE];
-    U8        time[SIZE];
-    U8        ctrl_id[SIZE];
+    U8        type[SIZE_32];
+    U8        time[SIZE_32];
+    U8        ctrl_id[SIZE_32];
     U16       mode;
     U16       rooms_cnt;
     room_power_config_t      rooms[DNQ_ROOM_MAX];
@@ -223,9 +238,9 @@ typedef struct server_power_config
 */
 typedef struct server_response
 {
-    U8        type[SIZE];
-    U8        time[SIZE];
-    U8        status[SIZE];
+    U8        type[SIZE_32];
+    U8        time[SIZE_32];
+    U8        status[SIZE_32];
 }server_response_t;
 
 
@@ -244,9 +259,9 @@ typedef struct room_temp_correct
 
 typedef struct server_temp_correct
 {
-    U8        type[SIZE];
-    U8        time[SIZE];
-    U8        ctrl_id[SIZE];
+    U8        type[SIZE_32];
+    U8        time[SIZE_32];
+    U8        ctrl_id[SIZE_32];
     U16       mode;
     U16       rooms_cnt;
     room_temp_correct_t  rooms[DNQ_ROOM_MAX];
@@ -260,11 +275,11 @@ typedef struct server_temp_correct
 */
 typedef struct partition_info
 {
-    U8        no[SIZE];
-    U32       id;
-    U8        memo[SIZE];
-    U8        name[SIZE];
-    U32       isDelete;
+    U8        no[SIZE_32];
+    U16       id;
+    U8        memo[SIZE_32];
+    U8        name[SIZE_32];
+    U16       isDelete;
     
 }partition_info_t;
 
@@ -275,7 +290,7 @@ typedef struct room_info
     U16       min;
     U16       correct;
     U16       room_id;
-    U8        room_name[16];
+    U8        room_name[SIZE_16];
     U16       room_order;
     U16       room_floor;
     U16       position;
@@ -283,14 +298,14 @@ typedef struct room_info
 
 typedef struct server_init_info
 {
-    U8        type[SIZE];
+    U8        type[SIZE_32];
     partition_info_t partition;
     U32       project_id;
     U32       building_id;
     U32       equipment_id;
-    U8        project_name[SIZE];
-    U8        building_name[SIZE];
-    U8        equipment_mac[SIZE];
+    U8        project_name[SIZE_32];
+    U8        building_name[SIZE_32];
+    U8        equipment_mac[SIZE_32];
     U16       rooms_cnt;
     room_info_t    rooms[DNQ_ROOM_MAX];
     
@@ -303,54 +318,54 @@ typedef struct server_init_info
 */
 typedef struct client_room
 {
-    int       room_id;
-    int       value;
-    int       loss;
+    U32       room_id;
+    U32       value;
+    U32       loss;
 }client_room_t;
 
 typedef struct client_config_room
 {
-    int       room_id;
-    int       degreePolicy;
-    int       maxdegree;
-    int       mindegree;
-    int       error;
-    int       corrent;
-    int       power;
+    U32       room_id;
+    U32       degreePolicy;
+    U32       maxdegree;
+    U32       mindegree;
+    U32       error;
+    S32       correct;
+    U32       power;
     
 }client_room_config_t;
 
 typedef struct client_status
 {
-    char      mac[SIZE];
-    int       rooms_cnt;
+    U8        mac[SIZE_32];
+    U32       rooms_cnt;
     client_room_t  rooms[DNQ_ROOM_MAX];
 }client_status_t;
 
 typedef struct client_loss
 {
-    char      mac[SIZE];
-    int       rooms_cnt;
+    U8        mac[SIZE_32];
+    U32       rooms_cnt;
     client_room_t  rooms[DNQ_ROOM_MAX];
 }client_loss_t;
 
 typedef struct client_response
 {
-    char      mac[SIZE];
-    char      status[SIZE];
+    U8        mac[SIZE_32];
+    U8        status[SIZE_32];
 }client_response_t;
 
 typedef struct client_config
 {
-    char      mac[SIZE];
-    int       rooms_cnt;
+    U8        mac[SIZE_32];
+    U32       rooms_cnt;
     client_room_config_t  rooms[DNQ_ROOM_MAX];
 }client_config_t;
 
 typedef struct client_warn
 {
-    char      mac[SIZE];
-    int       rooms_cnt;
+    U8        mac[SIZE_32];
+    U32       rooms_cnt;
     client_room_t  rooms[DNQ_ROOM_MAX];
 }client_warn_t;
 
