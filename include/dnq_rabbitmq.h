@@ -17,14 +17,14 @@
 
 typedef enum json_type
 {
-    MSG_TYPE_AUTHORRIZATION,
-    MSG_TYPE_TEMP_POLICY,
-    MSG_TYPE_TEMP_LIMIT,
-    MSG_TYPE_DEGREE_ERROR,
-    MSG_TYPE_POWER_CONFIG,
-    MSG_TYPE_RESPONSE,
-    MSG_TYPE_CORRECT,
-    MSG_TYPE_INIT
+    JSON_TYPE_AUTHORRIZATION,
+    JSON_TYPE_TEMP_POLICY,
+    JSON_TYPE_TEMP_LIMIT,
+    JSON_TYPE_TEMP_ERROR,
+    JSON_TYPE_POWER_CONFIG,
+    JSON_TYPE_RESPONSE,
+    JSON_TYPE_CORRECT,
+    JSON_TYPE_INIT
 }json_type_e;
 
 /*
@@ -92,13 +92,14 @@ typedef enum json_type
 * json配置文件 文件名称定义
 */
 
-#define CJSON_AUTHORRIZATION  "authorization.json"
-#define CJSON_POLICY          "policy.json"
-#define CJSON_LIMIT           "limit.json"
-#define CJSON_ERROR           "error.json"
-#define CJSON_POWER           "power.json"
-#define CJSON_RESPONSE        "response.json"
-#define CJSON_CORRECT         "correct.json"
+#define JSON_FILE_AUTHORRIZATION  "authorization.json"
+#define JSON_FILE_POLICY          "policy.json"
+#define JSON_FILE_LIMIT           "limit.json"
+#define JSON_FILE_ERROR           "error.json"
+#define JSON_FILE_POWER           "power.json"
+#define JSON_FILE_RESPONSE        "response.json"
+#define JSON_FILE_CORRECT         "correct.json"
+#define JSON_FILE_INIT            "init.json"
 
 /* json file for test */
 #define SERVER_CFG_FILE_AUTHORRIZATION  "server_authorization.json"
@@ -136,8 +137,8 @@ typedef struct server_authorization
 */
 typedef struct timesetting
 {
-    U8   starttime[SIZE_32];
-    U8   endtime[SIZE_32];
+    U8   starttime[SIZE_16];
+    U8   endtime[SIZE_16];
     U16  degrees;
 }timesetting_t;
 
@@ -216,8 +217,8 @@ typedef struct room_power_config
 {
     U16       room_id;
     U16       config_cnt;
-    U16       power[5];   /* need fixed?  */
-    U16       num[5];     /* need fixed?  */
+    U16       power[6];   /* need fixed?  */
+    U16       num[6];     /* need fixed?  */
 }room_power_config_t;
 
 typedef struct server_power_config
@@ -310,6 +311,25 @@ typedef struct server_init_info
     room_info_t    rooms[DNQ_ROOM_MAX];
     
 }server_init_info_t;
+
+/*
+* cjson convert to struct, All config info 
+*
+* 所有配置的结构体，存放云端向控制器发送的所有配置
+*
+*/
+typedef struct _dnq_config
+{
+    U32  inited;
+    server_authorization_t authorization;
+    server_temp_policy_t   temp_policy;
+    server_temp_limit_t    temp_limit;
+    server_temp_error_t    temp_error;
+    server_power_config_t  power_config;
+    server_response_t      response;
+    server_temp_correct_t  temp_correct;
+    server_init_info_t     init;
+}dnq_config_t;
 
 
 /*

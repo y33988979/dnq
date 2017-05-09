@@ -21,6 +21,8 @@
 #include "dnq_lcd.h"
 #include "dnq_os.h"
 
+
+
 void *send_test(void *args)
 {
     int n = 0;
@@ -57,8 +59,15 @@ int main()
     
     //extern int lcd_test();
     //lcd_test();
-    network_test();
-    //sleep(100);
+    //network_test();
+
+
+    printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
+
+
+
+    sleep(100);
+    
 #if 1
     dnq_queue_t *queue = NULL;
     dnq_init();

@@ -42,7 +42,7 @@ channel_t channels1[18] = {
 	{13, "queue_cloud_warn",         "exchange_cloud_warn",      "warn"},
 };
 
-channel_t channels[18] = {
+channel_t channels[10] = {
     /* server to host */
 	{1,  "queue_host_",    "exchange_host",       ""}, 
 	/* host to server */
@@ -53,6 +53,8 @@ channel_t channels[18] = {
 	{6,  "init_",          "exchange_cloud",      "init"},
 	{7,  "_power",         "exchange_power",       ""}
 };
+
+dnq_config_t dnq_config;
 
 #if 1
 static char *serverip = "112.74.43.136";
@@ -78,6 +80,15 @@ static char *password = "123456";
 
 #define YLOG  printf
 
+
+#define dnq_get_authorization_config()  &dnq_config.authorization
+#define dnq_get_temp_policy_config()  &dnq_config.temp_policy
+#define dnq_get_temp_limit_config()  &dnq_config.temp_limit
+#define dnq_get_temp_error_config()  &dnq_config.temp_error
+#define dnq_get_power_config_config()  &dnq_config.power_config
+#define dnq_get_response_config()  &dnq_config.response
+#define dnq_get_temp_correct_config()  &dnq_config.temp_correct
+#define dnq_get_init_config()  &dnq_config.init
 
 #define copy_json_item_to_struct_item(obj, json, item_name, item_addr, item_type)  \
     do{\
@@ -160,38 +171,210 @@ S32 json_file_write(char *filename, char *buffer, int len)
     return ret; 
 }
 
-S32 json_data_save(json_type_e type)
+S32 dnq_config_check_authorization(void *cjson_struct)
 {
-
+    server_authorization_t *authorization = NULL;
+    authorization = (server_authorization_t *)cjson_struct;
+    
+    return 0;
 }
 
-S32 config_data_sync()
+S32 dnq_config_check_temp_policy(void *cjson_struct)
 {
+    server_temp_policy_t *temp_policy;
+    temp_policy = (server_temp_policy_t *)cjson_struct;
     
+    return 0;
 }
 
-S32 dnq_config_update(json_type_e type, U8 *data, U32 len)
+S32 dnq_config_check_temp_limit(void *cjson_struct)
 {
+    server_temp_limit_t *temp_limit;
+    temp_limit = (server_temp_limit_t *)cjson_struct;
     
+    return 0;
+}
+
+S32 dnq_config_check_temp_error(void *cjson_struct)
+{
+    server_temp_error_t *temp_error;
+    temp_error = (server_temp_error_t *)cjson_struct;
+    
+    return 0;
+}
+
+S32 dnq_config_check_power_config(void *cjson_struct)
+{
+    server_power_config_t *power_config;
+    power_config = (server_power_config_t *)cjson_struct;
+    
+    return 0;
+}
+
+S32 dnq_config_check_response(void *cjson_struct)
+{
+    server_response_t *response;
+    response = (server_response_t *)cjson_struct;
+    
+    return 0;
+}
+
+S32 dnq_config_check_temp_correct(void *cjson_struct)
+{
+    server_temp_correct_t *temp_correct;
+    temp_correct = (server_temp_correct_t *)cjson_struct;
+    
+    return 0;
+}
+
+
+S32 dnq_config_check_init_info(void *cjson_struct)
+{
+    server_init_info_t *init_info;
+    init_info = (server_init_info_t *)cjson_struct;
+    
+    return 0;
+}
+
+S32 dnq_config_check(json_type_e type, void *cjson_struct)
+{
+    S32 ret = -1;
     switch(type)
     {
-        case MSG_TYPE_AUTHORRIZATION:
-            config_data_sync();
-            json_file_write(CJSON_AUTHORRIZATION, data, len);
+        case JSON_TYPE_AUTHORRIZATION:
+            ret = dnq_config_check_authorization(cjson_struct);
         break;
-        case MSG_TYPE_TEMP_POLICY:
+        case JSON_TYPE_TEMP_POLICY:
+            ret = dnq_config_check_temp_policy(cjson_struct);
+            if(ret == 0)
+                
         break;
-        case MSG_TYPE_TEMP_LIMIT:
+        case JSON_TYPE_TEMP_LIMIT:
+            ret = dnq_config_check_temp_limit(cjson_struct);
+            if(ret == 0)
+                
         break;
-        case MSG_TYPE_DEGREE_ERROR:
+        case JSON_TYPE_TEMP_ERROR:
+            ret = dnq_config_check_temp_error(cjson_struct);
+            if(ret == 0)
+                
         break;
-        case MSG_TYPE_POWER_CONFIG:
+        case JSON_TYPE_POWER_CONFIG:
+            ret = dnq_config_check_power_config(cjson_struct);
+            if(ret == 0)
+            {
+                
+            }
         break;
-        case MSG_TYPE_RESPONSE:
+        case JSON_TYPE_RESPONSE:
+            ret = dnq_config_check_response(cjson_struct);
+            if(ret == 0)
+                memcpy(&dnq_config.response, cjson_struct, sizeof(server_response_t));
         break;
-        case MSG_TYPE_CORRECT:
+        case JSON_TYPE_CORRECT:
+            ret = dnq_config_check_temp_correct(cjson_struct);
+            if(ret == 0)
+                
         break;
-        case MSG_TYPE_INIT:
+        case JSON_TYPE_INIT:
+            ret = dnq_config_check_init_info(cjson_struct);
+            if(ret == 0)
+                
+        break;
+        default:
+            break;
+    
+    }
+    return ret;
+}
+
+S32 dnq_config_save_file(U8 *file_name, U8 *data, U32 len)
+{
+    U32 i = 0;
+    S32 ret;
+        
+    for(i=0; i<3; i++)
+    {
+        ret = json_file_write(file_name, data, len);
+        if(ret == len)
+            break;
+        usleep(200*1000);
+    }
+    
+    return ret;
+}
+
+S32 dnq_config_check_and_sync(json_type_e type, U8 *data, U32 len, void *cjson_struct)
+{
+    S32 ret = -1;
+    switch(type)
+    {
+        case JSON_TYPE_AUTHORRIZATION:
+            ret = dnq_config_check(JSON_TYPE_AUTHORRIZATION, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.authorization, cjson_struct, sizeof(server_authorization_t));
+                dnq_config_save_file(JSON_FILE_AUTHORRIZATION, data, len);
+            }
+        break;
+        case JSON_TYPE_TEMP_POLICY:
+            ret = dnq_config_check(JSON_TYPE_TEMP_POLICY, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.temp_policy, cjson_struct, sizeof(server_temp_policy_t));
+                dnq_config_save_file(JSON_FILE_POLICY, data, len);
+            }
+        break;
+        case JSON_TYPE_TEMP_LIMIT:
+            ret = dnq_config_check(JSON_TYPE_TEMP_LIMIT, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.temp_limit, cjson_struct, sizeof(server_temp_limit_t));
+                dnq_config_save_file(JSON_FILE_LIMIT, data, len);
+            }
+        break;
+        case JSON_TYPE_TEMP_ERROR:
+            ret = dnq_config_check(JSON_TYPE_TEMP_ERROR, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.temp_error, cjson_struct, sizeof(server_temp_error_t));
+                dnq_config_save_file(JSON_FILE_ERROR, data, len);
+            }
+        break;
+        case JSON_TYPE_POWER_CONFIG:
+            
+            ret = dnq_config_check(JSON_TYPE_POWER_CONFIG, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.power_config, cjson_struct, sizeof(server_power_config_t));
+                dnq_config_save_file(JSON_FILE_POWER, data, len);
+            }
+        break;
+        case JSON_TYPE_RESPONSE:
+            
+            ret = dnq_config_check(JSON_TYPE_RESPONSE, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.response, cjson_struct, sizeof(server_response_t));
+                dnq_config_save_file(JSON_FILE_RESPONSE, data, len);
+            }
+        break;
+        case JSON_TYPE_CORRECT:
+            ret = dnq_config_check(JSON_TYPE_CORRECT, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.temp_correct, cjson_struct, sizeof(server_temp_correct_t));
+                dnq_config_save_file(JSON_FILE_CORRECT, data, len);
+            }
+        break;
+        case JSON_TYPE_INIT:
+            
+            ret = dnq_config_check(JSON_TYPE_INIT, cjson_struct);
+            if(!ret)
+            {
+                memcpy(&dnq_config.init, cjson_struct, sizeof(server_init_info_t));
+                dnq_config_save_file(JSON_FILE_INIT, data, len);
+            }
         break;
         default:
             break;
@@ -216,7 +399,7 @@ S32 dnq_config_update(json_type_e type, U8 *data, U32 len)
 *
 */
 
-int json_parse_authorization_manage(cJSON *pjson, server_authorization_t *pdst)
+S32 json_parse_authorization_manage(cJSON *pjson, server_authorization_t *pdst)
 {
     cJSON  *obj = NULL;
 
@@ -245,7 +428,7 @@ int json_parse_authorization_manage(cJSON *pjson, server_authorization_t *pdst)
 *
 */
 
-int json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
+S32 json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
 {
 	int     i = 0;
     int     j = 0;
@@ -363,7 +546,7 @@ int json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
 *  解析一个 "高低温限制" 消息结构(json)
 *
 */
-int json_parse_temp_limit(cJSON *pjson, server_temp_limit_t *pdst)
+S32 json_parse_temp_limit(cJSON *pjson, server_temp_limit_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -434,7 +617,7 @@ int json_parse_temp_limit(cJSON *pjson, server_temp_limit_t *pdst)
 *  解析一个 "温度回差" 消息结构(json)
 *
 */
-int json_parse_degree_error(cJSON * pjson, server_temp_error_t *pdst)
+S32 json_parse_degree_error(cJSON * pjson, server_temp_error_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -501,7 +684,7 @@ int json_parse_degree_error(cJSON * pjson, server_temp_error_t *pdst)
 *  解析一个 "功率配置" 消息结构(json)
 *
 */
-int json_parse_power_config(cJSON *pjson, server_power_config_t *pdst)
+S32 json_parse_power_config(cJSON *pjson, server_power_config_t *pdst)
 {
     int     i = 0;
     int     j = 0;
@@ -593,7 +776,7 @@ int json_parse_power_config(cJSON *pjson, server_power_config_t *pdst)
 *  解析一个 "应答" 消息结构(json)
 *
 */
-int json_parse_response(cJSON *pjson, server_response_t *pdst)
+S32 json_parse_response(cJSON *pjson, server_response_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -620,7 +803,7 @@ int json_parse_response(cJSON *pjson, server_response_t *pdst)
 *  解析一个 "rectify" 消息结构(json)
 *
 */
-int json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
+S32 json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -686,7 +869,7 @@ int json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
 *  解析一个 "init" 消息结构(json)
 *
 */
-int json_parse_init(cJSON *pjson, server_init_info_t *pdst)
+S32 json_parse_init(cJSON *pjson, server_init_info_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -803,7 +986,7 @@ int json_parse_init(cJSON *pjson, server_init_info_t *pdst)
 *  解析消息的总入口，不同的消息类型，通过分支处理
 *
 */
-S32 json_parse(char *json,void *output)
+S32 json_parse(char *json,void *cjson_struct)
 {
     S32 ret;
     cJSON *pjson = NULL;
@@ -826,51 +1009,51 @@ S32 json_parse(char *json,void *output)
         type = item->valuestring;
         if(strcmp(type, TYPE_STR_AUTHORRIZATION) == 0)
         {
-            ret = json_parse_authorization_manage(pjson, output);
+            ret = json_parse_authorization_manage(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_AUTHORRIZATION;
+                msg_type = JSON_TYPE_AUTHORRIZATION;
         }
         else if(strcmp(type, TYPE_STR_TEMP_POLICY) == 0)
         {
-            ret = json_parse_temp_policy(pjson, output);
+            ret = json_parse_temp_policy(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_TEMP_POLICY;
+                msg_type = JSON_TYPE_TEMP_POLICY;
         }
         else if(strcmp(type, TYPE_STR_TEMP_LIMIT) == 0)
         {
-            ret = json_parse_temp_limit(pjson, output);
+            ret = json_parse_temp_limit(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_TEMP_LIMIT;
+                msg_type = JSON_TYPE_TEMP_LIMIT;
         }
         else if(strcmp(type, TYPE_STR_DEGREE_ERROR) == 0)
         {
-            ret = json_parse_degree_error(pjson, output);
+            ret = json_parse_degree_error(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_DEGREE_ERROR;
+                msg_type = JSON_TYPE_TEMP_ERROR;
         }
         else if(strcmp(type, TYPE_STR_POWER_CONFIG) == 0)
         {
-            ret = json_parse_power_config(pjson, output);
+            ret = json_parse_power_config(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_POWER_CONFIG;
+                msg_type = JSON_TYPE_POWER_CONFIG;
         }
         else if(strcmp(type, TYPE_STR_RESPONSE) == 0)
         {
-            ret = json_parse_response(pjson, output);
+            ret = json_parse_response(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_RESPONSE;
+                msg_type = JSON_TYPE_RESPONSE;
         }
         else if(strcmp(type, TYPE_STR_CORRECT) == 0)
         {
-            ret = json_parse_correct(pjson, output);
+            ret = json_parse_correct(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_CORRECT;
+                msg_type = JSON_TYPE_CORRECT;
         }
         else if(strcmp(type, TYPE_STR_INIT) == 0)
         {
-            ret = json_parse_init(pjson, output);
+            ret = json_parse_init(pjson, cjson_struct);
             if(ret == 0)
-                msg_type = MSG_TYPE_INIT;
+                msg_type = JSON_TYPE_INIT;
         }
         else
         {
@@ -1182,10 +1365,11 @@ cJSON *json_data_prepare_warn(char *data)
 }
 
 
-int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
+U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 {
+    U32 ret = -1;
     char  *json_msg = NULL;
-    char   c_message[2048];
+    char   cjson_struct[3072] = {0};
     char  *json_response = NULL;
     json_type_e    type = 0;
     channel_t   *pchnl = NULL;
@@ -1194,14 +1378,23 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     pchnl = &channels[2]; /* response  */
     json_msg = penve->message.body.bytes;
     json_len = penve->message.body.len;
-    type = json_parse(json_msg, c_message);
+    type = json_parse(json_msg, cjson_struct);
     if(type < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "json parse error!");
         return -1;
-
-    dnq_config_update(type, c_message, json_len);
+    }
 
     DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type=%d", type);
-    if(type == MSG_TYPE_AUTHORRIZATION)
+    ret = dnq_config_check_and_sync(type, json_msg, json_len, cjson_struct);
+    if(!ret)
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "config data check error!");
+        return -1;
+    }
+
+    /* send response to server */
+    if(type == JSON_TYPE_AUTHORRIZATION)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: authorization");
         client_response_t response;
@@ -1212,7 +1405,7 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
-    else if(type == MSG_TYPE_TEMP_POLICY)
+    else if(type == JSON_TYPE_TEMP_POLICY)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: policy");
         client_response_t response;
@@ -1223,7 +1416,7 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
-    else if(type == MSG_TYPE_TEMP_LIMIT)
+    else if(type == JSON_TYPE_TEMP_LIMIT)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: limit");
         client_response_t response;
@@ -1234,7 +1427,7 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
-    else if(type == MSG_TYPE_DEGREE_ERROR)
+    else if(type == JSON_TYPE_TEMP_ERROR)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: degree error");
         client_response_t response;
@@ -1245,7 +1438,7 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
-    else if(type == MSG_TYPE_POWER_CONFIG)
+    else if(type == JSON_TYPE_POWER_CONFIG)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: power config");
         client_response_t response;
@@ -1256,11 +1449,11 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
-    else if(type == MSG_TYPE_RESPONSE)
+    else if(type == JSON_TYPE_RESPONSE)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: response");
     }
-    else if(type == MSG_TYPE_CORRECT)
+    else if(type == JSON_TYPE_CORRECT)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: correct");
         client_response_t response;
@@ -1271,7 +1464,7 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
-    else if(type == MSG_TYPE_INIT)
+    else if(type == JSON_TYPE_INIT)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: init");
         client_response_t response;
@@ -1282,6 +1475,8 @@ int msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
+
+    //send_msg_to_manage();
 
     return 0;
 }
@@ -1610,9 +1805,25 @@ void *rabbitmq_send_test()
     }
 }
 
+
+S32 dnq_config_init(dnq_config_t *config)
+{
+    memset(config, 0, sizeof(dnq_config_t));
+    return 0;
+}
+
+S32 dnq_config_deinit(dnq_config_t *config)
+{
+    memset(config, 0, sizeof(dnq_config_t));
+    return 0;
+}
+
 S32 dnq_rabbitmq_init()
 {
     S32 ret;
+    
+    ret = dnq_config_init(&dnq_config);
+    
     ret = dnq_task_create("rabbitmq_task", 512*2048, rabbitmq_task, NULL);
     return ret;
 }
