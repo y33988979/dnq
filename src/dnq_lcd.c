@@ -1025,6 +1025,17 @@ S32 lcd_datetime_update(U8 *date_time)
     return ret;
 }
 
+S32 send_msg_to_lcd(dnq_msg_t *msg)
+{
+    S32 ret;
+    dnq_queue_t *queue = NULL;
+        
+    queue = lcd_appinfo->queue;
+    ret = dnq_msg_send(queue, msg);
+
+    return ret;
+}
+
 void *lcd_task(void *args)
 {
     S32  ret;
@@ -1073,17 +1084,6 @@ void *lcd_task(void *args)
     dnq_app_task_delete(lcd_appinfo);
 }
 
-S32 send_msg_to_lcd(dnq_msg_t *msg)
-{
-    S32 ret;
-    dnq_queue_t *queue = NULL;
-        
-    queue = lcd_appinfo->queue;
-    ret = dnq_msg_send(queue, msg);
-
-    return ret;
-}
-
 S32 dnq_lcd_init()
 {
     dnq_appinfo_t **appinfo = &lcd_appinfo;
@@ -1104,11 +1104,11 @@ sleep(1);
     sleep(100);
 #endif
 
-    *appinfo = dnq_app_task_create("lcd", 2048*32,\
+    *appinfo = dnq_app_task_create("lcd_task", 2048*32,\
         QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, NULL);
     if(!*appinfo)
     {
-        DNQ_ERROR(DNQ_MOD_LCD, "dnq_app_task_create error!");
+        DNQ_ERROR(DNQ_MOD_LCD, "lcd_task create error!");
         return -1;
     }
     printf("pAppinfo0=0x%x\n", lcd_appinfo);

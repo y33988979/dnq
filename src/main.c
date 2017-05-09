@@ -60,20 +60,47 @@ int main()
     //extern int lcd_test();
     //lcd_test();
     //network_test();
-
-
+    S32 len;
+    U8 buffer[1024];
+    U8 cmd[] = {0xFF, 0xFE, 0xFE, 0xFF, 0xA0, 0x0D, 0xB2,\
+    0x21, 0x57, 0xFE, 0xFF, 0xFF, 0xFE};
+#if 0
+    len = dnq_mcu_uart_read(buffer, 32);
+    printf("len=%d,buffer=%s",len,buffer);
+    dnq_heater_ctrl_single(0, 0, 1);
+    
     printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
 
-
-
     sleep(100);
-    
+#endif
 #if 1
     dnq_queue_t *queue = NULL;
     dnq_init();
     dnq_debug_init();
     
     dnq_uart_init();
+
+    tt;
+    //len = dnq_mcu_uart_read(buffer, 32);
+    tt;
+    //printf("len=%d,buffer=%s",len,buffer);
+    while(1)
+    {
+        memset(buffer, 0, sizeof(buffer));
+        len = dnq_mcu_uart_write(cmd, sizeof(cmd));
+        printf("write len=%d,buffer=%s\n",len,buffer);
+        len = dnq_mcu_uart_read(buffer, 32);
+        printf("recv len=%d,buffer=%s\n",len,buffer);
+        sleep(1);
+    }
+    
+    dnq_heater_ctrl_single(0, 0, 1);
+    
+    printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
+
+    //sleep(100);
+
+    
     dnq_lcd_init();
     dnq_keypad_init();
 

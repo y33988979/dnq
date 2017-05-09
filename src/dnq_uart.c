@@ -72,8 +72,8 @@ S32 dnq_uart_open(U8 *dev)
     stNew.c_cc[VMIN]=1; //指定读取第一个字符的等待时间，时间的单位为n*100ms
                 //如果设置VTIME=0，则无字符输入时read（）操作无限期的阻塞
 
-    stNew.c_cflag = 0x1cb2;
-    stNew.c_iflag = 0;
+    //stNew.c_cflag = 0x1cb2;
+    //stNew.c_iflag = 0;
     tcflush(fd,TCIFLUSH);  //清空终端未完成的输入/输出请求及数据。
     if( tcsetattr(fd,TCSANOW,&stNew) != 0 )
     {
