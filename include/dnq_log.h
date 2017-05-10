@@ -16,6 +16,7 @@ typedef enum dnq_debug_module
     DNQ_MOD_OS,
     DNQ_MOD_RTC,
     DNQ_MOD_NETWORK,
+    DNQ_MOD_MANAGE,
     DNQ_MOD_CNT
 }dnq_module_e;
 

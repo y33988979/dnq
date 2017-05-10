@@ -6,9 +6,13 @@
 #define SIZE_16      16
 #define SIZE_32      32
 
-
 #define CTRL_WHOLE_ROOM    0
 #define CTRL_SINGLE_ROOM   1
+
+#define SERVER_IPADDR   "112.74.43.136"
+#define SERVER_PORT     5672
+
+#define MAC_ADDR   "70b3d5cf4924"
 
 /*
 * message type define
@@ -388,6 +392,19 @@ typedef struct client_warn
     U32       rooms_cnt;
     client_room_t  rooms[DNQ_ROOM_MAX];
 }client_warn_t;
+
+
+
+extern dnq_config_t dnq_config;
+#define dnq_get_authorization_config()  &dnq_config.authorization
+#define dnq_get_temp_policy_config()  &dnq_config.temp_policy
+#define dnq_get_temp_limit_config()  &dnq_config.temp_limit
+#define dnq_get_temp_error_config()  &dnq_config.temp_error
+#define dnq_get_power_config_config()  &dnq_config.power_config
+#define dnq_get_response_config()  &dnq_config.response
+#define dnq_get_temp_correct_config()  &dnq_config.temp_correct
+#define dnq_get_init_config()  &dnq_config.init
+
 
 #endif /* _DNQ_RABBITMQ_H_ */
 

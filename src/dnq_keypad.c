@@ -183,15 +183,17 @@ S32 dnq_keypad_deinit()
 {
     S32 ret;
     
-    close(keypad_fd);
+    if(!keypad_appinfo)
+        return -1;
     ret = dnq_app_task_exit(keypad_appinfo);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_KEYPAD, "dnq_keypad_deinit error!");
+        DNQ_ERROR(DNQ_MOD_KEYPAD, "keypad_task exit error!");
         return -1;
     }
+    close(keypad_fd);
     
-    DNQ_INFO(DNQ_MOD_KEYPAD, "dnq_keypad_deinit ok!");
-    return 0;
+    DNQ_INFO(DNQ_MOD_KEYPAD, "keypad_deinit ok!");
+    return ret;
 }
 

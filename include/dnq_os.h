@@ -15,6 +15,8 @@ typedef enum msg_class
     MSG_CLASS_LCD,
     MSG_CLASS_MCU,
     MSG_CLASS_RABBITMQ,
+    MSG_CLASS_NETWORK,
+    MSG_CLASS_MANAGE,
    
 }msg_class_e;
 

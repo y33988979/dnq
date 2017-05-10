@@ -1120,16 +1120,18 @@ sleep(1);
 S32 dnq_lcd_deinit()
 {
     S32 ret;
-    
+
+    if(!lcd_appinfo)
+        return -1;
     ret = dnq_app_task_exit(lcd_appinfo);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_KEYPAD, "lcd_deinit error!");
+        DNQ_ERROR(DNQ_MOD_LCD, "lcd_task exit error!");
         return -1;
     }
     
-    DNQ_INFO(DNQ_MOD_KEYPAD, "lcd_deinit ok!");
-    return 0;
+    DNQ_INFO(DNQ_MOD_LCD, "lcd_deinit ok!");
+    return ret;
 }
 
 int dnq_lcd_test()

@@ -8,13 +8,15 @@
  * Note :
  */
 
-#include "common.h"
-#include "dnq_log.h"
-#include "dnq_rabbitmq.h"
 
-#include "cJSON.h"
+#include "dnq_os.h"
+#include "dnq_log.h"
+#include "dnq_common.h"
+#include "dnq_manage.h"
+#include "dnq_rabbitmq.h"
 #include "ngx_palloc.h"
 
+#include "cJSON.h"
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
@@ -26,6 +28,7 @@ typedef struct channel_t{
 	char rtkey[64];
 }channel_t;
 
+/* used for dnqV1  */
 channel_t channels1[18] = {
 	{1,  "_authorization",      "exchange_authorization",   ""},
 	{2,  "_control",            "exchange_control",         ""},
@@ -42,6 +45,7 @@ channel_t channels1[18] = {
 	{13, "queue_cloud_warn",         "exchange_cloud_warn",      "warn"},
 };
 
+/* used for dnqV2  */
 channel_t channels[10] = {
     /* server to host */
 	{1,  "queue_host_",    "exchange_host",       ""}, 
@@ -69,26 +73,10 @@ static char *username = "control001";
 static char *password = "123456";
 #endif
 
-#define SERVER_IPADDR   "112.74.43.136"
-#define SERVER_PORT     5672
-
-#if 0
-#define MAC_ADDR   "080027000192"
-#else
-#define MAC_ADDR   "70b3d5cf4924"
-#endif
-
 #define YLOG  printf
 
 
-#define dnq_get_authorization_config()  &dnq_config.authorization
-#define dnq_get_temp_policy_config()  &dnq_config.temp_policy
-#define dnq_get_temp_limit_config()  &dnq_config.temp_limit
-#define dnq_get_temp_error_config()  &dnq_config.temp_error
-#define dnq_get_power_config_config()  &dnq_config.power_config
-#define dnq_get_response_config()  &dnq_config.response
-#define dnq_get_temp_correct_config()  &dnq_config.temp_correct
-#define dnq_get_init_config()  &dnq_config.init
+
 
 #define copy_json_item_to_struct_item(obj, json, item_name, item_addr, item_type)  \
     do{\
@@ -107,7 +95,7 @@ static char *password = "123456";
         if(item_type == cJSON_String)\
         {\
             DNQ_DEBUG(DNQ_MOD_RABBITMQ, "%s:\t%s!", item_name, obj->valuestring);\
-            strcpy((char*)item_addr, obj->valuestring); \
+            strcpy((char*)item_addr, (char*)obj->valuestring); \
             break;\
         }\
         else if(item_type == cJSON_Number)\
@@ -246,40 +234,24 @@ S32 dnq_config_check(json_type_e type, void *cjson_struct)
         break;
         case JSON_TYPE_TEMP_POLICY:
             ret = dnq_config_check_temp_policy(cjson_struct);
-            if(ret == 0)
-                
         break;
         case JSON_TYPE_TEMP_LIMIT:
             ret = dnq_config_check_temp_limit(cjson_struct);
-            if(ret == 0)
-                
         break;
         case JSON_TYPE_TEMP_ERROR:
             ret = dnq_config_check_temp_error(cjson_struct);
-            if(ret == 0)
-                
         break;
         case JSON_TYPE_POWER_CONFIG:
             ret = dnq_config_check_power_config(cjson_struct);
-            if(ret == 0)
-            {
-                
-            }
         break;
         case JSON_TYPE_RESPONSE:
             ret = dnq_config_check_response(cjson_struct);
-            if(ret == 0)
-                memcpy(&dnq_config.response, cjson_struct, sizeof(server_response_t));
         break;
         case JSON_TYPE_CORRECT:
             ret = dnq_config_check_temp_correct(cjson_struct);
-            if(ret == 0)
-                
         break;
         case JSON_TYPE_INIT:
-            ret = dnq_config_check_init_info(cjson_struct);
-            if(ret == 0)
-                
+            ret = dnq_config_check_init_info(cjson_struct);     
         break;
         default:
             break;
@@ -304,10 +276,10 @@ S32 dnq_config_save_file(U8 *file_name, U8 *data, U32 len)
     return ret;
 }
 
-S32 dnq_config_check_and_sync(json_type_e type, U8 *data, U32 len, void *cjson_struct)
+S32 dnq_config_check_and_sync(json_type_e json_type, U8 *data, U32 len, void *cjson_struct)
 {
     S32 ret = -1;
-    switch(type)
+    switch(json_type)
     {
         case JSON_TYPE_AUTHORRIZATION:
             ret = dnq_config_check(JSON_TYPE_AUTHORRIZATION, cjson_struct);
@@ -530,7 +502,7 @@ S32 json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
             DNQ_INFO(DNQ_MOD_RABBITMQ, "endtime:\t%s!", pdst->rooms[i].time_setting[j].endtime);
             //degrees
             copy_json_item_to_struct_item(\
-                obj, timesettings_obj, JSON_ITEM_DEGREES, pdst->rooms[i].time_setting[j].degrees, cJSON_String);
+                obj, timesettings_obj, JSON_ITEM_DEGREES, &pdst->rooms[i].time_setting[j].degrees, cJSON_Number);
             DNQ_INFO(DNQ_MOD_RABBITMQ, "degrees:\t%s!", pdst->rooms[i].time_setting[j].degrees);
         }
     }
@@ -1279,7 +1251,7 @@ char *json_create_init(U8 *MAC)
     return pstr;
 }
 
-int send_response_to_server(
+int send_response_msg_to_server(
     amqp_connection_state_t conn,
     channel_t *pchnl,
     char *response)
@@ -1303,12 +1275,12 @@ int send_response_to_server(
     return 0;
 }
 
-int send_msg_to_server(
+S32 send_msg_to_server(
     amqp_connection_state_t conn,
     channel_t *pchnl,
     char *message)
 {
-    int ret = 0;
+    S32 ret = -1;
 	amqp_basic_properties_t props;
 	props._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
 	props.content_type = amqp_cstring_bytes("text/plain");
@@ -1330,7 +1302,96 @@ int send_msg_to_server(
     else
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "send failed! chid=%d, ex=%s, key=%s",\
         pchnl->chid, pchnl->exchange, pchnl->rtkey);
-    return 0;
+    return ret;
+}
+
+S32 send_response_to_server(
+    amqp_connection_state_t conn,
+    channel_t *pchnl,
+    json_type_e json_type)
+{
+    S32 ret = -1;
+    char  *json_response = NULL;
+    client_response_t response;
+    
+    /* send response to server */
+    if(json_type == JSON_TYPE_AUTHORRIZATION)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: authorization");
+        
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "authorization");
+        
+        json_response = json_create_response(&response);
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+    else if(json_type == JSON_TYPE_TEMP_POLICY)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: policy");
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "policy");
+        
+        json_response = json_create_response(&response);
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+    else if(json_type == JSON_TYPE_TEMP_LIMIT)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: limit");
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "limit");
+        
+        json_response = json_create_response(&response);
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+    else if(json_type == JSON_TYPE_TEMP_ERROR)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: degree error");
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "error");
+        
+        json_response = json_create_response(&response);
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+    else if(json_type == JSON_TYPE_POWER_CONFIG)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: power config");
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "power");
+        
+        json_response = json_create_response(&response);
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+    else if(json_type == JSON_TYPE_RESPONSE)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: response");
+    }
+    else if(json_type == JSON_TYPE_CORRECT)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: correct");
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "correct");
+        
+        json_response = json_create_response(&response);
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+    else if(json_type == JSON_TYPE_INIT)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: init");
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, "init");
+        
+        json_response = json_create_response(&response);
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
+
+    return ret;
 }
 
 cJSON *json_data_prepare_warn(char *data)
@@ -1371,22 +1432,23 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     char  *json_msg = NULL;
     char   cjson_struct[3072] = {0};
     char  *json_response = NULL;
-    json_type_e    type = 0;
+    json_type_e  json_type = 0;
     channel_t   *pchnl = NULL;
+    dnq_msg_t  sendmsg;
     U32    json_len;
 
     pchnl = &channels[2]; /* response  */
     json_msg = penve->message.body.bytes;
     json_len = penve->message.body.len;
-    type = json_parse(json_msg, cjson_struct);
-    if(type < 0)
+    json_type = json_parse(json_msg, cjson_struct);
+    if(json_type < 0)
     {
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "json parse error!");
         return -1;
     }
 
-    DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type=%d", type);
-    ret = dnq_config_check_and_sync(type, json_msg, json_len, cjson_struct);
+    DNQ_INFO(DNQ_MOD_RABBITMQ, "json_parse: msg_type=%d", json_type);
+    ret = dnq_config_check_and_sync(json_type, json_msg, json_len, cjson_struct);
     if(!ret)
     {
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "config data check error!");
@@ -1394,89 +1456,11 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     }
 
     /* send response to server */
-    if(type == JSON_TYPE_AUTHORRIZATION)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: authorization");
-        client_response_t response;
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "authorization");
-        
-        json_response = json_create_response(&response);
-        send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(type == JSON_TYPE_TEMP_POLICY)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: policy");
-        client_response_t response;
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "policy");
-        
-        json_response = json_create_response(&response);
-        send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(type == JSON_TYPE_TEMP_LIMIT)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: limit");
-        client_response_t response;
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "limit");
-        
-        json_response = json_create_response(&response);
-        send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(type == JSON_TYPE_TEMP_ERROR)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: degree error");
-        client_response_t response;
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "error");
-        
-        json_response = json_create_response(&response);
-        send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(type == JSON_TYPE_POWER_CONFIG)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: power config");
-        client_response_t response;
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "power");
-        
-        json_response = json_create_response(&response);
-        send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(type == JSON_TYPE_RESPONSE)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: response");
-    }
-    else if(type == JSON_TYPE_CORRECT)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: correct");
-        client_response_t response;
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "correct");
-        
-        json_response = json_create_response(&response);
-        send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(type == JSON_TYPE_INIT)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: init");
-        client_response_t response;
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "init");
-        
-        json_response = json_create_response(&response);
-        send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
+    send_response_to_server(conn, pchnl, json_type);    
 
-    //send_msg_to_manage();
+    sendmsg.Class = MSG_CLASS_MANAGE;
+    sendmsg.code = DNQ_CONFIG_UPDATE;
+    send_msg_to_manage(&sendmsg);
 
     return 0;
 }

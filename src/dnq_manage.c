@@ -10,8 +10,10 @@
 
 
 #include "dnq_common.h"
-#include "dnq_manage.h"
 #include "ngx_palloc.h"
+#include "dnq_manage.h"
+#include "dnq_rabbitmq.h"
+#include "dnq_log.h"
 
 dnq_appinfo_t *manage_appinfo = NULL;
 
@@ -26,7 +28,7 @@ S32 send_msg_to_manage(dnq_msg_t *msg)
     return ret;
 }
 
-void *dnq_manage_task(void *args)
+void *manage_task(void *args)
 {
     S32  ret;
     S32  status;
@@ -35,6 +37,7 @@ void *dnq_manage_task(void *args)
     dnq_msg_t  recvMsg;
     dnq_msg_t *pSendMsg = &sendMsg;
     dnq_msg_t *pRecvMsg = &recvMsg;
+    server_temp_policy_t *temp_policy;
     
     manage_queue = (dnq_queue_t*)manage_appinfo->queue;
     
@@ -46,6 +49,20 @@ void *dnq_manage_task(void *args)
             continue;
         }
 
+        switch(pRecvMsg->code)
+        {
+            case DNQ_CONFIG_UPDATE:
+
+                temp_policy = dnq_get_temp_policy_config();
+                
+                break;
+
+            default:
+            break;
+        }
+
+        
+
         /*  */
         
     }
@@ -55,20 +72,32 @@ S32 dnq_manage_init()
 {
     dnq_appinfo_t **appinfo = &manage_appinfo;
     *appinfo = dnq_app_task_create("dnq_manage", 2048*32,\
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, dnq_manage_task, NULL);
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, manage_task, NULL);
     if(!*appinfo)
     {
-        DNQ_ERROR(DNQ_MOD_LCD, "dnq_manage_task create error!");
+        DNQ_ERROR(DNQ_MOD_LCD, "manage_task create error!");
         return -1;
     }
     
-    DNQ_INFO(DNQ_MOD_LCD, "dnq_mgr_init ok!");
+    DNQ_INFO(DNQ_MOD_LCD, "dnq_manage_init ok!");
     return 0;
 }
 
 S32 dnq_manage_deinit()
 {
+    S32 ret;
 
+    if(!manage_appinfo)
+        return -1;
+    ret = dnq_app_task_exit(manage_appinfo);
+    if(ret < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_MANAGE, "manage_task exit error!");
+        return -1;
+    }
+    
+    DNQ_INFO(DNQ_MOD_MANAGE, "manage_deinit ok!");
+    return ret;
 }
 
 
