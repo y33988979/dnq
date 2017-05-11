@@ -28,6 +28,22 @@ S32 send_msg_to_manage(dnq_msg_t *msg)
     return ret;
 }
 
+S32 dnq_proc()
+{
+    S32 i,j;
+    server_temp_policy_t *temp_policy;
+    room_temp_policy_t   *rooms_policy;
+    
+    temp_policy = dnq_get_temp_policy_config();
+    rooms_policy = temp_policy->rooms;
+
+    /* Traversal all rooms */
+    for(i=0; i<DNQ_ROOM_CNT; i++)
+    {
+        
+    }
+}
+
 void *manage_task(void *args)
 {
     S32  ret;
@@ -53,7 +69,7 @@ void *manage_task(void *args)
         {
             case DNQ_CONFIG_UPDATE:
 
-                temp_policy = dnq_get_temp_policy_config();
+                
                 
                 break;
 
