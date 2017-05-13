@@ -15,6 +15,7 @@
 
 #include "dnq_common.h"
 #include "ngx_palloc.h"
+#include "dnq_gpio.h"
 #include "dnq_uart.h"
 #include "dnq_log.h"
 #include "dnq_mcu.h"
@@ -36,12 +37,12 @@
 #define CMD_IDX_SINGLE_CTRL    1
 
 /* mcu response data lenght */
-#define MCU_RESPONSE_LEN_REPLY    12
-#define MCU_RESPONSE_LEN_GETTIME  18
+#define MCU_RESPONSE_LEN_REPLY    13
+#define MCU_RESPONSE_LEN_GETTIME  19
 #define MCU_RESPONSE_LEN_HEART    12
 
 /* sensor response data lenght */
-#define SENSOR_RESPONSE_LEN       12
+#define SENSOR_RESPONSE_LEN       13
 
 /* error code */
 #define ERR_HEADER     -1
@@ -76,7 +77,7 @@ static char g_rs232_databuf[5][64] =
     {
         0xFF,0xFE,0xFE,0xFF,  /* frame header, 帧头 */
         0xA0,                 /* Flag , 标志位*/
-        0x26,                 /* data lenght, 数据长度 */
+        0x1E,                 /* data lenght, 数据长度 */
         0xB0,                 /* mode, 0xB0: power mode, 0xB1: switch mode */
         0xFF,                 /* ctrl all rooms */
         /*
@@ -95,7 +96,7 @@ static char g_rs232_databuf[5][64] =
     {
         0xFF,0xFE,0xFE,0xFF,  /* frame header, 帧头 */
         0xA0,                 /* Flag , 标志位*/
-        0x00,                 /* data lenght, 数据长度 */
+        0x0F,                 /* data lenght, 数据长度 */
         0xB0,                 /* mode, 0xB0: power mode, 0xB1: switch mode */
         
         0x00,                 /* ctrl single room, 0x00~0x18 */               
@@ -110,7 +111,7 @@ static char g_rs232_databuf[5][64] =
     {
         0xFF,0xFE,0xFE,0xFF,  /* frame header, 帧头 */
         0xA1,                 /* Flag , 标志位*/
-        0x12,                 /* data lenght, 数据长度 */
+        0x13,                 /* data lenght, 数据长度 */
         0x10,                 /* set datetime flag */
         
         0x11,0x00,0x00,       /* year month day */               
@@ -124,7 +125,7 @@ static char g_rs232_databuf[5][64] =
     {
         0xFF,0xFE,0xFE,0xFF,  /* frame header, 帧头 */
         0xA0,                 /* Flag , 标志位*/
-        0x0C,                 /* data lenght, 数据长度 */
+        0x0D,                 /* data lenght, 数据长度 */
         0xB2,                 /* get datetime flag */
                              
         0x00,0x00,            /* CRC16 */
@@ -138,11 +139,11 @@ static char g_rs485_cmdbuf[2][64] =
     // 0: get room temperature
     {
         0xFF,0xFE,0xFE,0xFF,  
-        0xA0,                 
-        0x0C,                 
-        0xB2,                 
+        0xF0,       /* get temperature, 获取温度 */
+        0x0D,       /* data lenght, 数据长度 */            
+        0x00,       /* room_id, 房间id */             
                              
-        0x00,0x00,            
+        0x00,0x00,  /* crc16 */
         0xFE,0xFF,0xFF,0xFE   
     },
 };
@@ -164,6 +165,7 @@ S32 cmdbuf_update_time(cmd_id_e cmd_id, U8 *datetime)
 S32 cmdbuf_update_crc(cmd_id_e cmd_id)
 {
     U32  pos = 0;
+    U16  crc_value;
     char *cmdbuf = g_rs232_databuf[cmd_id];
 
     if(cmd_id == CMD_ID_CTRL_ALL)
@@ -174,7 +176,9 @@ S32 cmdbuf_update_crc(cmd_id_e cmd_id)
         pos = 13;
     else if(cmd_id == CMD_ID_GET_TIME)
         pos = 7;
-    cmdbuf[pos] = crc16(cmdbuf, cmdbuf[5], 0);
+    crc_value = crc16(cmdbuf, cmdbuf[5]-6, 0);
+    cmdbuf[pos] = crc_value>>8 & 0xFF;
+    cmdbuf[pos+1] = crc_value & 0xFF;
     return 0;
 }
 
@@ -223,26 +227,26 @@ S32 recv_data_verify(cmd_id_e cmd_id, U8 *data, U32 len)
     U32 value = 0;
     S32 error_code = 0;
     
-    CRC1 = crc16(data, len, 0);
+    CRC1 = crc16(data, len-6, 0);
     switch(cmd_id)
     {
         case CMD_ID_CTRL_ALL:
         case CMD_ID_CTRL_SINGLE:
         case CMD_ID_SET_TIME:
-            CRC2 = *(U16*)&data[7];
+            CRC2 = (data[7]&0xFF)<<8 | data[8]&0xFF;
             flag = data[4];
-            value = data[5];
+            value = data[6];
             if(CRC1 != CRC2)
                 error_code = ERR_CRC;
             else if(flag != 0xBB)
                 error_code = ERR_FLAG;
-            else if(value != 0x10 || value != 0x11)
+            else if(value != 0x10 && value != 0x11)
                 error_code = ERR_VALUE;
-            else if(value == 0x11)
+            else if(value == 0x10)
                 error_code = ERR_AGAIN;
             break;
         case CMD_ID_GET_TIME:
-            CRC2 = *(U16*)&data[13];
+            CRC2 = (data[13]&0xFF)<<8 | data[14]&0xFF;
             flag = data[4];
             if(CRC1 != CRC2)
                 error_code = ERR_CRC;
@@ -250,7 +254,7 @@ S32 recv_data_verify(cmd_id_e cmd_id, U8 *data, U32 len)
                 error_code = ERR_FLAG;
             else if(data[6] != 0x12)
                 error_code = ERR_CMD_FLAG;
-            else if((data[7] < 2017) 
+            else if((data[7] < 17) 
                  || (data[8] < 1) ||(data[8] > 12)
                  || (data[9] < 1) ||(data[9] > 31)
                  || (data[10] < 0) ||(data[10] > 23)
@@ -276,7 +280,7 @@ S32 recv_data_verify(cmd_id_e cmd_id, U8 *data, U32 len)
     if(error_code == ERR_AGAIN)
         DNQ_WARN(DNQ_MOD_MCU, "recv mcu response! val=%d, need send again!!", value);
     if(error_code == ERR_TIME)
-        DNQ_ERROR(DNQ_MOD_MCU, "date error! %4d-%2d-%2d %2d:%2d:%2d!", \
+        DNQ_ERROR(DNQ_MOD_MCU, "date error! %04d-%02d-%02d %02d:%02d:%02d!", \
         2000+data[7], data[8], data[9], data[10], data[11], data[12]);   
 
     return error_code;
@@ -304,10 +308,9 @@ S32 recv_cmd_from_mcu(cmd_id_e cmd_id, U8 *recvbuf, U32 len)
             DNQ_ERROR(DNQ_MOD_MCU, "recv error!");
             return -1;
         }
-        total_len + rlen;
+        total_len += rlen;
         if(total_len >= len)  /* recv complete */
             break;
-        usleep(10*1000);
     }
 
     if(time < 0)
@@ -372,8 +375,37 @@ S32 dnq_rtc_get_time(U8 *datetime)
     ret = recv_cmd_from_mcu(CMD_ID_GET_TIME, recvbuf, MCU_RESPONSE_LEN_GETTIME);
     if(ret < 0)
         return -1;
-    strncpy(datetime, &recvbuf[7], 6);
+    memcpy(datetime, &recvbuf[7], 6);
     datetime[7] = '\0';
+    return ret;
+}
+
+S32 dnq_rs485_ctrl_enable()
+{
+    S32 ret = 0;
+    ret |= dnq_gpio_open(GPIO_PH11);
+    ret |= dnq_gpio_set_direction(GPIO_PH11, GPIO_OUT);
+    return ret;
+}
+
+S32 dnq_rs485_ctrl_disable()
+{
+    S32 ret = 0;
+    ret |= dnq_gpio_close(GPIO_PH11);
+    return ret;
+}
+
+S32 dnq_rs485_ctrl_high()
+{
+    S32 ret = 0;
+    ret |= dnq_gpio_write_bit(GPIO_PH11, GPIO_HIGH);
+    return ret;
+}
+
+S32 dnq_rs485_ctrl_low()
+{
+    S32 ret = 0;
+    ret |= dnq_gpio_write_bit(GPIO_PH11, GPIO_LOW);
     return ret;
 }
 
@@ -381,17 +413,31 @@ S32 dnq_room_temperature_get(U32 room_id)
 {
     S32   ret;
     S32   temperature;
-    char *cmdbuf = g_rs485_cmdbuf[0];
-    char  recvbuf[64] = {0};
+    U8 *cmdbuf = g_rs485_cmdbuf[0];
+    U8  recvbuf[64] = {0};
+    U16 crc_value;
 
-    cmdbuf[2] = room_id; /* Fixed! */
+    cmdbuf[6] = room_id; /* Fixed! */
     
+    crc_value = crc16(cmdbuf, cmdbuf[5]-6, 0);
+    cmdbuf[7] = crc_value>>8 & 0xFF;
+    cmdbuf[8] = crc_value & 0xFF;
+
+    dnq_rs485_ctrl_high();
+    printf("dnq_rs485_ctrl_high!\n");
     ret = dnq_sensor_uart_write(cmdbuf, SENSOR_RESPONSE_LEN);
+    dnq_rs485_ctrl_low();
+    printf("dnq_rs485_ctrl_low!\n");
     
     ret = dnq_sensor_uart_read(recvbuf, SENSOR_RESPONSE_LEN);
+    if(ret == 0)
+    {
+        return -1;
+    }
 
     temperature = recvbuf[5];
     DNQ_INFO(DNQ_MOD_MCU, "room %d temperature is %d'C!", room_id, temperature);
+    exit(1);
 
     return temperature;
 }
@@ -416,13 +462,13 @@ void *dnq_mcu_task()
 
 S32 dnq_mcu_init()
 {
-    
+    dnq_rs485_ctrl_enable();
     return 0;
 }
 
 S32 dnq_mcu_deinit()
 {
-    
+    dnq_rs485_ctrl_disable();
     return 0;
 }
 

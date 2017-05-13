@@ -17,6 +17,8 @@
 
 S32 dnq_uart_init();
 S32 dnq_uart_deinit();
+S32 dnq_uart_set_baudrate(S32 fd, U32 baudrate);
+S32 dnq_uart_set_timeout(S32 fd, U32 timeout, U32 read_min);
 S32 dnq_lcd_uart_read(U8 *buffer, U32 len);
 S32 dnq_lcd_uart_write(U8 *buffer, U32 len);
 S32 dnq_mcu_uart_read(U8 *buffer, U32 len);

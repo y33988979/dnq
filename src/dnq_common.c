@@ -42,7 +42,6 @@ U16 crc16(U8 *addr, U32 num ,U32 crc)
     return(crc);                    /* Return updated CRC */  
 }
 
-
 S32 dnq_init()
 {
     ngx_pool_t * pool = NULL;;

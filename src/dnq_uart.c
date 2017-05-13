@@ -86,6 +86,61 @@ S32 dnq_uart_open(U8 *dev)
     return fd;
 }
 
+S32 dnq_uart_set_baudrate(S32 fd, U32 baudrate)
+{
+    struct termios st;
+    U32 set_rate = BAUDRATE;
+    
+    if(tcgetattr(fd, &st) != 0)
+    {
+        close(fd);
+        DNQ_ERROR(DNQ_MOD_UART, "tcgetattr error! err:%s", strerror(errno));
+        return -1;
+    }
+    if(baudrate == 9600)
+        set_rate = B9600;
+    else if(baudrate == 115200)
+        set_rate = B115200;
+
+    tcflush(fd,TCIFLUSH);
+    
+    cfsetispeed(&st, set_rate);
+    cfsetospeed(&st, set_rate);
+
+    if(tcsetattr(fd, TCSANOW, &st) != 0)
+    {
+        close(fd);
+        DNQ_ERROR(DNQ_MOD_UART, "tcsetattr  error! err:%s", strerror(errno));
+        return -1;
+    }
+    DNQ_INFO(DNQ_MOD_UART, "set new baudrate: %d", baudrate);
+
+    return 0;
+}
+
+S32 dnq_uart_set_timeout(S32 fd, U32 timeout, U32 read_min)
+{
+	S32 ret = 0;
+	struct  termios options;
+
+	tcgetattr(fd, &options);
+	
+	tcflush(fd,TCIFLUSH); 
+	options.c_cc[VTIME] = timeout;
+	options.c_cc[VMIN] = read_min;
+
+	ret = tcsetattr(fd,TCSANOW,&options);
+	if(ret < 0) {
+		close(fd);
+        DNQ_ERROR(DNQ_MOD_UART, "tcsetattr error! errno:%s", strerror(errno));
+        return -1;
+	}
+	
+	tcflush(fd,TCIOFLUSH);
+
+	return ret;
+}
+
 S32 dnq_uart_close(U32 fd)
 {
     close(fd);
@@ -111,6 +166,11 @@ S32 dnq_uart_init()
         DNQ_ERROR(DNQ_MOD_UART, "485 uart port8 init failed!");
         return -1;
     }
+    dnq_uart_set_baudrate(sensor_uart_fd, 9600);
+    dnq_uart_set_timeout(lcd_uart_fd, 2, 0);
+    dnq_uart_set_timeout(mcu_uart_fd, 2, 0);
+    dnq_uart_set_timeout(sensor_uart_fd, 2, 0);
+    
     DNQ_INFO(DNQ_MOD_UART, "dnq_uart_init ok!");
     return 0;
 }
@@ -209,7 +269,9 @@ S32 dnq_sensor_uart_read(U8 *buffer, U32 len)
 
 S32 dnq_sensor_uart_write(U8 *buffer, U32 len)
 {
-    return dnq_uart_write(sensor_uart_fd, buffer, len);
+    S32 ret;
+    ret = dnq_uart_write(sensor_uart_fd, buffer, len);
+    return ret;
 }
 
 

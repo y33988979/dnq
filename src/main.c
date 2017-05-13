@@ -54,6 +54,56 @@ void *send_test(void *args)
     }
 }
 
+S32 rtc_test()
+{
+    U8 datetime[16];
+    
+    dnq_rtc_get_time(datetime);
+    printf("datatime: %04d-%02d-%02d %02d:%02d:%02d!\n", \
+        2000+datetime[0],datetime[1],datetime[2],\
+        datetime[3],datetime[4],datetime[5] );
+    
+    return 0;
+}
+
+S32 room_ctrl_test()
+{
+    U32 i , len;
+    U32 array1[17];
+    U32 array2[17];
+    U8  buffer[64];
+    sleep(1);
+    //len = dnq_mcu_uart_read(buffer, 32);
+    //printf("len=%d,buffer=%s",len,buffer);
+    while(1)
+    {
+        
+        memset(buffer, 0, sizeof(buffer));
+        //len = dnq_mcu_uart_write(cmd, sizeof(cmd));
+        //printf("write len=%d,buffer=%s\n",len,buffer);
+        //dnq_heater_ctrl_single(0, 0xB1, 1);
+        //sleep(1);
+        for(i=0;i<16;i++)
+        {
+            array1[i] = 2;
+            array2[i] = 3;
+        }
+        dnq_heater_ctrl_whole(0xB0, array1);
+        //sleep(1);
+        //dnq_heater_ctrl_whole(0xB0, array2);
+        //sleep(1);
+
+        len = dnq_mcu_uart_read(buffer, 32);
+        printf("recv len=%d!\n",len,buffer);
+        for(i=0; i<len; i++)
+            printf("0x%02x ", buffer[i]);
+        printf("\n");
+        sleep(1);
+    }
+    return 0;
+
+}
+
 int main()
 {
     
@@ -73,32 +123,41 @@ int main()
 
     sleep(100);
 #endif
-#if 1
+#if 1 
     dnq_queue_t *queue = NULL;
     dnq_init();
-    dnq_debug_init();
     
+    dnq_debug_init();
     dnq_uart_init();
+    dnq_mcu_init();
 
-    tt;
-    //len = dnq_mcu_uart_read(buffer, 32);
-    tt;
-    //printf("len=%d,buffer=%s",len,buffer);
+    int i;
+    #if 1// rs485 test!
     while(1)
     {
-        memset(buffer, 0, sizeof(buffer));
-        len = dnq_mcu_uart_write(cmd, sizeof(cmd));
-        printf("write len=%d,buffer=%s\n",len,buffer);
-        len = dnq_mcu_uart_read(buffer, 32);
-        printf("recv len=%d,buffer=%s\n",len,buffer);
-        sleep(1);
+        for(i=0; i<16; i++)
+        {
+            dnq_room_temperature_get(i);
+            usleep(100*1000);
+        }
+        
+    }
+    #endif
+
+    U8 datatime[16] = {17, 5, 13, 22, 33, 44}; 
+    dnq_rtc_set_time(datatime);
+    sleep(1);
+    while(1)
+    {
+        //room_ctrl_test();
+        //rtc_test();
+        //sleep(2);
     }
     
-    dnq_heater_ctrl_single(0, 0, 1);
-    
+
     printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
 
-    //sleep(100);
+    sleep(1000);
 
     
     dnq_lcd_init();
