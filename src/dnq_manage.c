@@ -90,6 +90,7 @@ typedef enum heater_status
 {
     WAIT_LOW_LIMIT,
     WAIT_HIGH_LIMIT,
+    CLOSE_STATUS,
     
 }heater_status_e;
 
@@ -119,6 +120,12 @@ typedef enum heater_status
                 dnq_heater_close(i);
                 status = WAIT_LOW_LIMIT;
                 break;
+            case CLOSE_STATUS:
+                /* 
+                * check until current time is within the configuration range
+                * 检查当前时刻是否在用户配置范围内
+                */
+                ret = dnq_room_policy_check(i, current_time);
             default:
             break;
         }
