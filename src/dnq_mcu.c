@@ -20,53 +20,6 @@
 #include "dnq_log.h"
 #include "dnq_mcu.h"
 
-/* heater operate mode */
-#define HEATER_MODE_POWER      0xB0
-#define HEATER_MODE_SWITCH     0xB1
-
-/* heater operate status value */
-#define HEATER_POWERON    0
-#define HEATER_POWEROFF   1
-
-#define HEATER_POWER_100   0
-#define HEATER_POWER_75    1
-#define HEATER_POWER_0     2   /* poweroff */
-
-/* command define */
-#define CMD_IDX_ALL_CTRL       0
-#define CMD_IDX_SINGLE_CTRL    1
-
-/* mcu response data lenght */
-#define MCU_RESPONSE_LEN_REPLY    13
-#define MCU_RESPONSE_LEN_GETTIME  19
-#define MCU_RESPONSE_LEN_HEART    12
-
-/* sensor response data lenght */
-#define SENSOR_RESPONSE_LEN       13
-
-/* error code */
-#define ERR_HEADER     -1
-#define ERR_FLAG       -2
-#define ERR_CMD_FLAG   -3
-#define ERR_VALUE      -4
-#define ERR_TIME       -5
-#define ERR_CRC        -6
-#define ERR_FOOTER     -7
-#define ERR_AGAIN      -8
-
-typedef enum cmd_id
-{
-    CMD_ID_CTRL_ALL,
-    CMD_ID_CTRL_SINGLE,
-    CMD_ID_SET_TIME,
-    CMD_ID_GET_TIME
-}cmd_id_e;
-
-typedef struct uart_data
-{
-    int  len;
-    char data[64];
-}uart_data_t;
 
 static uart_data_t *g_databuf_ctrlall;
 static uart_data_t *g_databuf_ctrlsingle;
@@ -334,9 +287,26 @@ S32 recv_cmd_from_mcu(cmd_id_e cmd_id, U8 *recvbuf, U32 len)
 S32 dnq_heater_ctrl_single(U32 id, U32 mode, U32 value)
 {
     S32 ret;
+    U8  recvbuf[64] = {0};
+    
     ret = cmdbuf_update_single_room_config(CMD_ID_CTRL_SINGLE, id, mode, value);
     ret = cmdbuf_update_crc(CMD_ID_CTRL_SINGLE);
     ret = send_cmd_to_mcu(CMD_ID_CTRL_SINGLE);
+    ret = recv_cmd_from_mcu(CMD_ID_CTRL_SINGLE, recvbuf, MCU_RESPONSE_LEN_REPLY);
+    return ret;
+}
+
+S32 dnq_heater_open(U32 id)
+{
+    S32 ret;
+    ret = dnq_heater_ctrl_single(id, HEATER_MODE_SWITCH, HEATER_OPEN);
+    return ret;
+}
+
+S32 dnq_heater_close(U32 id)
+{
+    S32 ret;
+    ret = dnq_heater_ctrl_single(id, HEATER_MODE_SWITCH, HEATER_CLOSE);
     return ret;
 }
 
@@ -344,19 +314,22 @@ S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array)
 {
     S32 i;
     S32 ret;
+    U8  recvbuf[64] = {0};
+    
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         cmdbuf_update_single_room_config(CMD_ID_CTRL_ALL, i, mode, value_array[i]);
     }
     ret = cmdbuf_update_crc(CMD_ID_CTRL_ALL);
     ret = send_cmd_to_mcu(CMD_ID_CTRL_ALL);
+    ret = recv_cmd_from_mcu(CMD_ID_CTRL_ALL, recvbuf, MCU_RESPONSE_LEN_REPLY);
     return ret;
 }
 
 S32 dnq_rtc_set_time(U8 *datetime)
 {
     S32 ret;
-    U8  recvbuf[64];
+    U8  recvbuf[64] = {0};
 
     ret = cmdbuf_update_time(CMD_ID_SET_TIME, datetime);
     ret = cmdbuf_update_crc(CMD_ID_SET_TIME);
@@ -409,7 +382,7 @@ S32 dnq_rs485_ctrl_low()
     return ret;
 }
 
-S32 dnq_room_temperature_get(U32 room_id)
+S32 dnq_room_get_temperature(U32 room_id)
 {
     S32   ret;
     S32   temperature;
@@ -442,24 +415,6 @@ S32 dnq_room_temperature_get(U32 room_id)
     return temperature;
 }
 
-void *dnq_mcu_task()
-{
-    S32 i;
-
-    
-    
-    while(1)
-    {
-        for(i=0; i<DNQ_ROOM_CNT; i++)
-        {
-            dnq_room_temperature_get(i);
-            
-            
-        }
-        
-    }
-}
-
 S32 dnq_mcu_init()
 {
     dnq_rs485_ctrl_enable();
@@ -472,3 +427,65 @@ S32 dnq_mcu_deinit()
     return 0;
 }
 
+S32 rtc_test()
+{
+    U8 datetime[16] = {17, 5, 13, 22, 33, 44};
+    dnq_rtc_set_time(datetime);
+    sleep(1);
+    
+    while(1)
+    {
+        dnq_rtc_get_time(datetime);
+        printf("datatime: %04d-%02d-%02d %02d:%02d:%02d!\n", \
+            2000+datetime[0],datetime[1],datetime[2],\
+            datetime[3],datetime[4],datetime[5] );
+    }
+    return 0;
+}
+
+S32 room_ctrl_test()
+{
+    U32 i , len;
+    U8 cmd[] = {0xFF, 0xFE, 0xFE, 0xFF, 0xA0, 0x0D, 0xB2,\
+    0x21, 0x57, 0xFE, 0xFF, 0xFF, 0xFE};
+    U32 array1[17];
+    U32 array2[17];
+    U8  buffer[64];
+    
+    sleep(1);
+    while(1)
+    {
+        memset(buffer, 0, sizeof(buffer));
+        //len = dnq_mcu_uart_write(cmd, sizeof(cmd));
+        //printf("write len=%d,buffer=%s\n",len,buffer);
+        //dnq_heater_ctrl_single(0, 0xB1, 1);
+        //sleep(1);
+        for(i=0;i<16;i++)
+        {
+            array1[i] = HEATER_OPEN;
+            array2[i] = HEATER_CLOSE;
+        }
+        dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, array1);
+        sleep(1);
+        dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, array2);
+        sleep(1);
+    }
+    return 0;
+
+}
+
+S32 rs485_test()
+{
+    S32 i;
+    S32 val;
+    
+    while(1)
+    {
+        for(i=0; i<16; i++)
+        {
+            val = dnq_room_get_temperature(i);
+            printf("id[%d]: get temperature %.1f.", val);
+            usleep(200*1000);
+        }
+    }
+}

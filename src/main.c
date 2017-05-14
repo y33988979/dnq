@@ -21,6 +21,15 @@
 #include "dnq_lcd.h"
 #include "dnq_os.h"
 
+#define MAIN_CHECK(func) \
+    do\
+    {\
+        if(func < 0)\
+        {\
+            DNQ_ERROR(DNQ_MOD_ALL, "main check error!");\
+            return -1;\
+        }\
+    }while(0);
 
 
 void *send_test(void *args)
@@ -31,18 +40,13 @@ void *send_test(void *args)
     dnq_msg_t send_msg;
 
     queue = (dnq_queue_t *)args;
-    send_msg.Class= 15;
-    send_msg.code = 16;
-    send_msg.lenght= 17;
-    strcpy(send_msg.data, "nihao wjehzoq,!");
-    //sleep(1111);
- 
+
     while(1)
     {
         send_msg.Class = n+1;
         send_msg.code = n+2;
         send_msg.lenght = n+3;
-        strcpy(send_msg.data, "8982ssaadhjh222989");
+        strcpy(send_msg.data, "this is test message!");
 
         dnq_msg_send(queue, &send_msg);
 
@@ -54,122 +58,32 @@ void *send_test(void *args)
     }
 }
 
-S32 rtc_test()
-{
-    U8 datetime[16];
-    
-    dnq_rtc_get_time(datetime);
-    printf("datatime: %04d-%02d-%02d %02d:%02d:%02d!\n", \
-        2000+datetime[0],datetime[1],datetime[2],\
-        datetime[3],datetime[4],datetime[5] );
-    
-    return 0;
-}
-
-S32 room_ctrl_test()
-{
-    U32 i , len;
-    U32 array1[17];
-    U32 array2[17];
-    U8  buffer[64];
-    sleep(1);
-    //len = dnq_mcu_uart_read(buffer, 32);
-    //printf("len=%d,buffer=%s",len,buffer);
-    while(1)
-    {
-        
-        memset(buffer, 0, sizeof(buffer));
-        //len = dnq_mcu_uart_write(cmd, sizeof(cmd));
-        //printf("write len=%d,buffer=%s\n",len,buffer);
-        //dnq_heater_ctrl_single(0, 0xB1, 1);
-        //sleep(1);
-        for(i=0;i<16;i++)
-        {
-            array1[i] = 2;
-            array2[i] = 3;
-        }
-        dnq_heater_ctrl_whole(0xB0, array1);
-        //sleep(1);
-        //dnq_heater_ctrl_whole(0xB0, array2);
-        //sleep(1);
-
-        len = dnq_mcu_uart_read(buffer, 32);
-        printf("recv len=%d!\n",len,buffer);
-        for(i=0; i<len; i++)
-            printf("0x%02x ", buffer[i]);
-        printf("\n");
-        sleep(1);
-    }
-    return 0;
-
-}
-
 int main()
 {
-    
-    //extern int lcd_test();
-    //lcd_test();
-    //network_test();
     S32 len;
     U8 buffer[1024];
-    U8 cmd[] = {0xFF, 0xFE, 0xFE, 0xFF, 0xA0, 0x0D, 0xB2,\
-    0x21, 0x57, 0xFE, 0xFF, 0xFF, 0xFE};
-#if 0
-    len = dnq_mcu_uart_read(buffer, 32);
-    printf("len=%d,buffer=%s",len,buffer);
-    dnq_heater_ctrl_single(0, 0, 1);
-    
-    printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
-
-    sleep(100);
-#endif
-#if 1 
     dnq_queue_t *queue = NULL;
-    dnq_init();
+    dnq_msg_t recv_msg;
     
-    dnq_debug_init();
-    dnq_uart_init();
-    dnq_mcu_init();
+    MAIN_CHECK( dnq_init() );
+    MAIN_CHECK( dnq_debug_init() );
+    MAIN_CHECK( dnq_uart_init() );
+    MAIN_CHECK( dnq_mcu_init() );
 
-    int i;
-    #if 1// rs485 test!
-    while(1)
-    {
-        for(i=0; i<16; i++)
-        {
-            dnq_room_temperature_get(i);
-            usleep(100*1000);
-        }
-        
-    }
-    #endif
-
-    U8 datatime[16] = {17, 5, 13, 22, 33, 44}; 
-    dnq_rtc_set_time(datatime);
-    sleep(1);
-    while(1)
-    {
-        //room_ctrl_test();
-        //rtc_test();
-        //sleep(2);
-    }
-    
-
+    // rs485 test!
+    rs485_test();
     printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
-
     sleep(1000);
 
-    
-    dnq_lcd_init();
-    dnq_keypad_init();
+    MAIN_CHECK( dnq_lcd_init() );
+    MAIN_CHECK( dnq_keypad_init() );
 
     queue = dnq_queue_create(QUEUE_SIZE_MAX);
     if(queue == NULL)
         goto exit;
 
     dnq_task_create("send", 32*2048, send_test, (void*)queue);
-
-    dnq_msg_t recv_msg;
+    
     while(1)
     {
         //event_input();
@@ -187,9 +101,10 @@ int main()
 exit:
     dnq_keypad_deinit();
     dnq_lcd_deinit();
+    dnq_mcu_deinit();
     dnq_uart_deinit();
     dnq_deinit();
-#endif
+
     return 0;
 }
 

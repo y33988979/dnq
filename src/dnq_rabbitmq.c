@@ -404,6 +404,7 @@ S32 json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
 {
 	int     i = 0;
     int     j = 0;
+    U32     time, second;
     cJSON  *obj = NULL;
     cJSON  *rooms = NULL;
     cJSON  *room_obj = NULL;
@@ -494,12 +495,20 @@ S32 json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
 
             //start time
             copy_json_item_to_struct_item(\
-                obj, timesettings_obj, JSON_ITEM_START_TIME, pdst->rooms[i].time_setting[j].starttime, cJSON_String);
-            DNQ_INFO(DNQ_MOD_RABBITMQ, "starttime:\t%s!", pdst->rooms[i].time_setting[j].starttime);
+                obj, timesettings_obj, JSON_ITEM_START_TIME, pdst->rooms[i].time_setting[j].starttime, cJSON_String);  
+            time = atoi(pdst->rooms[i].time_setting[j].starttime);
+            second = (time/10000)*24 + ((time/100)%100)*60 + time%100;
+            pdst->rooms[i].time_setting[j].start = second;
+            DNQ_INFO(DNQ_MOD_RABBITMQ, "starttime:\t%s, =%d second!", \
+                pdst->rooms[i].time_setting[j].starttime, second);
             //end time
             copy_json_item_to_struct_item(\
                 obj, timesettings_obj, JSON_ITEM_END_TIME, pdst->rooms[i].time_setting[j].endtime, cJSON_String);
-            DNQ_INFO(DNQ_MOD_RABBITMQ, "endtime:\t%s!", pdst->rooms[i].time_setting[j].endtime);
+            time = atoi(pdst->rooms[i].time_setting[j].endtime);
+            second = (time/10000)*24 + ((time/100)%100)*60 + time%100;
+            pdst->rooms[i].time_setting[j].end= second;
+            DNQ_INFO(DNQ_MOD_RABBITMQ, "endtime:\t%s, =%d second!", \
+                pdst->rooms[i].time_setting[j].endtime, second);
             //degrees
             copy_json_item_to_struct_item(\
                 obj, timesettings_obj, JSON_ITEM_DEGREES, &pdst->rooms[i].time_setting[j].degrees, cJSON_Number);

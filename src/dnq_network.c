@@ -909,7 +909,7 @@ S32 dnq_dhcp_start(U8 *if_name)
     S32 ret;
     U8 cmd[64];
 
-    sprintf(cmd, "udhcpc -i %d", if_name);
+    sprintf(cmd, "udhcpc -i %s", if_name);
     ret = system(cmd);
 }
 

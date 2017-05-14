@@ -14,6 +14,7 @@
 #include "dnq_manage.h"
 #include "dnq_rabbitmq.h"
 #include "dnq_log.h"
+#include "dnq_mcu.h"
 
 dnq_appinfo_t *manage_appinfo = NULL;
 
@@ -28,19 +29,99 @@ S32 send_msg_to_manage(dnq_msg_t *msg)
     return ret;
 }
 
+S32 dnq_room_policy_check(U32 room_id, U32 current_time)
+{
+    S32 ret;
+    U32 i;
+    U32 start_time, end_time;
+    room_temp_policy_t *room_policy;
+    server_temp_policy_t *temp_policy;
+    timesetting_t  *room_time_setting;
+
+    temp_policy = dnq_get_temp_policy_config();
+    room_policy = &temp_policy->rooms[room_id];
+    room_time_setting = room_policy->time_setting;
+
+    for(i=0; i<room_policy->time_setting_cnt; i++)
+    {
+        if(current_time >= room_time_setting[i].start
+        && current_time <= room_time_setting[i].end)
+            return i;
+    }
+    
+    return -1;
+}
+
 S32 dnq_proc()
 {
-    S32 i,j;
+    S32 i,j, ret;
+    U8  datetime[8] = {0};
+    U32 current_time;
+    U32 current_temp;
     server_temp_policy_t *temp_policy;
     room_temp_policy_t   *rooms_policy;
+    timesetting_t     *time_setting;
     
     temp_policy = dnq_get_temp_policy_config();
     rooms_policy = temp_policy->rooms;
 
+    dnq_rtc_get_time(datetime);
+    
+
+    current_time;
+
     /* Traversal all rooms */
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
+        dnq_room_get_temperature(i);
+        ret = dnq_room_policy_check(i, current_time);
+        if(ret >= 0)
+        {
+            rooms_policy[i].time_setting[ret].degrees;
+            dnq_heater_ctrl_single(i, HEATER_MODE_SWITCH, HEATER_OPEN);
+        }
         
+        for(j=0; j<rooms_policy[i].time_setting_cnt; j++)
+        {
+
+        }
+
+typedef enum heater_status
+{
+    WAIT_LOW_LIMIT,
+    WAIT_HIGH_LIMIT,
+    
+}heater_status_e;
+
+        heater_status_e status = WAIT_LOW_LIMIT;
+        current_temp = dnq_room_get_temperature(i);
+        switch(status)
+        {
+            case WAIT_LOW_LIMIT:
+                /* 
+                * check until the temprature falls limit 
+                * 等待温度下降到设定的温度回差处
+                */
+
+                if(current_temp)
+
+                dnq_heater_ctrl_single(i, HEATER_MODE_SWITCH, HEATER_OPEN);
+                dnq_heater_open(i);
+                status = WAIT_HIGH_LIMIT;
+                break;
+            case WAIT_HIGH_LIMIT:
+                /* 
+                * check until the temprature rise limit 
+                * 等待温度上升到设定的温度
+                */
+
+                dnq_heater_ctrl_single(i, HEATER_MODE_SWITCH, HEATER_CLOSE);
+                dnq_heater_close(i);
+                status = WAIT_LOW_LIMIT;
+                break;
+            default:
+            break;
+        }
     }
 }
 
@@ -69,8 +150,7 @@ void *manage_task(void *args)
         {
             case DNQ_CONFIG_UPDATE:
 
-                
-                
+
                 break;
 
             default:

@@ -44,7 +44,11 @@ U16 crc16(U8 *addr, U32 num ,U32 crc)
 
 S32 dnq_init()
 {
-    ngx_pool_t * pool = NULL;;
+    ngx_pool_t * pool = NULL;
+    
+    if(mem_pool)  /* already inited */
+        return 0; 
+    
     pool = dnq_mempool_init(1024*1024);
     if(!pool)
         return -1;

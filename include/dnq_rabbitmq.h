@@ -3,6 +3,7 @@
 
 #include "common.h"
 
+#define SIZE_8       8
 #define SIZE_16      16
 #define SIZE_32      32
 
@@ -143,6 +144,8 @@ typedef struct timesetting
 {
     U8   starttime[SIZE_16];
     U8   endtime[SIZE_16];
+    U32  start;  /* starttime second */
+    U32  end;    /* endtime second */
     U16  degrees;
 }timesetting_t;
 
@@ -151,7 +154,7 @@ typedef struct room_temp_policy
     U16            room_id;
     U16            dpid;
     U16            time_setting_cnt;
-    timesetting_t  time_setting[5];
+    timesetting_t  time_setting[4];
 }room_temp_policy_t;
 
 typedef struct server_temp_policy
@@ -392,7 +395,6 @@ typedef struct client_warn
     U32       rooms_cnt;
     client_room_t  rooms[DNQ_ROOM_MAX];
 }client_warn_t;
-
 
 
 extern dnq_config_t dnq_config;
