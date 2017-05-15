@@ -15,6 +15,14 @@
 
 #define MAC_ADDR   "70b3d5cf4924"
 
+
+typedef struct channel_t{
+	int chid;
+	char qname[32];
+	char exchange[32];
+	char rtkey[32];
+}channel_t;
+
 /*
 * message type define
 * 消息类型字段  枚举
@@ -407,6 +415,8 @@ extern dnq_config_t dnq_config;
 #define dnq_get_temp_correct_config()  &dnq_config.temp_correct
 #define dnq_get_init_config()  &dnq_config.init
 
+S32 dnq_rabbitmq_init();
+S32 dnq_rabbitmq_deinit();
 
 #endif /* _DNQ_RABBITMQ_H_ */
 

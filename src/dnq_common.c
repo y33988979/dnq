@@ -22,6 +22,7 @@ static ngx_pool_t *mem_pool;
 						 num 需要校验的数据长度
 	* @retval  计算得到的数据低位在前 高位在后
   */  
+
 U16 crc16(U8 *addr, U32 num ,U32 crc)  
 {  
     int i;  

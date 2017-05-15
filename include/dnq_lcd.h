@@ -52,8 +52,8 @@
 #define SETTING_FLAG          "↑↓"
 #define HIDE_FLAG             "     "
 
-#define STATUS_STR_NORMAL     "正常"
-#define STATUS_STR_STOP       "正常"
+#define STATUS_STR_WORK       "工作"
+#define STATUS_STR_STOP       "停止"
 
 /* lcd status */
 #define LCD_STATUS_SHOWING    0
@@ -71,6 +71,8 @@
 #define SYS_INFO_STR "火娃电采暖智能控制器 "
 #define HELP_INFO_STR "↑:上一页  ↓:下一页  OK:设置  EXIT:返回"
 
+#define WORK_STATUS      0x1
+#define STOP_STATUS      0x0
 
 typedef enum lcd_item_id
 {
@@ -143,13 +145,13 @@ typedef struct lcd_desc
 
 typedef struct room_item
 {
-    int      id;
-    char     name[16];
+    U32      id;
+    U8       name[16];
     float    curr_temp;
     float    set_temp;
-    char     work_status[8];
-    char     sn_status[8];
-    int      correct;
+    U16      work_status;
+    U16      sn_status;
+    S32      correct;
 }room_item_t;
 
 typedef struct lcd_item

@@ -31,14 +31,11 @@
 #include <ctype.h>
 
 #include "dnq_log.h"
-#include "dnq_lcd.h"
 #include "dnq_common.h"
 #include "dnq_network.h"
 
 //#define LINK_ON       1
 //#define LINK_OFF      0
-
-#define ETH_NAME  "eth0"
 
 
 U16 ipcfg_htons(U16 n)
@@ -922,7 +919,17 @@ S32 dnq_dhcp_stop(U8 *if_name)
     return ret;
 }
 
-static void net_status_change_callbak(net_status_e status)
+static netlink_callback netlink_status_callback = NULL;
+
+void netlink_callback_enable(netlink_callback callback)
+{
+    if(callback)
+        netlink_status_callback = callback;
+    else
+        netlink_status_callback = NULL;
+}
+
+static void net_status_change(net_status_e status)
 {
     switch(status)
     {
@@ -940,7 +947,9 @@ static void net_status_change_callbak(net_status_e status)
         default:
         break;
     }
-    lcd_net_status_update(status);
+    if(netlink_status_callback)
+        netlink_status_callback(status);
+    //lcd_net_status_update(status);
 }
 
 void *network_task(void *args)
@@ -953,7 +962,7 @@ void *network_task(void *args)
         current_status = dnq_net_get_link_status(ETH_NAME);
         if(current_status != last_status)
         {
-            net_status_change_callbak(current_status?LINK_ON:LINK_OFF);
+            net_status_change(current_status?LINK_ON:LINK_OFF);
             last_status = current_status;
         }
 

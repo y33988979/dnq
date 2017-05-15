@@ -21,12 +21,6 @@
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
 
-typedef struct channel_t{
-	int chid;
-	char qname[64];
-	char exchange[64];
-	char rtkey[64];
-}channel_t;
 
 /* used for dnqV1  */
 channel_t channels1[18] = {
@@ -74,9 +68,6 @@ static char *password = "123456";
 #endif
 
 #define YLOG  printf
-
-
-
 
 #define copy_json_item_to_struct_item(obj, json, item_name, item_addr, item_type)  \
     do{\
@@ -1726,8 +1717,8 @@ int rabbitmq_task()
 {
     while(1)
     {
-        msg_thread(serverip, serverport, &g_conn);
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg_thread start!");
+        msg_thread(serverip, serverport, &g_conn);
         sleep(3);
     }
 }

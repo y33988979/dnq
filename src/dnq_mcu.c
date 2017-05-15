@@ -415,6 +415,11 @@ S32 dnq_room_get_temperature(U32 room_id)
     return temperature;
 }
 
+sensor_task()
+{
+
+}
+
 S32 dnq_mcu_init()
 {
     dnq_rs485_ctrl_enable();

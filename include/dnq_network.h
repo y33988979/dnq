@@ -3,6 +3,9 @@
 
 #include "common.h"
 
+
+#define ETH_NAME  "eth0"
+
 typedef enum net_status
 {
     LINK_OFF,
@@ -11,6 +14,9 @@ typedef enum net_status
     IP_BOUND,
     IP_LOST,
 }net_status_e;
+
+typedef void (*netlink_callback)(net_status_e status);
+void netlink_callback_enable(netlink_callback callback);
 
 S32 dnq_net_ifup(U8 *if_name);
 S32 dnq_net_ifdown(U8 *if_name);

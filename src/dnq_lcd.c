@@ -26,22 +26,22 @@ static dnq_appinfo_t  *lcd_appinfo;
  
 room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
 {
-    {0, "三年二班", 22.1,32,"停止","正常",-2},
-    {1, "门卫室", 24.2,26,"停止","正常",-2},
-    {2, "走廊蓄热12", 11.2,5,"正常","正常",-2},
-    {3, "走廊蓄热2", 11.2,5,"正常","停止",-2},
-    {4, "科学实验室", 11.2,23,"正常","正常",-2},
-    {5, "一年级教研室", 10.2,23,"停止","停止",-2},
-    {6, "三年一班", 22.1,19,"正常","正常",-2},
-    {7, "水房", 19.1,0,"停止","正常",-2},
-    {8, "闲置房间1-2", 18.1,5,"正常","正常",-2},
-    {9, "会议室南", 5.9, 5,"正常","正常",-1},
-    {10, "会议室北",5.2,5,"正常","正常",-1},
-    {11, "楼梯间2-3", 13.2,15,"正常","正常",-3},
-    {12, "楼梯间2-3", 13.2,15,"正常","停止",-3},
-    {13, "楼梯间2-3", 13.2,15,"正常","停止",-4},
-    {14, "楼梯间2-3", 13.2,15,"正常","正常",-4},
-    {15, "楼梯间2-3", 13.2,15,"正常","停止",-5},
+    {0, "三年二班", 22.1,32, STOP_STATUS,WORK_STATUS,-2},
+    {1, "门卫室", 24.2,26,   0,1,-2},
+    {2, "走廊蓄热12", 11.2,5,1,1,-2},
+    {3, "走廊蓄热2", 11.2,5, 1,0,-2},
+    {4, "科学实验室", 11.2,23,1,0,-2},
+    {5, "一年级教研室", 10.2,23,0,0,-2},
+    {6, "三年一班", 22.1,19,1,0,-2},
+    {7, "水房", 19.1,0,0,1,-2},
+    {8, "闲置房间1-2", 18.1,5,1,1,-2},
+    {9, "会议室南", 5.9, 5,0,1,-1},
+    {10, "会议室北",5.2,5,1,1,-1},
+    {11, "楼梯间2-3", 13.2,15,1,1,-3},
+    {12, "楼梯间4-5", 13.2,15,1,0,-3},
+    {13, "楼梯间6-7", 13.2,15,0,0,-4},
+    {14, "楼梯间8-9", 13.2,15,1,1,-4},
+    {15, "大会议室", 13.2,15,1,0,-5},
     {0,0,0,0,0,0,0},
    
 };
@@ -499,29 +499,49 @@ S32 lcd_room_setting_temp_update_adjust(U32 room_id, float value, U32 color)
     return ret;
 }
 
-S32 lcd_room_work_status_update(U32 room_id, U8 *status, U32 color)
+S32 lcd_room_work_status_update(U32 room_id, U32 status, U32 color)
 {
     S32 ret = 0;
-
-    if(strcmp(status, STATUS_STR_NORMAL) == 0)
-        color = FOUCS_COLOR;
+    U8  status_str[16] = STATUS_STR_STOP;
+    
     //memset(g_rooms[room_id].status, 0, 8);
-    strncpy(g_rooms[room_id].work_status, status, 8);
+    g_rooms[room_id].sn_status = status;
+    if(status == WORK_STATUS)
+    {
+        color = FOUCS_COLOR;
+        strncpy(status_str, STATUS_STR_WORK, 8);
+    }
+    else
+    {
+        color = DEFAULT_COLOR;
+        strncpy(status_str, STATUS_STR_STOP, 8);
+    }
+    
     room_id %= ROOM_CNT_PER_PAGE;
-    ret = lcd_room_item_update(room_id, ROOM_ITEM_WORK_STATUS, status, color);
+    ret = lcd_room_item_update(room_id, ROOM_ITEM_WORK_STATUS, status_str, color);
     return ret;
 }
 
-S32 lcd_room_sn_status_update(U32 room_id, U8 *status, U32 color)
+S32 lcd_room_sn_status_update(U32 room_id, U32 status, U32 color)
 {
     S32 ret = 0;
-
-    if(strcmp(status, STATUS_STR_NORMAL) == 0)
-        color = FOUCS_COLOR;
+    U8  status_str[16] = STATUS_STR_STOP;
+    
     //memset(g_rooms[room_id].sn, 0, 8);
-    strncpy(g_rooms[room_id].sn_status, status, 8);
+    g_rooms[room_id].sn_status = status;
+    if(status == WORK_STATUS)
+    {
+        color = FOUCS_COLOR;
+        strncpy(status_str, STATUS_STR_WORK, 8);
+    }
+    else
+    {
+        color = DEFAULT_COLOR;
+        strncpy(status_str, STATUS_STR_STOP, 8);
+    }
+        
     room_id %= ROOM_CNT_PER_PAGE;
-    ret = lcd_room_item_update(room_id, ROOM_ITEM_SN_STATUS, status, color);
+    ret = lcd_room_item_update(room_id, ROOM_ITEM_SN_STATUS, status_str, color);
     return ret;
 }
 
