@@ -16,7 +16,7 @@
 #define MAC_ADDR   "70b3d5cf4924"
 
 
-typedef struct channel_t{
+typedef struct channel{
 	int chid;
 	char qname[32];
 	char exchange[32];

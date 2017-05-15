@@ -10,21 +10,54 @@
 
 
 #include "dnq_common.h"
+#include "dnq_log.h"
 #include "dnq_upgrade.h"
 #include "ngx_palloc.h"
 
+#include <stdarg.h>
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
 
-static ngx_pool_t *mem_pool;
+S32 dnq_debug(U32 lever, const char *fmt, ...);
+
+#define DBG_NONE      0
+#define DBG_ERROR     1
+#define DBG_WARN      2
+#define DBG_DEBUG     3
+#define DBG_INFO      4
+#define DBG_ALL       5
+
+#define UPGRADE_ERROR( msg,...)  dnq_debug(DBG_ERROR, "[ERROR]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define UPGRADE_WARN( msg,...)   dnq_debug(DBG_WARN, "[WARN]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define UPGRADE_DEBUG( msg,...)  dnq_debug(DBG_DEBUG, "[DEBUG]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define UPGRADE_INFO( msg,...)   dnq_debug(DBG_DEBUG, "[INFO]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+
 
 #define UPGRADE_INFO_LEN      16
 
 #define UPGRADE_CHNL_TX_ID    10
 #define UPGRADE_CHNL_RX_ID    11
 
-channel_t upgrade_channel[2] = 
+typedef struct _upgrade_channel{
+	int chid;
+	char qname[32];
+	char exchange[32];
+	char rtkey[32];
+}upgrade_channel_t;
+
+static U8   serverip[] = "192.168.30.188";
+static U32  serverport = 6655;
+static U8   mac_addr[] =  "70b3d5cf4924";
+static U8   username[] =  "host001";
+static U8   password[] =    "123456";
+static U8   g_dbg_lever = DBG_ERROR;
+static ngx_pool_t *mem_pool;
+upgrade_status_e upgrade_status = UPGRADE_WAIT;
+
+amqp_connection_state_t  g_conn;
+
+upgrade_channel_t upgrade_channel[2] = 
 {
     /* host to server */
     {UPGRADE_CHNL_TX_ID, "queue_cloud_callback", "exchange_cloud", "callback"},
@@ -34,8 +67,8 @@ channel_t upgrade_channel[2] =
     
 };
 
-channel_t *upgrade_channel_tx = &upgrade_channel[0];
-channel_t *upgrade_channel_rx = &upgrade_channel[1];
+upgrade_channel_t *upgrade_channel_tx = &upgrade_channel[0];
+upgrade_channel_t *upgrade_channel_rx = &upgrade_channel[1];
 
 /**
   * @brief  CRC16-IBM校验
@@ -64,9 +97,37 @@ U16 crc16(U8 *addr, U32 num ,U32 crc)
     return(crc);                    /* Return updated CRC */  
 }
 
+
+S32 dnq_debug(U32 lever, const char *fmt, ...)
+{
+    int n;
+    int size = 1024;
+    int current_lever;
+    U8  dbg_buf[2048] = {0};
+    va_list ap;
+
+    current_lever = g_dbg_lever;
+
+    /* print log message to console, set lever */
+    if( (current_lever > 0 && current_lever >= lever) \
+        || lever == DBG_ALL)
+    {
+        va_start(ap, fmt);
+        //n = vsprintf(fmt, ap);
+        vfprintf(stdout, fmt, ap);
+        //n = vsnprintf(g_dbg_buf, size, fmt, ap);
+        va_end(ap);
+    }
+
+    n = printf(dbg_buf, n);
+        
+    return n;
+}
+    
+
 S32 send_msg_to_server(
     amqp_connection_state_t conn,
-    channel_t *pchnl,
+    upgrade_channel_t *pchnl,
     char *message)
 {
     S32 ret = -1;
@@ -86,115 +147,45 @@ S32 send_msg_to_server(
 	                                amqp_cstring_bytes(message)),
 	             "Publishing");
     if(ret == 0)
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "send success! chid=%d, ex=%s, key=%s",\
+        UPGRADE_INFO( "send success! chid=%d, ex=%s, key=%s",\
         pchnl->chid, pchnl->exchange, pchnl->rtkey);
     else
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "send failed! chid=%d, ex=%s, key=%s",\
+        UPGRADE_ERROR( "send failed! chid=%d, ex=%s, key=%s",\
         pchnl->chid, pchnl->exchange, pchnl->rtkey);
     return ret;
 }
 
 S32 send_response_to_server(
     amqp_connection_state_t conn,
-    channel_t *pchnl,
-    json_type_e json_type)
+    upgrade_channel_t *pchnl,
+    S32 ret_code)
 {
     S32 ret = -1;
-    char  *json_response = NULL;
-    client_response_t response;
+
     
     /* send response to server */
-    if(json_type == JSON_TYPE_AUTHORRIZATION)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: authorization");
-        
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "authorization");
-        
-        json_response = json_create_response(&response);
-        ret = send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(json_type == JSON_TYPE_TEMP_POLICY)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: policy");
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "policy");
-        
-        json_response = json_create_response(&response);
-        ret = send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(json_type == JSON_TYPE_TEMP_LIMIT)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: limit");
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "limit");
-        
-        json_response = json_create_response(&response);
-        ret = send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(json_type == JSON_TYPE_TEMP_ERROR)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: degree error");
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "error");
-        
-        json_response = json_create_response(&response);
-        ret = send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(json_type == JSON_TYPE_POWER_CONFIG)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: power config");
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "power");
-        
-        json_response = json_create_response(&response);
-        ret = send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(json_type == JSON_TYPE_RESPONSE)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: response");
-    }
-    else if(json_type == JSON_TYPE_CORRECT)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: correct");
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "correct");
-        
-        json_response = json_create_response(&response);
-        ret = send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
-    else if(json_type == JSON_TYPE_INIT)
-    {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: init");
-        strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "init");
-        
-        json_response = json_create_response(&response);
-        ret = send_msg_to_server(conn, pchnl, json_response);
-        dnq_free(json_response);
-    }
+
 
     return ret;
 }
 
 static void upgrade_info_print(upgrade_info_t *info)
 {
-    DNQ_INFO(DNQ_MOD_UPGRADE, "tag:\t0x%x", info->tag);
-    DNQ_INFO(DNQ_MOD_UPGRADE, "type:\t%d", info->type);
-    DNQ_INFO(DNQ_MOD_UPGRADE, "mac:\t%02X:%02X:%02X:%02X:%02X:%02X", \
+    UPGRADE_INFO( "tag:\t0x%x", info->tag);
+    UPGRADE_INFO( "type:\t%d", info->type);
+    UPGRADE_INFO( "mac:\t%02X:%02X:%02X:%02X:%02X:%02X", \
         info->mac[0],info->mac[1],info->mac[2],\
         info->mac[3],info->mac[4],info->mac[5]);
-    DNQ_INFO(DNQ_MOD_UPGRADE, "hw_ver:\t0x%04x", info->hw_ver);
-    DNQ_INFO(DNQ_MOD_UPGRADE, "sw_ver:\t0x%04x", info->sw_ver);
-    DNQ_INFO(DNQ_MOD_UPGRADE, "crc_16:\t0x%08x", info->crc_16);
-    DNQ_INFO(DNQ_MOD_UPGRADE, "mode:\t%d", info->mode);
-    DNQ_INFO(DNQ_MOD_UPGRADE, "need_ver:\t%d", info->need_ver);
+    UPGRADE_INFO( "hw_ver:\t0x%04x", info->hw_ver);
+    UPGRADE_INFO( "sw_ver:\t0x%04x", info->sw_ver);
+    UPGRADE_INFO( "crc_16:\t0x%08x", info->crc_16);
+    UPGRADE_INFO( "mode:\t%d", info->mode);
+    UPGRADE_INFO( "need_ver:\t%d", info->need_ver);
+}
+
+static S32 upgrade_data_check(U8 *data, U32 len)
+{
+    
 }
 
 static S32 upgrade_info_check(upgrade_info_t *info, U32 len)
@@ -208,22 +199,22 @@ static S32 upgrade_info_check(upgrade_info_t *info, U32 len)
     /* check data lenght */
     if(len != UPGRADE_INFO_LEN)
     {
-        DNQ_ERROR(DNQ_MOD_UPGRADE, "upgrade_info lenght[%d] error! lenght should %d", \
+        UPGRADE_ERROR( "upgrade_info lenght[%d] error! lenght should %d", \
             len, UPGRADE_INFO_LEN);
         return ERR_LENGHT;
     }
 
     /* check upgrade tag */
-    if(info->tag != 0x47)
+    if(info->tag != UPGRADE_TAG)
     {
-        DNQ_ERROR(DNQ_MOD_UPGRADE, "upgrade_tag should be 0x%02x!", 0x47);
+        UPGRADE_ERROR( "upgrade_tag should be 0x%02x!", 0x47);
         return ERR_TAG;
     }
     
     /* check hardware version */
     if(info->hw_ver != HWVER)
     {
-        DNQ_ERROR(DNQ_MOD_UPGRADE, "the hw_version is not match! \
+        UPGRADE_ERROR( "the hw_version is not match! \
             host HWVER=0x%08x, upgrade HWVER=0x%08x", HWVER, info->hw_ver);
         return ERR_HWVER;
     }
@@ -231,10 +222,10 @@ static S32 upgrade_info_check(upgrade_info_t *info, U32 len)
     /* check mac addr */
     if(strncmp(host_mac, info->mac, 6) != 0)
     {
-        DNQ_ERROR(DNQ_MOD_UPGRADE, "the mac_addr is not match!");
-        DNQ_ERROR(DNQ_MOD_UPGRADE, "current mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
+        UPGRADE_ERROR( "the mac_addr is not match!");
+        UPGRADE_ERROR( "current mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
             host_mac[0],host_mac[1],host_mac[2],host_mac[3],host_mac[4],host_mac[5]); 
-        DNQ_ERROR(DNQ_MOD_UPGRADE, "upgrade mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
+        UPGRADE_ERROR( "upgrade mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
             info->mac[0],info->mac[1],info->mac[2],info->mac[3],info->mac[4],info->mac[5]);
         return ERR_MAC;
     }
@@ -248,7 +239,7 @@ static S32 upgrade_info_check(upgrade_info_t *info, U32 len)
         /* 遇到高版本升级 */
         if(info->sw_ver <= SWVER)
         {
-            DNQ_ERROR(DNQ_MOD_UPGRADE, "uprade_mode:%d, Not need uprade! \
+            UPGRADE_ERROR( "uprade_mode:%d, Not need uprade! \
                 current SWVER=0x%08x, upgrade SWVER=0x%08x", upgrade_mode, SWVER, info->sw_ver);
             return ERR_SWVER1;
         }
@@ -258,14 +249,14 @@ static S32 upgrade_info_check(upgrade_info_t *info, U32 len)
         /* 指定版本号升级 */
         if(info->need_ver != SWVER)
         {
-            DNQ_ERROR(DNQ_MOD_UPGRADE, "uprade_mode:%d, Not need uprade! \
+            UPGRADE_ERROR( "uprade_mode:%d, Not need uprade! \
                 current SWVER=0x%08x, upgrade SWVER=0x%08x", upgrade_mode, SWVER, info->sw_ver);
             return ERR_SWVER2;
         }
     }
 
     /* need upgrade */
-    DNQ_INFO(DNQ_MOD_UPGRADE, "uprade_mode:%d, need uprade soft!! \
+    UPGRADE_INFO( "uprade_mode:%d, need uprade soft!! \
                 current SWVER=0x%08x, upgrade SWVER=0x%08x", upgrade_mode, SWVER, info->sw_ver);
                 
     return upgrade_type;
@@ -273,27 +264,41 @@ static S32 upgrade_info_check(upgrade_info_t *info, U32 len)
 
 static U32 upgrade_msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 {
-    U32 ret = -1;
-    char  *json_msg = NULL;
-    char   cjson_struct[3072] = {0};
-    char  *json_response = NULL;
-    json_type_e  json_type = 0;
-    channel_t   *pchnl = NULL;
-    dnq_msg_t  sendmsg;
-    U32    json_len;
+    U32  ret = -1;
+    U8  *msg = NULL;
+    U32  msg_len = NULL;
+    U32  upgrade_type;
+    upgrade_channel_t   *pchnl = NULL;
 
-    pchnl = upgrade_channel_tx; /* response  */
-    json_msg = penve->message.body.bytes;
-    json_len = penve->message.body.len;
+    msg = penve->message.body.bytes;
+    msg_len = penve->message.body.len;
 
-    ret = upgrade_info_check(penve->message.body.bytes, penve->message.body.len);
-    if(ret < 0)
-        return -1;
+    switch(upgrade_status)
+    {
+        /* recv data, and check upgrade info */
+        case UPGRADE_WAIT:
+            
+            upgrade_type = upgrade_info_check((upgrade_info_t*)msg, msg_len);
+            if(upgrade_type < 0)
+                return -1;
 
+            upgrade_status = UPGRADE_READY;
+            
+        case UPGRADE_READY:
+            
+            upgrade_type = upgrade_data_check(msg, msg_len);
+            if(upgrade_type < 0)
+                return -1;
+
+            upgrade_status = UPGRADE_DATA_WRITE;
+    }
     
-
+    
+    
+    pchnl = upgrade_channel_tx; /* response  */
+    
     /* send response to server */
-    send_response_to_server(conn, pchnl, json_type);    
+    send_response_to_server(conn, pchnl, 1); 
 
     return 0;
 }
@@ -331,7 +336,7 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
         timeout.tv_usec = 0;
         ret = amqp_consume_message(conn, &envelope, &timeout, 0);
         if(ret.library_error != AMQP_STATUS_TIMEOUT)
-        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "recv msg! type=%d,%d, errno=%d", \
+        UPGRADE_DEBUG( "recv msg! type=%d,%d, errno=%d", \
             ret.reply_type, frame.frame_type, ret.library_error);
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type)
@@ -339,10 +344,10 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
             if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
             AMQP_STATUS_UNEXPECTED_STATE == ret.library_error)
             {
-                DNQ_ERROR(DNQ_MOD_RABBITMQ, "reply exception!");
+                UPGRADE_ERROR( "reply exception!");
                 if (AMQP_STATUS_OK != amqp_simple_wait_frame(conn, &frame))
                 {
-                    DNQ_ERROR(DNQ_MOD_RABBITMQ, "test2!");
+                    UPGRADE_ERROR( "test2!");
                     return;
                 }
                 if (AMQP_FRAME_METHOD == frame.frame_type)
@@ -353,14 +358,14 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
                         /* if we've turned publisher confirms on, and we've published a message
                         * here is a message being confirmed
                         */
-                        DNQ_ERROR(DNQ_MOD_RABBITMQ, "Received AMQP_BASIC_ACK_METHOD");
+                        UPGRADE_ERROR( "Received AMQP_BASIC_ACK_METHOD");
                         break;
                         case AMQP_BASIC_RETURN_METHOD:
                         /* if a published message couldn't be routed and the mandatory flag was set
                         * this is what would be returned. The message then needs to be read.
                         */
                         {
-                            DNQ_ERROR(DNQ_MOD_RABBITMQ, "Received AMQP_BASIC_RETURN_METHOD");
+                            UPGRADE_ERROR( "Received AMQP_BASIC_RETURN_METHOD");
                             amqp_message_t message;
                             ret = amqp_read_message(conn, frame.channel, &message, 0);
                             if (AMQP_RESPONSE_NORMAL != ret.reply_type)
@@ -382,7 +387,7 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
                         * to the previous channel
                         */
 
-                        DNQ_ERROR(DNQ_MOD_RABBITMQ, "Received AMQP_CHANNEL_CLOSE_METHOD");
+                        UPGRADE_ERROR( "Received AMQP_CHANNEL_CLOSE_METHOD");
                         return;
 
                         case AMQP_CONNECTION_CLOSE_METHOD:
@@ -392,11 +397,11 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
                         * In this case the whole connection must be restarted.
                         */
 
-                        DNQ_ERROR(DNQ_MOD_RABBITMQ, "Received  AMQP_CONNECTION_CLOSE_METHOD");
+                        UPGRADE_ERROR( "Received  AMQP_CONNECTION_CLOSE_METHOD");
                         return;
 
                         default:
-                        DNQ_ERROR(DNQ_MOD_RABBITMQ, "An unexpected method was received %d\n", frame.payload.method.id);
+                        UPGRADE_ERROR( "An unexpected method was received %d\n", frame.payload.method.id);
                         fprintf(stderr ,"An unexpected method was received %d\n", frame.payload.method.id);
                         return;
                     }
@@ -404,7 +409,7 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
             }     
             else
             {
-                //DNQ_DEBUG(DNQ_MOD_RABBITMQ, "error %d %d",\
+                //UPGRADE_DEBUG( "error %d %d",\
                 //    ret.reply_type,ret.library_error);
                 if(ret.library_error != AMQP_STATUS_TIMEOUT)
                 {
@@ -422,7 +427,7 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
         }
         else
         {
-            DNQ_INFO(DNQ_MOD_RABBITMQ, "recv content:");
+            UPGRADE_INFO( "recv content:");
             amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
             upgrade_msg_process(&envelope, conn);
             amqp_destroy_envelope(&envelope);
@@ -439,7 +444,7 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
     amqp_socket_t *socket = NULL;
     amqp_connection_state_t conn;
     amqp_queue_declare_ok_t *r = NULL;
-    channel_t  *pchnl = NULL;
+    upgrade_channel_t  *pchnl = NULL;
     
     conn = amqp_new_connection();
     *pconn = conn;
@@ -450,17 +455,17 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
     if(!socket)
         dnq_error(-1, "amqp_tcp_socket_new error!");
    
-    status = amqp_socket_open(socket, SERVER_IPADDR, SERVER_PORT);
+    status = amqp_socket_open(socket, serverip, port);
     if(status < 0)
         dnq_error(status, "amqp_socket_open error!");
 
-    DNQ_INFO(DNQ_MOD_RABBITMQ, "create new connecting! socket=%d, ip=%s, port=%d", \
-        status, SERVER_IPADDR, SERVER_PORT);
+    UPGRADE_INFO( "create new connecting! socket=%d, ip=%s, port=%d", \
+        status, serverip, port);
 
     die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 30, AMQP_SASL_METHOD_PLAIN, \
     username, password), "Logging in");
 
-    DNQ_INFO(DNQ_MOD_RABBITMQ, "Login success! user=%s, passwd=%s", username, password);
+    UPGRADE_INFO( "Login success! user=%s, passwd=%s", username, password);
 
 
     pchnl = upgrade_channel;
@@ -471,7 +476,7 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
         //create channel
         amqp_channel_open(conn, pchnl->chid);
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "Opening channel %d success!", pchnl->chid);
+        UPGRADE_INFO( "Opening channel %d success!", pchnl->chid);
 
         if(pchnl->chid == UPGRADE_CHNL_TX_ID)
         {
@@ -485,10 +490,10 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
                             0, /* auto delete */
                             0, /* internal */
                             amqp_empty_table);
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "exchange declare %s!", pchnl->exchange);
+        UPGRADE_INFO( "exchange declare %s!", pchnl->exchange);
 
         //queue declare
-        strcat(pchnl->qname, MAC_ADDR);
+        strcat(pchnl->qname, mac_addr);
         r = amqp_queue_declare(conn, 
                             pchnl->chid,
                             amqp_cstring_bytes(pchnl->qname),
@@ -499,11 +504,11 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
                             amqp_empty_table);
 
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "queue declare %s!", pchnl->qname);
+        UPGRADE_INFO( "queue declare %s!", pchnl->qname);
 
         
         //bind
-        strcpy(pchnl->rtkey, MAC_ADDR);
+        strcpy(pchnl->rtkey, mac_addr);
         amqp_queue_bind(conn, 
                         pchnl->chid, 
                         amqp_cstring_bytes(pchnl->qname), 
@@ -511,7 +516,7 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
                         amqp_cstring_bytes(pchnl->rtkey), 
                         amqp_empty_table);
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "queue %s bind on exchange=%s, rtkey=%s!", \
+        UPGRADE_INFO( "queue %s bind on exchange=%s, rtkey=%s!", \
             pchnl->qname, pchnl->exchange, pchnl->rtkey);
         }
     }
@@ -542,7 +547,7 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
     die_on_amqp_error(amqp_connection_close(conn, AMQP_REPLY_SUCCESS), "Closing connection");
     die_on_error(amqp_destroy_connection(conn), "Ending connection");
 
-    DNQ_ERROR(DNQ_MOD_RABBITMQ, "rabbitmq_init exit...");
+    UPGRADE_ERROR( "rabbitmq_init exit...");
     return 0;
 }
 
@@ -551,7 +556,7 @@ S32 uprade_rabbitmq_task()
 {
     while(1)
     {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg_thread start!");
+        UPGRADE_INFO( "msg_thread start!");
         uprade_rabbitmq_init(serverip, serverport, &g_conn);
         sleep(5);
     }
@@ -564,20 +569,17 @@ S32 dnq_upgrade_init()
     if(mem_pool)  /* already inited */
         return 0; 
     
-    pool = dnq_mempool_init(1024*1024);
-    if(!pool)
-        return -1;
-    
-    cJSON_Hooks hooks = {dnq_malloc, dnq_free};
-    cJSON_InitHooks(&hooks);
-    
     mem_pool = pool;
     return 0;
 }
 
 S32 dnq_upgrade_deinit()
 {
-    dnq_mempool_deinit(mem_pool);
     return 0;
+}
+
+int main()
+{
+    dnq_upgrade_init();
 }
 

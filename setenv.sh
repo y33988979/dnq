@@ -1,4 +1,7 @@
 
+export HardwareVersion=0x100
+export SoftwareVersion=0x101
+
 export TOP_DIR=$(pwd)
 cd src
 

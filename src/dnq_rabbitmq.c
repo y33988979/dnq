@@ -1617,12 +1617,12 @@ int msg_thread(char *serverip, int port, amqp_connection_state_t *pconn)
     if(!socket)
         dnq_error(-1, "amqp_tcp_socket_new error!");
    
-    status = amqp_socket_open(socket, SERVER_IPADDR, SERVER_PORT);
+    status = amqp_socket_open(socket, serverip, port);
     if(status < 0)
         dnq_error(status, "amqp_socket_open error!");
 
     DNQ_INFO(DNQ_MOD_RABBITMQ, "create new connecting! socket=%d, ip=%s, port=%d", \
-        status, SERVER_IPADDR, SERVER_PORT);
+        status, serverip, port);
 
     die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 30, AMQP_SASL_METHOD_PLAIN, \
     username, password), "Logging in");
