@@ -360,12 +360,12 @@ typedef struct client_room
 
 typedef struct client_config_room
 {
-    U32       room_id;
-    U32       degreePolicy;
-    U32       maxdegree;
-    U32       mindegree;
-    U32       error;
-    S32       correct;
+    U16       room_id;
+    U16       degreePolicy;
+    U16       maxdegree;
+    U16       mindegree;
+    U16       error;
+    S16       correct;
     U32       power;
     
 }client_room_config_t;
@@ -386,6 +386,7 @@ typedef struct client_loss
 
 typedef struct client_response
 {
+    U8        type[SIZE_32];
     U8        mac[SIZE_32];
     U8        status[SIZE_32];
 }client_response_t;

@@ -10,7 +10,7 @@
  
 
 #include <stdarg.h>
-#include "common.h"
+#include "dnq_common.h"
 #include "dnq_log.h"
 #include "dnq_os.h"
 

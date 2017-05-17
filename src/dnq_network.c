@@ -907,7 +907,14 @@ S32 dnq_dhcp_start(U8 *if_name)
     U8 cmd[64];
 
     sprintf(cmd, "udhcpc -i %s", if_name);
-    ret = system(cmd);
+
+    ret = dnq_system_call(cmd);
+    if(ret < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_NETWORK, "system exec failed! command=\"%s\"", cmd);
+        return -1;
+    }
+    return ret;
 }
 
 S32 dnq_dhcp_stop(U8 *if_name)
@@ -915,7 +922,12 @@ S32 dnq_dhcp_stop(U8 *if_name)
     S32 ret;
     U8 cmd[64] = "killall udhcpc";
 
-    ret = system(cmd);
+    ret = dnq_system_call(cmd);
+    if(ret < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_NETWORK, "system exec failed! command=\"%s\"", cmd);
+        return -1;
+    }
     return ret;
 }
 

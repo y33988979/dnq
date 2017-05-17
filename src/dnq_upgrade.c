@@ -1,50 +1,38 @@
-/* dnq upgrade Program
+/* dnq upgrd Program
  * 
  *  Copyright (c) 2017 yuchen
  *  Copyright 2017-2017 jiuzhoutech Inc.
  *  yuchen  <yuchen@jiuzhoutech.com, 382347665@qq.com>
  * 
- *  this is dnq upgrade Program.
+ *  this is dnq upgrd Program.
  * Note : 
  */
 
 
 #include "dnq_common.h"
+#include "dnq_os.h"
 #include "dnq_log.h"
 #include "dnq_upgrade.h"
+#include "dnq_checksum.h"
 #include "ngx_palloc.h"
 
+#include <fcntl.h>
 #include <stdarg.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <pthread.h>
+#include <semaphore.h>
+
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
 
-S32 dnq_debug(U32 lever, const char *fmt, ...);
 
-#define DBG_NONE      0
-#define DBG_ERROR     1
-#define DBG_WARN      2
-#define DBG_DEBUG     3
-#define DBG_INFO      4
-#define DBG_ALL       5
+#define UPGRD_INFO_LEN      16
 
-#define UPGRADE_ERROR( msg,...)  dnq_debug(DBG_ERROR, "[ERROR]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-#define UPGRADE_WARN( msg,...)   dnq_debug(DBG_WARN, "[WARN]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-#define UPGRADE_DEBUG( msg,...)  dnq_debug(DBG_DEBUG, "[DEBUG]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-#define UPGRADE_INFO( msg,...)   dnq_debug(DBG_DEBUG, "[INFO]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-
-
-#define UPGRADE_INFO_LEN      16
-
-#define UPGRADE_CHNL_TX_ID    10
-#define UPGRADE_CHNL_RX_ID    11
-
-typedef struct _upgrade_channel{
-	int chid;
-	char qname[32];
-	char exchange[32];
-	char rtkey[32];
-}upgrade_channel_t;
+#define UPGRD_CHNL_TX_ID    10
+#define UPGRD_CHNL_RX_ID    11
 
 static U8   serverip[] = "192.168.30.188";
 static U32  serverport = 6655;
@@ -52,53 +40,32 @@ static U8   mac_addr[] =  "70b3d5cf4924";
 static U8   username[] =  "host001";
 static U8   password[] =    "123456";
 static U8   g_dbg_lever = DBG_ERROR;
-static ngx_pool_t *mem_pool;
-upgrade_status_e upgrade_status = UPGRADE_WAIT;
+static upgrd_buffer_t  g_upgrd_buffer = {0};
+static sem_t  upgrd_sem;
+
+static U8   upgrd_info_desc[] = 
+    {0x47, 0x10, 0x00 ,0x02, 0x00, \
+    0xAA, 0xBB, 0xCC, 0xDD, 0xEE, \
+    0xFF, 0x01, 0x00, 0x01, 0x01, 0xCC, 0xCC};
+
+static upgrd_status_e upgrd_status = UPGRD_WAIT;
+static upgrd_info_t upgrd_info = {0};
 
 amqp_connection_state_t  g_conn;
-
-upgrade_channel_t upgrade_channel[2] = 
+upgrd_channel_t upgrd_channel[2] = 
 {
     /* host to server */
-    {UPGRADE_CHNL_TX_ID, "queue_cloud_callback", "exchange_cloud", "callback"},
+    {UPGRD_CHNL_TX_ID, "queue_cloud_callback", "exchange_cloud", "callback"},
     
     /* server to host */
-    {UPGRADE_CHNL_RX_ID, "hostupdate_", "exchange_host_update", ""}
+    {UPGRD_CHNL_RX_ID, "hostupdate_", "exchange_host_update", ""}
     
 };
 
-upgrade_channel_t *upgrade_channel_tx = &upgrade_channel[0];
-upgrade_channel_t *upgrade_channel_rx = &upgrade_channel[1];
+upgrd_channel_t *upgrd_channel_tx = &upgrd_channel[0];
+upgrd_channel_t *upgrd_channel_rx = &upgrd_channel[1];
 
-/**
-  * @brief  CRC16-IBM校验
-	* @param 	*addr需要校验数据首地址
-						 num 需要校验的数据长度
-	* @retval  计算得到的数据低位在前 高位在后
-  */  
-#define POLY 0x8005
-U16 crc16(U8 *addr, U32 num ,U32 crc)  
-{  
-    int i;  
-    //u16 crc=0;					//CRC16-IBM初值
-    U16 Over_crc=0;			//CRC16-IBM结果异或
-    for (; num > 0; num--)              /* Step through bytes in memory */  
-    {  
-        crc = crc ^ (*addr++ << 8);     /* Fetch byte from memory, XOR into CRC top byte*/  
-        for (i = 0; i < 8; i++)             /* Prepare to rotate 8 bits */  
-        {  
-            if (crc & 0x8000)            /* b15 is set... */  
-                crc = (crc << 1) ^ POLY;    /* rotate and XOR with polynomic */  
-            else                          /* b15 is clear... */  
-                crc <<= 1;                  /* just rotate */  
-        }                             /* Loop for 8 bits */  
-        crc =crc^Over_crc;                  /* Ensure CRC remains 16-bit value */  
-    }                               /* Loop until num=0 */  
-    return(crc);                    /* Return updated CRC */  
-}
-
-
-S32 dnq_debug(U32 lever, const char *fmt, ...)
+S32 upgrd_debug(U32 lever, const char *fmt, ...)
 {
     int n;
     int size = 1024;
@@ -119,15 +86,35 @@ S32 dnq_debug(U32 lever, const char *fmt, ...)
         va_end(ap);
     }
 
-    n = printf(dbg_buf, n);
+    //n = printf(dbg_buf, n);
         
     return n;
 }
     
+static void upgrd_info_reset()
+{
+    memset(&upgrd_info, 0, sizeof(upgrd_info_t));
+}
+
+static void get_upgrd_info(upgrd_info_t *info)
+{
+    if(!info)
+    {
+        memcpy(info, &upgrd_info, sizeof(upgrd_info_t));
+    }
+}
+
+static void save_upgrd_info(upgrd_info_t *info)
+{
+    if(!info)
+    {
+        memcpy(&upgrd_info, info, sizeof(upgrd_info_t));
+    }
+}
 
 S32 send_msg_to_server(
     amqp_connection_state_t conn,
-    upgrade_channel_t *pchnl,
+    upgrd_channel_t *pchnl,
     char *message)
 {
     S32 ret = -1;
@@ -147,163 +134,346 @@ S32 send_msg_to_server(
 	                                amqp_cstring_bytes(message)),
 	             "Publishing");
     if(ret == 0)
-        UPGRADE_INFO( "send success! chid=%d, ex=%s, key=%s",\
+        UPGRD_INFO( "send success! chid=%d, ex=%s, key=%s",\
         pchnl->chid, pchnl->exchange, pchnl->rtkey);
     else
-        UPGRADE_ERROR( "send failed! chid=%d, ex=%s, key=%s",\
+        UPGRD_ERROR( "send failed! chid=%d, ex=%s, key=%s",\
         pchnl->chid, pchnl->exchange, pchnl->rtkey);
     return ret;
 }
 
 S32 send_response_to_server(
     amqp_connection_state_t conn,
-    upgrade_channel_t *pchnl,
+    upgrd_channel_t *pchnl,
     S32 ret_code)
 {
     S32 ret = -1;
+    U8  message[256] = {0};
 
-    
+    /* A simple json data */
+    sprintf(message, "{type:\"upgrade\",MAC:\"%s\",status:%d}", mac_addr, ret_code);
     /* send response to server */
-
-
+    ret = send_msg_to_server(conn, pchnl, message);
     return ret;
 }
 
-static void upgrade_info_print(upgrade_info_t *info)
+/* call system function */
+static S32 system_call(U8 *command)
 {
-    UPGRADE_INFO( "tag:\t0x%x", info->tag);
-    UPGRADE_INFO( "type:\t%d", info->type);
-    UPGRADE_INFO( "mac:\t%02X:%02X:%02X:%02X:%02X:%02X", \
+    S32 status;
+
+    status = system(command);
+    
+    if (-1 == status)
+    {
+        printf(" system run error! err=%s\n", strerror(errno));
+		return -1;
+    }
+    else
+    {
+        //printf("[dnq_system_call] exit status value = [0x%x]\n", status);
+        if (WIFEXITED(status))
+        {
+            if (0 == WEXITSTATUS(status))
+            {
+                printf("[system_call]run shell script successfully.\n");
+                return 0;
+            }
+            else
+            {
+                printf("[system_call]run shell script fail, script exit code: %d\n", WEXITSTATUS(status));
+				return -1;
+            }
+        }
+        else
+        {
+            printf("[system_call]exit status = [%d]\n", WEXITSTATUS(status));
+			return -1;
+        }
+    }
+
+    return 0;
+}
+
+static S32 upgrd_data_decompress(U8 *filename)
+{
+    S32 ret;
+    U8  command[128] = {0};
+    U8  upgrade_file[64] = {0};
+    upgrd_info_t info;
+    
+    get_upgrd_info(&info);
+
+    if(info.file_type == FILE_TYPE_TAR_GZ)
+    {
+        /* step1: gunzip decompress */
+        strcpy(upgrade_file, filename);
+        strcat(upgrade_file, ".tar.gz");
+        sprintf(command, "gunzip -9fvk %s", upgrade_file);
+        UPGRD_INFO("decompress file.. \"%s\"", upgrade_file);
+        ret = system_call(command);
+        if(ret < 0)
+        {
+            UPGRD_ERROR("system exec failed! command=\"%s\"", command);
+            return -1;
+        }
+        UPGRD_INFO("done!", command);
+        
+        /* step2: unpack, tar xvf [filename]*/
+        strcpy(upgrade_file, filename);
+        strcat(upgrade_file, ".tar");
+        sprintf(command, "tar xvf %s", upgrade_file);
+        UPGRD_INFO("unpack file.. \"%s\"", upgrade_file);
+        ret = system_call(command);
+        if(ret < 0)
+        {
+            UPGRD_ERROR("system exec failed! command=\"%s\"", command);
+            return -1;
+        }
+        UPGRD_INFO("done!", command);
+    }
+    else if(info.file_type == FILE_TYPE_TAR_BZ2)
+    {
+        /* step1: gunzip decompress */
+        strcpy(upgrade_file, filename);
+        strcat(upgrade_file, ".tar.bz2");
+        sprintf(command, "bunzip2 -9fvsk %s", upgrade_file);
+        UPGRD_INFO("decompress file.. \"%s\"", upgrade_file);
+        ret = system_call(command);
+        if(ret < 0)
+        {
+            UPGRD_ERROR("system exec failed! command=\"%s\"", command);
+            return -1;
+        }
+        UPGRD_INFO("done!", command); 
+
+        /* step2: unpack, tar xvf [filename]*/
+        strcpy(upgrade_file, filename);
+        strcat(upgrade_file, ".tar");
+        sprintf(command, "tar xvf %s", upgrade_file);
+        UPGRD_INFO("unpack file.. \"%s\"", upgrade_file);
+        ret = system_call(command);
+        if(ret < 0)
+        {
+            UPGRD_ERROR("system exec failed! command=\"%s\"", command);
+            return -1;
+        }
+        UPGRD_INFO("done!", command);
+    }
+    
+    return 0;
+}
+
+static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
+{
+    S32 fd;
+    S32 ret;
+    S32 wlen;
+    S32 total_len = 0;
+    U8  upgrade_file[64] = {0};
+
+    upgrd_info_t info;
+    
+    get_upgrd_info(&info);
+
+    strcpy(upgrade_file, filename);
+    if(info.file_type == FILE_TYPE_TAR_GZ)
+        strcat(upgrade_file, ".tar.gz");
+    else if(info.file_type == FILE_TYPE_TAR_BZ2)
+        strcat(upgrade_file, ".tar.bz2");
+    else if(info.file_type == FILE_TYPE_TAR)
+        strcat(upgrade_file, ".tar");
+    else if(info.file_type == FILE_TYPE_ZIP)
+        strcat(upgrade_file, ".zip");
+    
+    UPGRD_INFO( "open upgrade file \"%s\"", upgrade_file);
+    fd = open(filename, O_CREAT|O_WRONLY);
+    if(fd < 0)
+    {
+        UPGRD_ERROR("open file \"%s\" failed! err=%s", filename, strerror(errno)); 
+        return -1;
+    }
+
+    wlen = data_len;
+    total_len = 0;
+    while(total_len < data_len)
+    {
+        wlen = write(fd, data+total_len, 4096);
+        if(wlen < 0)
+        {
+            UPGRD_ERROR("write file \"%s\" failed! err=%s", filename, strerror(errno)); 
+            close(fd);
+            return -1;
+        }
+        total_len += wlen;
+    }
+
+    close(fd);
+
+    UPGRD_INFO( "write upgrade file \"%s\" done!", upgrade_file);
+    if(total_len > data_len)
+        UPGRD_WARN("file write: writen total_len > data_len !"); 
+    return 0;
+}
+
+static void upgrd_info_print(upgrd_info_t *info)
+{
+    UPGRD_INFO( "tag:\t0x%x", info->tag);
+    UPGRD_INFO( "upgrade_type:\t%d", info->upgrade_type);
+    UPGRD_INFO( "file_type:\t%d", info->file_type);
+    UPGRD_INFO( "mac:\t%02X:%02X:%02X:%02X:%02X:%02X", \
         info->mac[0],info->mac[1],info->mac[2],\
         info->mac[3],info->mac[4],info->mac[5]);
-    UPGRADE_INFO( "hw_ver:\t0x%04x", info->hw_ver);
-    UPGRADE_INFO( "sw_ver:\t0x%04x", info->sw_ver);
-    UPGRADE_INFO( "crc_16:\t0x%08x", info->crc_16);
-    UPGRADE_INFO( "mode:\t%d", info->mode);
-    UPGRADE_INFO( "need_ver:\t%d", info->need_ver);
+    UPGRD_INFO( "hw_ver:\t0x%04x", info->hw_ver);
+    UPGRD_INFO( "sw_ver:\t0x%04x", info->sw_ver);
+    UPGRD_INFO( "crc_32:\t0x%08x", info->crc_32);
+    UPGRD_INFO( "mode:\t%d", info->mode);
+    UPGRD_INFO( "need_ver:\t%d", info->need_ver);
 }
 
-static S32 upgrade_data_check(U8 *data, U32 len)
+static S32 upgrd_data_check(U8 *data, U32 len)
 {
+    U32 calc_crc;
+    upgrd_info_t *info = (upgrd_info_t*)data;
     
+    calc_crc = crc32(0xFFFFFFFF, data, len);
+    if(calc_crc != info->crc_32)
+    {
+        UPGRD_ERROR("crc32 error! calc_crc=0x%08x, upgrd_crc=0x%08x", calc_crc, info->crc_32);
+        return ERR_CRC;
+    }
+
+    return 1;
 }
 
-static S32 upgrade_info_check(upgrade_info_t *info, U32 len)
+static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
 {
-    U32 upgrade_mode;
-    U32 upgrade_type;
+    U32 upgrd_mode;
+    U32 upgrd_type;
     U8  host_mac[8] = {0};
 
-    upgrade_info_print(info);
+    upgrd_info_print(info);
 
     /* check data lenght */
-    if(len != UPGRADE_INFO_LEN)
+    if(len != UPGRD_INFO_LEN)
     {
-        UPGRADE_ERROR( "upgrade_info lenght[%d] error! lenght should %d", \
-            len, UPGRADE_INFO_LEN);
+        UPGRD_ERROR( "upgrd_info lenght[%d] error! lenght should %d", \
+            len, UPGRD_INFO_LEN);
         return ERR_LENGHT;
     }
 
-    /* check upgrade tag */
-    if(info->tag != UPGRADE_TAG)
+    /* check upgrd tag */
+    if(info->tag != UPGRD_TAG)
     {
-        UPGRADE_ERROR( "upgrade_tag should be 0x%02x!", 0x47);
+        UPGRD_ERROR( "upgrd_tag should be 0x%02x!", 0x47);
         return ERR_TAG;
+    }
+
+    /* check upgrade type */
+    if(info->upgrade_type >= UPGRD_TYPE_MAX)
+    {
+        UPGRD_ERROR( "upgrade_type should be 0~%d!", UPGRD_TYPE_MAX-1);
+        return ERR_TYPE;
+    }
+
+    if(info->file_type >= FILE_TYPE_MAX)
+    {
+        UPGRD_ERROR( "file_type should be 0~%d!", FILE_TYPE_MAX-1);
+        return ERR_TYPE;
     }
     
     /* check hardware version */
     if(info->hw_ver != HWVER)
     {
-        UPGRADE_ERROR( "the hw_version is not match! \
-            host HWVER=0x%08x, upgrade HWVER=0x%08x", HWVER, info->hw_ver);
+        UPGRD_ERROR( "the hw_version is not match! \
+            host HWVER=0x%08x, upgrd HWVER=0x%08x", HWVER, info->hw_ver);
         return ERR_HWVER;
     }
 
     /* check mac addr */
     if(strncmp(host_mac, info->mac, 6) != 0)
     {
-        UPGRADE_ERROR( "the mac_addr is not match!");
-        UPGRADE_ERROR( "current mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
+        UPGRD_ERROR( "the mac_addr is not match!");
+        UPGRD_ERROR( "current mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
             host_mac[0],host_mac[1],host_mac[2],host_mac[3],host_mac[4],host_mac[5]); 
-        UPGRADE_ERROR( "upgrade mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
+        UPGRD_ERROR( "upgrd mac=0x%02X:0x%02X:0x%02X:0x%02X:0x%02X:0x%02X", \
             info->mac[0],info->mac[1],info->mac[2],info->mac[3],info->mac[4],info->mac[5]);
         return ERR_MAC;
     }
 
-    upgrade_mode = info->mode;
-    upgrade_type = info->type;
+    upgrd_mode = info->mode;
+    upgrd_type = info->upgrade_type;
     
     /* check software version */
-    if(upgrade_mode == 1)
+    if(upgrd_mode == 1)
     {
         /* 遇到高版本升级 */
         if(info->sw_ver <= SWVER)
         {
-            UPGRADE_ERROR( "uprade_mode:%d, Not need uprade! \
-                current SWVER=0x%08x, upgrade SWVER=0x%08x", upgrade_mode, SWVER, info->sw_ver);
-            return ERR_SWVER1;
+            UPGRD_ERROR( "upgrd_mode:%d, Not need upgrd! \
+                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, SWVER, info->sw_ver);
+            return ERR_SWVER;
         }
     }
-    else if(upgrade_mode == 2)
+    else if(upgrd_mode == 2)
     {
         /* 指定版本号升级 */
         if(info->need_ver != SWVER)
         {
-            UPGRADE_ERROR( "uprade_mode:%d, Not need uprade! \
-                current SWVER=0x%08x, upgrade SWVER=0x%08x", upgrade_mode, SWVER, info->sw_ver);
-            return ERR_SWVER2;
+            UPGRD_ERROR( "upgrd_mode:%d, Not need upgrd! \
+                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, SWVER, info->sw_ver);
+            return ERR_SWVER;
         }
     }
-
-    /* need upgrade */
-    UPGRADE_INFO( "uprade_mode:%d, need uprade soft!! \
-                current SWVER=0x%08x, upgrade SWVER=0x%08x", upgrade_mode, SWVER, info->sw_ver);
+    else
+    {
+        UPGRD_ERROR( "upgrd_mode error! mode=%d", upgrd_mode);
+        return ERR_MODE;
+    }
+    
+    /* need upgrd */
+    UPGRD_INFO( "upgrd_mode:%d,CRC:0x%08x  need upgrd soft!! \
+                current SWVER=0x%08x, upgrd SWVER=0x%08x",\
+                upgrd_mode, info->crc_32, SWVER, info->sw_ver);
+    /* save info */
+    save_upgrd_info(info);
                 
-    return upgrade_type;
+    return upgrd_type;
 }
 
-static U32 upgrade_msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
+static U32 upgrd_msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 {
     U32  ret = -1;
     U8  *msg = NULL;
     U32  msg_len = NULL;
-    U32  upgrade_type;
-    upgrade_channel_t   *pchnl = NULL;
+    upgrd_channel_t  *pchnl = upgrd_channel_tx; /* response channel */
 
     msg = penve->message.body.bytes;
     msg_len = penve->message.body.len;
 
-    switch(upgrade_status)
+    switch(upgrd_status)
     {
-        /* recv data, and check upgrade info */
-        case UPGRADE_WAIT:
-            
-            upgrade_type = upgrade_info_check((upgrade_info_t*)msg, msg_len);
-            if(upgrade_type < 0)
-                return -1;
-
-            upgrade_status = UPGRADE_READY;
-            
-        case UPGRADE_READY:
-            
-            upgrade_type = upgrade_data_check(msg, msg_len);
-            if(upgrade_type < 0)
-                return -1;
-
-            upgrade_status = UPGRADE_DATA_WRITE;
+        case UPGRD_WAIT:
+        case UPGRD_READY:
+            /* send data to upgrade_task */
+            ret = send_msg_to_upgrade(msg, msg_len);
+            break;
+        case UPGRD_DATA_CHECK:
+        case UPGRD_DATA_WRITE:
+        case UPGRD_DECOMPRESS:
+        case UPGRD_DONE:
+            /* soft is updating , return upgrade status to server */
+            ret = send_response_to_server(conn, pchnl, upgrd_status);
+            UPGRD_ERROR("soft is updating... message discard! len=%d.", msg_len);
+            break;
+        default:
+        break;        
     }
     
-    
-    
-    pchnl = upgrade_channel_tx; /* response  */
-    
-    /* send response to server */
-    send_response_to_server(conn, pchnl, 1); 
-
-    return 0;
+    return ret;
 }
 
-static S32 upgrade_wait_message(amqp_connection_state_t conn)
+static S32 upgrd_wait_message(amqp_connection_state_t conn)
 {
     amqp_frame_t frame;
     amqp_rpc_reply_t ret;
@@ -336,7 +506,7 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
         timeout.tv_usec = 0;
         ret = amqp_consume_message(conn, &envelope, &timeout, 0);
         if(ret.library_error != AMQP_STATUS_TIMEOUT)
-        UPGRADE_DEBUG( "recv msg! type=%d,%d, errno=%d", \
+        UPGRD_DEBUG( "recv msg! type=%d,%d, errno=%d", \
             ret.reply_type, frame.frame_type, ret.library_error);
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type)
@@ -344,10 +514,10 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
             if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
             AMQP_STATUS_UNEXPECTED_STATE == ret.library_error)
             {
-                UPGRADE_ERROR( "reply exception!");
+                UPGRD_ERROR( "reply exception!");
                 if (AMQP_STATUS_OK != amqp_simple_wait_frame(conn, &frame))
                 {
-                    UPGRADE_ERROR( "test2!");
+                    UPGRD_ERROR( "test2!");
                     return;
                 }
                 if (AMQP_FRAME_METHOD == frame.frame_type)
@@ -358,14 +528,14 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
                         /* if we've turned publisher confirms on, and we've published a message
                         * here is a message being confirmed
                         */
-                        UPGRADE_ERROR( "Received AMQP_BASIC_ACK_METHOD");
+                        UPGRD_ERROR( "Received AMQP_BASIC_ACK_METHOD");
                         break;
                         case AMQP_BASIC_RETURN_METHOD:
                         /* if a published message couldn't be routed and the mandatory flag was set
                         * this is what would be returned. The message then needs to be read.
                         */
                         {
-                            UPGRADE_ERROR( "Received AMQP_BASIC_RETURN_METHOD");
+                            UPGRD_ERROR( "Received AMQP_BASIC_RETURN_METHOD");
                             amqp_message_t message;
                             ret = amqp_read_message(conn, frame.channel, &message, 0);
                             if (AMQP_RESPONSE_NORMAL != ret.reply_type)
@@ -387,7 +557,7 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
                         * to the previous channel
                         */
 
-                        UPGRADE_ERROR( "Received AMQP_CHANNEL_CLOSE_METHOD");
+                        UPGRD_ERROR( "Received AMQP_CHANNEL_CLOSE_METHOD");
                         return;
 
                         case AMQP_CONNECTION_CLOSE_METHOD:
@@ -397,11 +567,11 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
                         * In this case the whole connection must be restarted.
                         */
 
-                        UPGRADE_ERROR( "Received  AMQP_CONNECTION_CLOSE_METHOD");
+                        UPGRD_ERROR( "Received  AMQP_CONNECTION_CLOSE_METHOD");
                         return;
 
                         default:
-                        UPGRADE_ERROR( "An unexpected method was received %d\n", frame.payload.method.id);
+                        UPGRD_ERROR( "An unexpected method was received %d\n", frame.payload.method.id);
                         fprintf(stderr ,"An unexpected method was received %d\n", frame.payload.method.id);
                         return;
                     }
@@ -409,7 +579,7 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
             }     
             else
             {
-                //UPGRADE_DEBUG( "error %d %d",\
+                //UPGRD_DEBUG( "error %d %d",\
                 //    ret.reply_type,ret.library_error);
                 if(ret.library_error != AMQP_STATUS_TIMEOUT)
                 {
@@ -427,9 +597,9 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
         }
         else
         {
-            UPGRADE_INFO( "recv content:");
+            UPGRD_INFO( "recv content:");
             amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
-            upgrade_msg_process(&envelope, conn);
+            upgrd_msg_process(&envelope, conn);
             amqp_destroy_envelope(&envelope);
         }
         received++;
@@ -437,14 +607,14 @@ static S32 upgrade_wait_message(amqp_connection_state_t conn)
     }
 }
 
-static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
+static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
 {
     int i = 0;
     int status;
     amqp_socket_t *socket = NULL;
     amqp_connection_state_t conn;
     amqp_queue_declare_ok_t *r = NULL;
-    upgrade_channel_t  *pchnl = NULL;
+    upgrd_channel_t  *pchnl = NULL;
     
     conn = amqp_new_connection();
     *pconn = conn;
@@ -459,26 +629,26 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
     if(status < 0)
         dnq_error(status, "amqp_socket_open error!");
 
-    UPGRADE_INFO( "create new connecting! socket=%d, ip=%s, port=%d", \
+    UPGRD_INFO( "create new connecting! socket=%d, ip=%s, port=%d", \
         status, serverip, port);
 
     die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 30, AMQP_SASL_METHOD_PLAIN, \
     username, password), "Logging in");
 
-    UPGRADE_INFO( "Login success! user=%s, passwd=%s", username, password);
+    UPGRD_INFO( "Login success! user=%s, passwd=%s", username, password);
 
 
-    pchnl = upgrade_channel;
+    pchnl = upgrd_channel;
 
     for(i=0; i<2; i++)
     {
-        pchnl = &upgrade_channel[i];
+        pchnl = &upgrd_channel[i];
         //create channel
         amqp_channel_open(conn, pchnl->chid);
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
-        UPGRADE_INFO( "Opening channel %d success!", pchnl->chid);
+        UPGRD_INFO( "Opening channel %d success!", pchnl->chid);
 
-        if(pchnl->chid == UPGRADE_CHNL_TX_ID)
+        if(pchnl->chid == UPGRD_CHNL_TX_ID)
         {
         //exchange declare
         amqp_exchange_declare(conn, /* 连接 */
@@ -490,7 +660,7 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
                             0, /* auto delete */
                             0, /* internal */
                             amqp_empty_table);
-        UPGRADE_INFO( "exchange declare %s!", pchnl->exchange);
+        UPGRD_INFO( "exchange declare %s!", pchnl->exchange);
 
         //queue declare
         strcat(pchnl->qname, mac_addr);
@@ -504,7 +674,7 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
                             amqp_empty_table);
 
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
-        UPGRADE_INFO( "queue declare %s!", pchnl->qname);
+        UPGRD_INFO( "queue declare %s!", pchnl->qname);
 
         
         //bind
@@ -516,12 +686,12 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
                         amqp_cstring_bytes(pchnl->rtkey), 
                         amqp_empty_table);
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
-        UPGRADE_INFO( "queue %s bind on exchange=%s, rtkey=%s!", \
+        UPGRD_INFO( "queue %s bind on exchange=%s, rtkey=%s!", \
             pchnl->qname, pchnl->exchange, pchnl->rtkey);
         }
     }
 
-    pchnl = &upgrade_channel[1];
+    pchnl = &upgrd_channel[1];
     //consume
     amqp_basic_consume(conn, 
                         pchnl->chid, 
@@ -536,50 +706,247 @@ static S32 uprade_rabbitmq_init(char *serverip, int port, amqp_connection_state_
     //purge
     amqp_queue_purge(conn, pchnl->chid, amqp_cstring_bytes(pchnl->qname));
 
-    upgrade_wait_message(conn);
+    upgrd_wait_message(conn);
 
     /* error close the channel */
     for(i=0; i<2; i++)
     {
-        pchnl = &upgrade_channel[i];
+        pchnl = &upgrd_channel[i];
         die_on_amqp_error(amqp_channel_close(conn, pchnl->chid, AMQP_REPLY_SUCCESS), "Closing channel");
     }
     die_on_amqp_error(amqp_connection_close(conn, AMQP_REPLY_SUCCESS), "Closing connection");
     die_on_error(amqp_destroy_connection(conn), "Ending connection");
 
-    UPGRADE_ERROR( "rabbitmq_init exit...");
+    UPGRD_ERROR( "rabbitmq_init exit...");
     return 0;
 }
 
 
-S32 uprade_rabbitmq_task()
+S32 rabbitmq_task()
 {
     while(1)
     {
-        UPGRADE_INFO( "msg_thread start!");
-        uprade_rabbitmq_init(serverip, serverport, &g_conn);
+        UPGRD_INFO( "msg_thread start!");
+        upgrd_rabbitmq_init(serverip, serverport, &g_conn);
         sleep(5);
     }
 }
 
-S32 dnq_upgrade_init()
+S32 send_msg_to_upgrade(U8 *msg, U32 len)
 {
-    ngx_pool_t * pool = NULL;
+    S32 ret;
     
-    if(mem_pool)  /* already inited */
-        return 0; 
+    g_upgrd_buffer.data = malloc(len+1);
+    if(g_upgrd_buffer.data == NULL)
+    {
+        UPGRD_ERROR("malloc failed: err=%s\n", strerror(errno));
+        return -1;
+    }
+    memcpy(g_upgrd_buffer.data, msg, len);
+    g_upgrd_buffer.data_len = len;
     
-    mem_pool = pool;
+    if(sem_post(&upgrd_sem) < 0)
+    {
+        UPGRD_ERROR("sem_post error: err=%s\n", strerror(errno));
+        return -1;
+    }
     return 0;
 }
 
-S32 dnq_upgrade_deinit()
+S32 recv_msg_timeout(U8 *msg, U32 timeout_ms)
+{
+    struct timespec ts;
+    struct timeval  tv;
+	U32 sec, msec, time;
+    U32 ret;
+    
+    time = timeout_ms;
+    gettimeofday(&tv, NULL);
+    sec = time / 1000;
+    msec = time - (sec * 1000);
+    tv.tv_sec += sec;
+    tv.tv_usec += msec * 1000;
+    sec = tv.tv_usec / 1000000;
+    tv.tv_usec = tv.tv_usec - (sec * 1000000);
+    tv.tv_sec += sec;
+    ts.tv_sec = tv.tv_sec;
+    ts.tv_nsec = ((long)tv.tv_usec*1000);
+    
+    if((ret=sem_timedwait(&upgrd_sem, &ts)) != 0)
+    {
+        if(errno != ETIMEDOUT)
+            UPGRD_ERROR("sem_timedwait error: err=%s\n", strerror(errno));
+        return -1;
+    }
+    
+    msg = g_upgrd_buffer.data;
+    return g_upgrd_buffer.data_len;
+}
+
+S32 upgrade_task()
+{
+    S32  ret;
+    S32  err_code = 0;
+    U8  *msg = NULL;
+    S32  len;
+    upgrd_channel_t *pchnl;
+    
+    pchnl = upgrd_channel_tx; /* response channel */
+
+    while(1)
+    {
+        len = recv_msg_timeout(msg, 1000);
+        if(len < 0)
+        {
+            continue;
+        }
+        
+        /* process upgrade message */
+        switch(upgrd_status)
+        {
+            /* check upgrd info */
+            case UPGRD_WAIT:
+
+                ret = upgrd_info_check((upgrd_info_t*)msg, len);
+                if(ret < 0)
+                    break;
+                
+                /* upgrade info correct, waiting upgrade data */
+                upgrd_status = UPGRD_READY;
+                break;
+
+            /* check upgrade data */
+            case UPGRD_READY:
+            case UPGRD_DATA_WRITE:
+            case UPGRD_DECOMPRESS:
+            case UPGRD_DONE:
+                ret = upgrd_data_check(msg, ret);
+                if(ret < 0)
+                {
+                    err_code = ERR_CRC;
+                    break;
+                }
+                
+                /* data correct, start write data to flash */
+                upgrd_status = UPGRD_DATA_WRITE;
+                ret = upgrd_data_write(UPGRD_FILE, msg, len);
+                if(ret < 0)
+                {
+                    err_code = ERR_WRITE;
+                    break;
+                }
+
+                /* write done, decompress and Override data.. */
+                upgrd_status = UPGRD_DECOMPRESS;
+                ret = upgrd_data_decompress(UPGRD_FILE);
+                if(ret < 0)
+                {
+                    err_code = ERR_DECOMPRESS;
+                    break;
+                }
+
+                /* upgrade done! */
+                upgrd_status = UPGRD_DONE;
+                err_code = 0;
+
+            break;
+            default:
+                UPGRD_ERROR("unknown upgrade status! status=%d.", upgrd_status);
+                break;
+        }
+
+        if(err_code < 0)
+        {
+            upgrd_info_reset();
+            upgrd_status = UPGRD_WAIT;
+            UPGRD_ERROR("upgrade error! err_code=%d !", err_code);
+        }
+
+        UPGRD_INFO("upgrade success! err_code=%d !", err_code);
+        /* send response to server */
+        send_response_to_server(g_conn, pchnl, err_code); 
+    }
+}
+
+S32 create_task(U8 *name, U32 stack_size, void *func, void *param)
+{
+    S32 ret;
+    pthread_t tid;
+    pthread_attr_t attr;
+    
+    ret = pthread_attr_init(&attr);
+    if (ret != 0)
+    {
+        UPGRD_ERROR("pthread_attr_init error: %s\n", strerror(errno));
+        return -1;
+    }
+
+    if (stack_size > 0)
+    {
+        ret = pthread_attr_setstacksize(&attr, stack_size);
+        if(ret != 0)
+        {
+            UPGRD_ERROR("pthread_attr_setstacksize error: %s\n", strerror(errno));
+            return -1;
+        }
+    }
+    
+    ret = pthread_create(&tid, &attr, func, param);
+    if(ret < 0)
+    {
+        UPGRD_ERROR("pthread_create error: %s\n", strerror(errno));
+        return -1;
+    }
+
+    ret = pthread_attr_destroy(&attr);
+    if(ret != 0)
+    {
+        UPGRD_ERROR("pthread_attr_destroy error: %s\n", strerror(errno));
+    }
+    UPGRD_INFO("Create task %s success!", name);
+    return 0;
+}
+
+S32 net_status_check()
+{
+    S32 ret;
+    
+    return ret;
+}
+
+S32 dnq_upgrd_init()
+{
+    S32  ret;
+    
+    if (sem_init(&upgrd_sem, 0, 0) == -1)
+    {
+        UPGRD_ERROR("sem_init ");
+        return -1;
+    }
+
+    
+    net_status_check();
+    
+    dnq_app_task_create("rabbitmq_task", 4*1024*1024,\
+        QUEUE_MSG_SIZE, 5, rabbitmq_task, NULL);
+    create_task("upgrade_task", 4*1024*1024, upgrade_task, NULL);
+
+    
+    while(1)
+    {
+        sleep(1);
+    }
+    
+    return 0;
+}
+
+S32 dnq_upgrd_deinit()
 {
     return 0;
 }
 
 int main()
 {
-    dnq_upgrade_init();
+    dnq_upgrd_init();
 }
 

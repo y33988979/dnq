@@ -1318,7 +1318,9 @@ S32 send_response_to_server(
     if(json_type == JSON_TYPE_AUTHORRIZATION)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: authorization");
+
         
+        strcpy(response.type, TYPE_STR_AUTHORRIZATION);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "authorization");
         
@@ -1329,6 +1331,8 @@ S32 send_response_to_server(
     else if(json_type == JSON_TYPE_TEMP_POLICY)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: policy");
+        
+        strcpy(response.type, TYPE_STR_TEMP_POLICY);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "policy");
         
@@ -1339,6 +1343,7 @@ S32 send_response_to_server(
     else if(json_type == JSON_TYPE_TEMP_LIMIT)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: limit");
+        strcpy(response.type, TYPE_STR_TEMP_LIMIT);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "limit");
         
@@ -1349,6 +1354,7 @@ S32 send_response_to_server(
     else if(json_type == JSON_TYPE_TEMP_ERROR)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: degree error");
+        strcpy(response.type, TYPE_STR_DEGREE_ERROR);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "error");
         
@@ -1359,6 +1365,7 @@ S32 send_response_to_server(
     else if(json_type == JSON_TYPE_POWER_CONFIG)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: power config");
+        strcpy(response.type, TYPE_STR_POWER_CONFIG);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "power");
         
@@ -1373,6 +1380,7 @@ S32 send_response_to_server(
     else if(json_type == JSON_TYPE_CORRECT)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: correct");
+        strcpy(response.type, TYPE_STR_CORRECT);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "correct");
         
@@ -1383,6 +1391,7 @@ S32 send_response_to_server(
     else if(json_type == JSON_TYPE_INIT)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: init");
+        strcpy(response.type, TYPE_STR_INIT);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "init");
         

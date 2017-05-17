@@ -11,41 +11,111 @@
 
 #include "dnq_common.h"
 #include "ngx_palloc.h"
+#include "dnq_checksum.h"
 #include "cJSON.h"
+
+#include <sys/time.h>
+#include <sys/types.h>  
+#include <sys/wait.h>
 
 static ngx_pool_t *mem_pool;
 
+static U32 init_time_ms = 0;
 
-/**
-  * @brief  CRC16-IBM校验
-	* @param 	*addr需要校验数据首地址
-						 num 需要校验的数据长度
-	* @retval  计算得到的数据低位在前 高位在后
-  */  
+S32 dnq_time_init()
+{
+    struct timeval   tv;
 
-U16 crc16(U8 *addr, U32 num ,U32 crc)  
-{  
-    int i;  
-    //u16 crc=0;					//CRC16-IBM初值
-    U16 Over_crc=0;			//CRC16-IBM结果异或
-    for (; num > 0; num--)              /* Step through bytes in memory */  
-    {  
-        crc = crc ^ (*addr++ << 8);     /* Fetch byte from memory, XOR into CRC top byte*/  
-        for (i = 0; i < 8; i++)             /* Prepare to rotate 8 bits */  
-        {  
-            if (crc & 0x8000)            /* b15 is set... */  
-                crc = (crc << 1) ^ POLY;    /* rotate and XOR with polynomic */  
-            else                          /* b15 is clear... */  
-                crc <<= 1;                  /* just rotate */  
-        }                             /* Loop for 8 bits */  
-        crc =crc^Over_crc;                  /* Ensure CRC remains 16-bit value */  
-    }                               /* Loop until num=0 */  
-    return(crc);                    /* Return updated CRC */  
+    if (gettimeofday(&tv, NULL) == 0)
+    {
+        init_time_ms =  tv.tv_sec*1000 + tv.tv_usec/1000;
+    }
+    else
+    {
+        perror("gettimeofday falied");
+        return -1;
+    }
+    return 0;
 }
+
+U32 dnq_time_now()
+{
+    struct timeval  tv;
+    U32 Clk = 1;	   /* Default value */
+
+    if (gettimeofday(&tv, NULL) == 0)
+    {
+        Clk =  tv.tv_sec*1000 + tv.tv_usec/1000;
+    }
+    else
+    {
+        perror("gettimeofday falied");
+    }
+
+    return Clk - init_time_ms;
+}
+
+U32 dnq_time_now_us()
+{
+    struct timeval   tv;
+    U32  Clk = 1;	  /* Default value */
+
+    if (gettimeofday(&tv, NULL) == 0)
+    {
+        Clk =  tv.tv_sec*1000*1000 + tv.tv_usec;
+    }
+    else
+    {
+        perror("gettimeofday falied");
+    }
+
+    return Clk - init_time_ms*1000;
+}
+
+S32 dnq_system_call(U8 *command)
+{
+    S32 status;
+
+    status = system(command);
+    
+    if (-1 == status)
+    {
+        printf(" system run error! err=%s\n", strerror(errno));
+		return -1;
+    }
+    else
+    {
+        //printf("[dnq_system_call] exit status value = [0x%x]\n", status);
+        if (WIFEXITED(status))
+        {
+            if (0 == WEXITSTATUS(status))
+            {
+                printf("[dnq_system_call]run shell script successfully.\n");
+                return 0;
+            }
+            else
+            {
+                printf("[dnq_system_call]run shell script fail, script exit code: %d\n", WEXITSTATUS(status));
+				return -1;
+            }
+        }
+        else
+        {
+            printf("[dnq_system_call]exit status = [%d]\n", WEXITSTATUS(status));
+			return -1;
+        }
+    }
+
+    return 0;
+}
+
 
 S32 dnq_init()
 {
     ngx_pool_t * pool = NULL;
+
+    dnq_time_init();
+    dnq_checksum_init();
     
     if(mem_pool)  /* already inited */
         return 0; 

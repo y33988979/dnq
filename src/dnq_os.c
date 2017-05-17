@@ -56,8 +56,22 @@ dnq_queue_t *dnq_queue_create(U32 queue_size)
     return queue;
 }
 
+/* 
+* 如果使用动态的msg size, 就需要将queue->msg->data设置成指针!
+* 创建队列时用这个接口: dnq_queue_create_ex(U32 element_size, U32 queue_size)
+* 
+* 但在消息传递的运用时，由于queue->msg->data是指针，需要在传递时需要指定data指针，
+* 不然copy消息时会有段错误，示例如下:
+* 
+* char buffer[128];
+* dnq_msg_t send_msg;
+* send_msg.data = buffer;
+*
+* dnq_msg_send(queue, &send_msg);
+*/
+
 #if 0
-dnq_queue_t *dnq_queue_create1(U32 element_size, U32 queue_size)
+dnq_queue_t *dnq_queue_create_ex(U32 element_size, U32 queue_size)
 {
     S32  i, ret;
     U32  malloc_size;
@@ -246,10 +260,10 @@ S32 dnq_msg_recv_timeout(dnq_queue_t *queue, dnq_msg_t *msg, U32 timeout)
 void *test1(void *args)
 {
     while(1) 
-        {
+    {
         printf("test thread!\n");
         sleep(2);
-        }
+    }
 }
 
 dnq_task_t* dnq_task_create(U8 *name, U32 stack_size, void *func, void *param)
@@ -364,7 +378,7 @@ dnq_appinfo_t * dnq_app_task_create(
         return NULL;
     }
 
-    appinfo->msg_size = msg_size;
+    appinfo->msg_size = msg_size; /* unused */
     appinfo->queue_size = queue_size;
     appinfo->queue = dnq_queue_create(queue_size);
     if(appinfo->queue == NULL)
