@@ -1816,9 +1816,10 @@ S32 dnq_rabbitmq_init()
     S32 ret;
     
     ret = dnq_config_init(&dnq_config);
-    
     ret = dnq_task_create("rabbitmq_task", 512*2048, rabbitmq_task, NULL);
-    return ret;
+    if(!ret) 
+        return -1;
+    return 0;
 }
 
 S32 dnq_rabbitmq_deinit()

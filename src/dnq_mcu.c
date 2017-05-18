@@ -84,6 +84,17 @@ static char g_rs232_databuf[5][64] =
         0x00,0x00,            /* CRC16 */
         0xFE,0xFF,0xFF,0xFE   /* frame footer */
     },
+
+    // 4: heartbeat
+    {
+        0xFF,0xFE,0xFE,0xFF,  /* frame header, 帧头 */
+        0xAA,                 /* Flag , 标志位*/
+        0x0D,                 /* data lenght, 数据长度 */
+        0xAA,                 /* get datetime flag */
+                             
+        0x00,0x00,            /* CRC16 */
+        0xFE,0xFF,0xFF,0xFE   /* frame footer */
+    },
     
 };
 
@@ -398,7 +409,7 @@ S32 dnq_room_get_temperature(U32 room_id)
 
     dnq_rs485_ctrl_high();
     printf("dnq_rs485_ctrl_high!\n");
-    ret = dnq_sensor_uart_write(cmdbuf, SENSOR_RESPONSE_LEN);
+    ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
     dnq_rs485_ctrl_low();
     printf("dnq_rs485_ctrl_low!\n");
     
@@ -415,14 +426,58 @@ S32 dnq_room_get_temperature(U32 room_id)
     return temperature;
 }
 
-sensor_task()
-{
 
+S32 dnq_mcu_heartbeat_check()
+{
+    S32 ret;
+    U8  recvbuf[64] = {0};
+    ret = send_cmd_to_mcu(CMD_ID_HEARTBEAT);
+    ret = recv_cmd_from_mcu(CMD_ID_HEARTBEAT, recvbuf, MCU_RESPONSE_LEN_HEART);
+    return ret;
+}
+
+S32 dnq_open_all_heater()
+{
+    S32 i;
+    S32 status[DNQ_ROOM_CNT];
+    
+    for(i=0;i<DNQ_ROOM_CNT;i++)
+    {
+        status[i] = HEATER_OPEN;
+    }
+    return dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, status);
+}
+
+S32 dnq_close_all_heater()
+{
+    S32 i;
+    S32 status[DNQ_ROOM_CNT];
+    
+    for(i=0;i<DNQ_ROOM_CNT;i++)
+    {
+        status[i] = HEATER_CLOSE;
+    }
+    return dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, status);
+}
+
+S32 dnq_heater_led_test()
+{
+    S32 i;
+    for(i=0; i<5; i++)
+    {
+        dnq_open_all_heater();
+        usleep(100*1000);
+        dnq_close_all_heater();
+        usleep(100*1000);
+        printf("dnq_close_all_heater\n");
+    }
 }
 
 S32 dnq_mcu_init()
 {
     dnq_rs485_ctrl_enable();
+    dnq_heater_led_test();
+    
     return 0;
 }
 

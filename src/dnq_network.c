@@ -982,9 +982,35 @@ void *network_task(void *args)
     }
 }
 
+S32 dnq_network_check()
+{
+    S32 link_status;
+    U32 ipaddr;
+    while(1)
+    {
+        ipaddr = dnq_net_get_ipaddr(ETH_NAME);
+        
+        link_status = dnq_net_get_link_status(ETH_NAME);
+        if(link_status == LINK_OFF)
+        {
+            
+        }
+
+        if(link_status == LINK_ON)
+        {
+            
+        }
+
+        dnq_dhcp_start(ETH_NAME);
+        
+        
+    }
+}
+
 S32 dnq_network_init()
 {
-    dnq_dhcp_start(ETH_NAME);
+
+    
     dnq_task_create("network", 32*2048, network_task, NULL);
     
     return 0;

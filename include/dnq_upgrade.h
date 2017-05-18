@@ -5,6 +5,8 @@
 #include <pthread.h>
 
 
+#define UPGRD_INFO_LEN      20
+
 #define UPGRD_FILE    "upgrade_file"
 #define UPGRD_TAG     0x47
 
@@ -56,7 +58,7 @@ typedef enum _upgrd_type
     UPGRD_TYPE_ENV,
     UPGRD_TYPE_KERNEL,
     //UPGRD_TYPE_ROOTFS,  /* Unsupport */
-    UPGRD_TYPE_APP,
+    UPGRD_TYPE_APP = 0x10,
     UPGRD_TYPE_DNQ_MANAGE,
     UPGRD_TYPE_DNQ_CONFIG,
     UPGRD_TYPE_DNQ_UPGRADE,
@@ -72,11 +74,21 @@ typedef enum _file_type
     FILE_TYPE_MAX
 }file_type_e;
 
-typedef struct _upgrd_buffer
+typedef enum _msg_type_e
 {
-    U8 *data;
+    UPGRD_MSG_TYPE_DESC,
+    UPGRD_MSG_TYPE_DATA
+
+}msg_type_e;
+
+typedef struct _upgrd_msg
+{
+    U32 type;
+    U8  msg[64];
+    U32 msg_len;
+    U8 *uparge_data;
     U32 data_len;
-}upgrd_buffer_t;
+}upgrd_msg_t;
 
 typedef struct _response
 {
@@ -103,7 +115,7 @@ typedef struct _upgrd_channel{
 }upgrd_channel_t;
 
 S32 send_msg_to_upgrade(U8 *msg, U32 len);
-S32 recv_msg_timeout(U8 *msg, U32 timeout_ms);
+S32 recv_msg_timeout(U8 **msg, U32 timeout_ms);
 S32 dnq_upgrd_init();
 S32 dnq_upgrd_deinit();
 

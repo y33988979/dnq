@@ -162,6 +162,13 @@ void amqp_dump(void const *buffer, size_t len)
   int showed_dots = 0;
   size_t i;
 
+  if(len > 512) {
+    printf("recv data is too long.. total %d bytes, only dump 1024 bytes!\n",
+        len);
+    len = 512;
+  }
+    
+
   for (i = 0; i < len; i++) {
     int ch = buf[i];
 

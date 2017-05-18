@@ -71,12 +71,13 @@ int main()
     MAIN_CHECK( dnq_mcu_init() );
 
     // rs485 test!
-    rs485_test();
+    //rs485_test();
     printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
-    sleep(1000);
+    //sleep(1000);
 
     MAIN_CHECK( dnq_lcd_init() );
     MAIN_CHECK( dnq_keypad_init() );
+    MAIN_CHECK( dnq_rabbitmq_init());
 
     queue = dnq_queue_create(QUEUE_SIZE_MAX);
     if(queue == NULL)

@@ -9,8 +9,8 @@
 #define HEATER_MODE_SWITCH     0xB1
 
 /* heater operate status value */
-#define HEATER_OPEN    0
-#define HEATER_CLOSE   1
+#define HEATER_OPEN    1
+#define HEATER_CLOSE   3
 
 #define HEATER_POWER_100   0
 #define HEATER_POWER_75    1
@@ -23,10 +23,11 @@
 /* mcu response data lenght */
 #define MCU_RESPONSE_LEN_REPLY    13
 #define MCU_RESPONSE_LEN_GETTIME  19
-#define MCU_RESPONSE_LEN_HEART    12
+#define MCU_RESPONSE_LEN_HEART    13
 
 /* sensor response data lenght */
 #define SENSOR_RESPONSE_LEN       13
+#define SENSOR_REQUEST_LEN        13
 
 /* error code */
 #define ERR_HEADER     -1
@@ -43,7 +44,8 @@ typedef enum cmd_id
     CMD_ID_CTRL_ALL,
     CMD_ID_CTRL_SINGLE,
     CMD_ID_SET_TIME,
-    CMD_ID_GET_TIME
+    CMD_ID_GET_TIME,
+    CMD_ID_HEARTBEAT
 }cmd_id_e;
 
 typedef struct uart_data
@@ -56,6 +58,8 @@ S32 dnq_mcu_init();
 S32 dnq_mcu_deinit();
 S32 dnq_heater_ctrl_single(U32 id, U32 mode, U32 value);
 S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array);
+S32 dnq_open_all_heater();
+S32 dnq_close_all_heater();
 S32 dnq_rtc_set_time(U8 *datetime);
 S32 dnq_rtc_get_time(U8 *datetime);
 S32 dnq_room_get_temperature(U32 room_id);

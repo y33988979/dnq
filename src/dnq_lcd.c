@@ -224,9 +224,9 @@ S32 lcd_items_init()
     i++;
 
 #if 1
-    DNQ_PRINT(DNQ_MOD_LCD, "items:\n id    addr\n");
+    DNQ_PRINT2(DNQ_MOD_LCD, "items:\n id    addr\n");
     for(j=0; j<i; j++)
-        DNQ_PRINT(DNQ_MOD_LCD, "%02d    0x%04x\n",items[j].id, items[j].addr);
+        DNQ_PRINT2(DNQ_MOD_LCD, "%02d    0x%04x\n",items[j].id, items[j].addr);
 #endif
     DNQ_INFO(DNQ_MOD_LCD, "all item init ok!");
     return 0;
