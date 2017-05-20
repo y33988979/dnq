@@ -38,6 +38,10 @@
 //#define LINK_OFF      0
 
 
+static host_net_info_t g_host_netinfo;
+static U8 g_server_ip[16] = {0};
+static U32 g_server_port = 5672;
+
 U16 ipcfg_htons(U16 n)
 {
     return ((n & 0xff) << 8) | ((n & 0xff00) >> 8);
@@ -885,11 +889,18 @@ U32 dnq_net_get_host_by_name(U8 *cname)
     struct hostent *p_hostent;
     char **pptr;
     struct in_addr ipaddr;
+    struct sockaddr *sa;    /* input */
+    socklen_t len;         /* input */
+    U8  hbuf[1024], sbuf[12];
 
     p_hostent = gethostbyname(cname);
+    //if (getnameinfo(sa, len, hbuf, sizeof(hbuf), sbuf,\
+    //    sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV) == 0)
+    //    printf("host=%s, serv=%s\n", hbuf, sbuf);
+    
     if(p_hostent == NULL)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get host by name error -- return null \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "gethostbyname error! errno=%d:%s\n",errno, strerror(errno));
         return 0;
     }
     else
@@ -978,8 +989,44 @@ void *network_task(void *args)
             last_status = current_status;
         }
 
-        usleep(300*1000);
+        dnq_usleep(300*1000);
     }
+}
+
+S32 dnq_get_server_ip(U8 *server_ip)
+{
+    if(server_ip)
+    {
+        strcpy(server_ip, g_server_ip);
+    }
+    return 0;
+}
+
+U32 dnq_get_server_port()
+{
+    return g_server_port;
+}
+
+S32 dnq_net_link_isgood()
+{
+    U32 server_ip;
+    U32 count = 4;
+    struct in_addr addr;
+    
+    while(count--)
+    {
+        server_ip = dnq_net_get_host_by_name(DNQ_SERVER_URL);
+        if(server_ip != 0)
+        {
+            addr.s_addr = server_ip;
+            strcpy(g_server_ip, inet_ntoa(addr));
+            return 1;/* link well*/
+        }   
+        dnq_msleep(500);        
+    }
+    
+    /* link bad */
+    return 0;
 }
 
 S32 dnq_network_check()
@@ -1007,10 +1054,24 @@ S32 dnq_network_check()
     }
 }
 
+S32 dnq_netinfo_init()
+{
+    S32 ret;
+    host_net_info_t *netinfo = &g_host_netinfo;
+    
+    strcpy(netinfo->if_name, ETH_NAME);
+    dnq_net_get_macaddr(netinfo->mac, ETH_NAME);
+    netinfo->ipaddr = dnq_net_get_ipaddr(ETH_NAME);
+    netinfo->mask = dnq_net_get_mask(ETH_NAME);
+    netinfo->gateway = dnq_net_get_gw_addr(ETH_NAME);
+    netinfo->dns = dnq_net_get_dns(ETH_NAME);
+    dnq_net_get_dns2(&netinfo->dns_ex);
+    return 0;
+}
+
 S32 dnq_network_init()
 {
-
-    
+    dnq_netinfo_init();
     dnq_task_create("network", 32*2048, network_task, NULL);
     
     return 0;
@@ -1047,7 +1108,10 @@ S32 network_test()
     dnq_net_get_macaddr(ETH_NAME, mac);
     DNQ_INFO(DNQ_MOD_NETWORK, "mac: %02x:%02x:%02x:%02x:%02x:%02x",\
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    
+
+    addr.s_addr = dnq_net_get_host_by_name(DNQ_SERVER_URL);
+    DNQ_INFO(DNQ_MOD_NETWORK, "the url: %s to ipaddr: %s",\
+        DNQ_SERVER_URL, inet_ntoa(addr));
     return 0;
 }
 

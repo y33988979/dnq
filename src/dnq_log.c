@@ -114,7 +114,7 @@ void dnq_debug_control()
         ptr = fgets(cmdline, sizeof(cmdline), stdin);
         if(ptr == NULL)
         {
-            usleep(200*1000);
+            dnq_msleep(200);
             continue;
         }
 

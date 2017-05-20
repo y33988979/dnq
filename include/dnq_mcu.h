@@ -54,15 +54,28 @@ typedef struct uart_data
     char data[64];
 }uart_data_t;
 
+typedef struct _datatime
+{
+    U8  year;
+    U8  month;
+    U8  day;
+    U8  hour;
+    U8  minute;
+    U8  second;
+}datetime_t;
+
 S32 dnq_mcu_init();
 S32 dnq_mcu_deinit();
 S32 dnq_heater_ctrl_single(U32 id, U32 mode, U32 value);
 S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array);
 S32 dnq_open_all_heater();
 S32 dnq_close_all_heater();
-S32 dnq_rtc_set_time(U8 *datetime);
-S32 dnq_rtc_get_time(U8 *datetime);
-S32 dnq_room_get_temperature(U32 room_id);
+S32 dnq_rtc_set_datetime(datetime_t *datetime);
+S32 dnq_rtc_get_datetime(datetime_t *datetime);
+S32 dnq_rtc_get_datetime_str(U8 *datetime);
+U32 dnq_current_time();
+void dnq_current_datetime(datetime_t *datetime);
+S32 dnq_get_room_temperature(U32 room_id);
 
 #endif /* _DNQ_MCU_H_ */
 

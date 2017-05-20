@@ -52,7 +52,7 @@ void *send_test(void *args)
 
         printf("send msg!!\n");
         n += 100;
-        usleep(100*1000);
+        dnq_msleep(100);
         if(cnt++ % 5 == 0)
             sleep(60);
     }
@@ -70,14 +70,18 @@ int main()
     MAIN_CHECK( dnq_uart_init() );
     MAIN_CHECK( dnq_mcu_init() );
 
-    // rs485 test!
+    //dnq_debug_setlever(1,5);
+    
     //rs485_test();
-    printf("sizeof(dnq_config_t)==%d\n", sizeof(dnq_config_t));
     //sleep(1000);
+
+    network_test();
+    sleep(1000);
 
     MAIN_CHECK( dnq_lcd_init() );
     MAIN_CHECK( dnq_keypad_init() );
-    MAIN_CHECK( dnq_rabbitmq_init());
+    //MAIN_CHECK( dnq_rabbitmq_init());
+    MAIN_CHECK( dnq_manage_init() );
 
     queue = dnq_queue_create(QUEUE_SIZE_MAX);
     if(queue == NULL)

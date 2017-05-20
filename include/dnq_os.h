@@ -70,6 +70,10 @@ typedef struct dnq_appinfo
 
 }dnq_appinfo_t;
 
+void dnq_usleep(U32 time_us);
+void dnq_msleep(U32 time_ms);
+void dnq_sleep(U32 second);
+
 dnq_queue_t *dnq_queue_create(U32 queue_size);
 dnq_queue_t *dnq_queue_create1(U32 element_size, U32 queue_size);
 void dnq_queue_delete(dnq_queue_t *queue);

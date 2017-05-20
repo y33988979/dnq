@@ -261,7 +261,7 @@ S32 dnq_config_save_file(U8 *file_name, U8 *data, U32 len)
         ret = json_file_write(file_name, data, len);
         if(ret == len)
             break;
-        usleep(200*1000);
+        dnq_msleep(200);
     }
     
     return ret;
@@ -1467,8 +1467,11 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     /* send response to server */
     send_response_to_server(conn, pchnl, json_type);    
 
-    sendmsg.Class = MSG_CLASS_MANAGE;
-    sendmsg.code = DNQ_CONFIG_UPDATE;
+    
+    sendmsg.Class = MSG_CLASS_RABBITMQ;
+    sendmsg.code = json_type;
+    sendmsg.code = json_type;
+    
     send_msg_to_manage(&sendmsg);
 
     return 0;
@@ -1604,11 +1607,11 @@ int run(amqp_connection_state_t conn)
             amqp_destroy_envelope(&envelope);
         }
         received++;
-        usleep(100*1000);
+        dnq_msleep(100);
     }
 }
 
-int msg_thread(char *serverip, int port, amqp_connection_state_t *pconn)
+int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
 {
     int i = 0;
     int status;
@@ -1637,7 +1640,6 @@ int msg_thread(char *serverip, int port, amqp_connection_state_t *pconn)
     username, password), "Logging in");
 
     DNQ_INFO(DNQ_MOD_RABBITMQ, "Login success! user=%s, passwd=%s", username, password);
-
 
     pchnl = &channels[0];
 
@@ -1726,9 +1728,15 @@ int rabbitmq_task()
 {
     while(1)
     {
+        if(!dnq_net_link_isgood())
+        {
+            sleep(3);
+            continue;
+        }
+        dnq_get_server_ip(serverip);
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg_thread start!");
-        msg_thread(serverip, serverport, &g_conn);
-        sleep(3);
+        rabbitmq_init(serverip, serverport, &g_conn);
+        
     }
 }
 
@@ -1816,7 +1824,7 @@ S32 dnq_rabbitmq_init()
     S32 ret;
     
     ret = dnq_config_init(&dnq_config);
-    ret = dnq_task_create("rabbitmq_task", 512*2048, rabbitmq_task, NULL);
+    ret = dnq_task_create("rabbitmq_task", 512*1024, rabbitmq_task, NULL);
     if(!ret) 
         return -1;
     return 0;

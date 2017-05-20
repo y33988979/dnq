@@ -88,6 +88,12 @@ S32 upgrd_debug(U32 lever, const char *fmt, ...)
         
     return n;
 }
+
+static void upgrd_msg_reset()
+{
+    memset(&g_upgrd_msg, 0, sizeof(upgrd_msg_t));
+    g_upgrd_msg.data = g_upgrd_msg.msg;
+}
     
 static void upgrd_info_reset()
 {
@@ -96,7 +102,7 @@ static void upgrd_info_reset()
 
 static void get_upgrd_info(upgrd_info_t *info)
 {
-    if(!info)
+    if(info)
     {
         memcpy(info, &upgrd_info, sizeof(upgrd_info_t));
     }
@@ -104,7 +110,7 @@ static void get_upgrd_info(upgrd_info_t *info)
 
 static void save_upgrd_info(upgrd_info_t *info)
 {
-    if(!info)
+    if(info)
     {
         memcpy(&upgrd_info, info, sizeof(upgrd_info_t));
     }
@@ -207,28 +213,36 @@ static S32 upgrd_data_decompress(U8 *filename)
         /* step1: gunzip decompress */
         strcpy(upgrade_file, filename);
         strcat(upgrade_file, ".tar.gz");
-        sprintf(command, "gunzip -9fvk %s", upgrade_file);
+        //linux_x64
+        //sprintf(command, "gunzip -9fvk %s", upgrade_file);
+        //arm_linux
+        sprintf(command, "cp -fr %s ./11.tar.gz", upgrade_file);
+        system_call(command);
+        sprintf(command, "gunzip -f %s", upgrade_file);
+        
         UPGRD_INFO("decompress file.. \"%s\"", upgrade_file);
+        UPGRD_INFO("system call--> %s", command);
         ret = system_call(command);
         if(ret < 0)
         {
             UPGRD_ERROR("system exec failed! command=\"%s\"", command);
             return -1;
         }
-        UPGRD_INFO("done!", command);
+        UPGRD_INFO("decompress done!", command);
         
         /* step2: unpack, tar xvf [filename]*/
         strcpy(upgrade_file, filename);
         strcat(upgrade_file, ".tar");
         sprintf(command, "tar xvf %s", upgrade_file);
         UPGRD_INFO("unpack file.. \"%s\"", upgrade_file);
+        UPGRD_INFO("system call-->%s", command);
         ret = system_call(command);
         if(ret < 0)
         {
             UPGRD_ERROR("system exec failed! command=\"%s\"", command);
             return -1;
         }
-        UPGRD_INFO("done!", command);
+        UPGRD_INFO("unpack done!", command);
     }
     else if(info.file_type == FILE_TYPE_TAR_BZ2)
     {
@@ -237,26 +251,28 @@ static S32 upgrd_data_decompress(U8 *filename)
         strcat(upgrade_file, ".tar.bz2");
         sprintf(command, "bunzip2 -9fvsk %s", upgrade_file);
         UPGRD_INFO("decompress file.. \"%s\"", upgrade_file);
+        UPGRD_INFO("system call-->%s", command);
         ret = system_call(command);
         if(ret < 0)
         {
             UPGRD_ERROR("system exec failed! command=\"%s\"", command);
             return -1;
         }
-        UPGRD_INFO("done!", command); 
+        UPGRD_INFO("decompress done!", command); 
 
         /* step2: unpack, tar xvf [filename]*/
         strcpy(upgrade_file, filename);
         strcat(upgrade_file, ".tar");
         sprintf(command, "tar xvf %s", upgrade_file);
         UPGRD_INFO("unpack file.. \"%s\"", upgrade_file);
+        UPGRD_INFO("system call-->%s", command);
         ret = system_call(command);
         if(ret < 0)
         {
             UPGRD_ERROR("system exec failed! command=\"%s\"", command);
             return -1;
         }
-        UPGRD_INFO("done!", command);
+        UPGRD_INFO("unpack done!", command);
     }
     
     return 0;
@@ -266,7 +282,7 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
 {
     S32 fd;
     S32 ret;
-    S32 wlen;
+    S32 wlen, nwrite;
     S32 total_len = 0;
     U8  upgrade_file[64] = {0};
 
@@ -285,10 +301,11 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
         strcat(upgrade_file, ".zip");
     
     UPGRD_INFO( "open upgrade file \"%s\"", upgrade_file);
-    fd = open(filename, O_CREAT|O_WRONLY);
+    fd = open(upgrade_file, O_CREAT|O_WRONLY);
     if(fd < 0)
     {
-        UPGRD_ERROR("open file \"%s\" failed! err=%s", filename, strerror(errno)); 
+        UPGRD_ERROR("open file \"%s\" failed! err=%s", \
+            upgrade_file, strerror(errno)); 
         return -1;
     }
 
@@ -296,21 +313,29 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
     total_len = 0;
     while(total_len < data_len)
     {
-        wlen = write(fd, data+total_len, 4096);
-        if(wlen < 0)
+        printf("data=0x%08x, len=%d\n", data, total_len);
+        if(data_len-total_len > 1024)
+            wlen = 1024;
+        else
+            wlen = data_len-total_len;
+        
+        nwrite = write(fd, data+total_len, wlen);
+        if(nwrite < 0)
         {
-            UPGRD_ERROR("write file \"%s\" failed! err=%s", filename, strerror(errno)); 
+            UPGRD_ERROR("write file \"%s\" failed! err=%s", \
+                upgrade_file, strerror(errno)); 
             close(fd);
             return -1;
         }
-        total_len += wlen;
+        total_len += nwrite;
     }
 
     close(fd);
 
     UPGRD_INFO( "write upgrade file \"%s\" done!", upgrade_file);
     if(total_len > data_len)
-        UPGRD_WARN("file write: writen total_len > data_len !"); 
+        UPGRD_WARN("file write: writen total_len[%d] > data_len[%d] !",\
+        total_len, data_len); 
     return 0;
 }
 
@@ -666,6 +691,8 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
                             amqp_empty_table);
         UPGRD_INFO( "exchange declare %s!", pchnl->exchange);
 
+        printf("mac_addr=%s\n", mac_addr);
+        printf("pchnl->qname=%s\n", pchnl->qname);
         //queue declare
         strcat(pchnl->qname, mac_addr);
         r = amqp_queue_declare(conn, 
@@ -680,7 +707,6 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
         UPGRD_INFO( "queue declare %s!", pchnl->qname);
 
-        
         //bind
         strcpy(pchnl->rtkey, mac_addr);
         amqp_queue_bind(conn, 
@@ -732,31 +758,33 @@ S32 rabbitmq_task()
     {
         UPGRD_INFO( "msg_thread start!");
         upgrd_rabbitmq_init(serverip, serverport, &g_conn);
-        sleep(5);
+        sleep(15);
     }
 }
 
 S32 send_msg_to_upgrade(U8 *msg, U32 len)
 {
     S32 ret;
+    upgrd_msg_t *upgrd_msg = &g_upgrd_msg; /* used global buffer */
 
-    //if(len < 256)
-    //if(msg->type == UPGRD_MSG_TYPE_DESC)
-        {
-
-    }
-    //else
-        {
-    
-    }
-    g_upgrd_msg.uparge_data = malloc(len+1);
-    if(g_upgrd_msg.uparge_data == NULL)
+    /* small buffer */
+    if(len < UPGRD_MSG_LEN_MAX)
     {
-        UPGRD_ERROR("malloc failed: err=%s\n", strerror(errno));
-        return -1;
+        upgrd_msg->data_len = len;
+        upgrd_msg->data = upgrd_msg->msg;
+        memcpy(upgrd_msg->msg, msg, len);
     }
-    memcpy(g_upgrd_msg.uparge_data, msg, len);
-    g_upgrd_msg.data_len = len;
+    else /* large buffer */
+    {
+        upgrd_msg->data = malloc(len+1);
+        if(upgrd_msg->data == NULL)
+        {
+            UPGRD_ERROR("malloc failed: err=%s\n", strerror(errno));
+            return -1;
+        }
+        memcpy(upgrd_msg->data, msg, len);
+        upgrd_msg->data_len = len;
+    }
 
     if(sem_post(&upgrd_sem) < 0)
     {
@@ -793,7 +821,7 @@ S32 recv_msg_timeout(U8 **msg, U32 timeout_ms)
         return -1;
     }
 
-    *msg = g_upgrd_msg.uparge_data;
+    *msg = g_upgrd_msg.data;
 
     return g_upgrd_msg.data_len;
 }
@@ -841,7 +869,7 @@ S32 upgrade_task()
             case UPGRD_DATA_WRITE:
             case UPGRD_DECOMPRESS:
             case UPGRD_DONE:
-                ret = upgrd_data_check(msg, ret);
+                ret = upgrd_data_check(msg, len);
                 if(ret < 0)
                 {
                     err_code = ERR_CRC;
@@ -850,6 +878,7 @@ S32 upgrade_task()
                 
                 /* data correct, start write data to flash */
                 upgrd_status = UPGRD_DATA_WRITE;
+                printf("msg= 0x%08x, len=%d\n", msg, len);
                 ret = upgrd_data_write(UPGRD_FILE, msg, len);
                 if(ret < 0)
                 {
@@ -884,6 +913,7 @@ S32 upgrade_task()
             UPGRD_ERROR("upgrade error! err_code=%d !", err_code);
         }
 
+        upgrd_msg_reset();
         UPGRD_INFO("upgrade success! err_code=%d !", err_code);
         /* send response to server */
         send_response_to_server(g_conn, pchnl, err_code); 
@@ -960,7 +990,6 @@ S32 dnq_upgrd_init()
     dnq_app_task_create("rabbitmq_task", 4*1024*1024,\
         QUEUE_MSG_SIZE, 5, rabbitmq_task, NULL);
     create_task("upgrade_task", 4*1024*1024, upgrade_task, NULL);
-
 
     
     while(1)

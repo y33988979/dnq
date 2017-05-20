@@ -7,7 +7,7 @@
 #define DNQ_TEMP_ADJUST_STEP       0.5
 #define DNQ_CORRECT_ADJUST_STEP    1
 
-#define DNQ_WEB_URL   "http://iot.wiseheater.com/"
+#define DNQ_SERVER_URL   "iot.wiseheater.com"
 
 
 /*

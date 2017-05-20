@@ -6,7 +6,7 @@
 
 #define ETH_NAME  "eth0"
 
-typedef enum net_status
+typedef enum _net_status
 {
     LINK_OFF,
     LINK_ON,
@@ -14,6 +14,21 @@ typedef enum net_status
     IP_BOUND,
     IP_LOST,
 }net_status_e;
+
+typedef struct _host_net_info
+{
+    U8  if_name[6];
+    U8  mac[6];
+    U32 ipaddr;
+    U32 mask;
+    U32 gateway;
+    U32 broadcast;
+    U32 route;
+    U32 dns;
+    U32 dns_ex;
+    U32 server_ip;
+    U32 port;
+}host_net_info_t;
 
 typedef void (*netlink_callback)(net_status_e status);
 void netlink_callback_enable(netlink_callback callback);
@@ -36,6 +51,8 @@ S32 dnq_net_set_macaddr(U8 *if_name, U8 *mac_addr);
 S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr);
 S32 dnq_net_get_link_status(U8 *if_name);
 U32 dnq_net_get_host_by_name(U8 *cname);
+S32 dnq_net_link_isgood();
+S32 dnq_network_check();
 S32 dnq_network_init();
 S32 dnq_network_deinit();
 

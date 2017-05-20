@@ -7,6 +7,7 @@
 
 #define UPGRD_INFO_LEN      20
 
+#define ROOT_PATH     "/root/"
 #define UPGRD_FILE    "upgrade_file"
 #define UPGRD_TAG     0x47
 
@@ -44,7 +45,7 @@ typedef struct _upgrd_info
     U8  tag;           /* upgrd tag, 0x47 */
     U8  upgrade_type;  /* upgrd type, 0x10:app 0x11:kernel: 0x12:rootfs 0x13:data */
     U8  file_type;     /* compress type, 0:tar  1:tar.gz  2:tar.bz2  3:zip*/
-    U8  mode;          /* 1:指定版本升级 2:高版本升级 */
+    U8  mode;          /* 1:高版本升级 2:指定版本升级 */
     U16 need_ver;      /* control=1时, 软件版本号为need_ver的主机升级 */
     U8  mac[6];        /* host mac addr */
     U16 hw_ver;        /* hardware version */
@@ -81,13 +82,13 @@ typedef enum _msg_type_e
 
 }msg_type_e;
 
+#define UPGRD_MSG_LEN_MAX  512
 typedef struct _upgrd_msg
 {
-    U32 type;
-    U8  msg[64];
-    U32 msg_len;
-    U8 *uparge_data;
-    U32 data_len;
+    U32 type;          /* msg type */
+    U8  msg[UPGRD_MSG_LEN_MAX];   /* small memory */
+    U8 *data;          /* malloc a large memory or point to msg */
+    U32 data_len;      /* data lenght */
 }upgrd_msg_t;
 
 typedef struct _response

@@ -17,12 +17,14 @@
 #include "ngx_palloc.h"
 #include "dnq_gpio.h"
 #include "dnq_uart.h"
+#include "dnq_os.h"
 #include "dnq_log.h"
+#include "dnq_lcd.h"
 #include "dnq_mcu.h"
-
 
 static uart_data_t *g_databuf_ctrlall;
 static uart_data_t *g_databuf_ctrlsingle;
+static datetime_t g_datatime;
 
 static char g_rs232_databuf[5][64] =
 {
@@ -88,9 +90,9 @@ static char g_rs232_databuf[5][64] =
     // 4: heartbeat
     {
         0xFF,0xFE,0xFE,0xFF,  /* frame header, 帧头 */
-        0xAA,                 /* Flag , 标志位*/
+        0xA0,                 /* 控制命令 */
         0x0D,                 /* data lenght, 数据长度 */
-        0xAA,                 /* get datetime flag */
+        0xB3,                 /* CPU is normal */
                              
         0x00,0x00,            /* CRC16 */
         0xFE,0xFF,0xFF,0xFE   /* frame footer */
@@ -112,17 +114,19 @@ static char g_rs485_cmdbuf[2][64] =
     },
 };
 
-S32 cmdbuf_update_time(cmd_id_e cmd_id, U8 *datetime)
+char u[] = "FF FE FE FF F0 0D 00 26 BB FE FF FF FE";
+
+S32 cmdbuf_update_time(cmd_id_e cmd_id, datetime_t *datetime)
 {
     U32  pos = 0;
     char *cmdbuf = g_rs232_databuf[cmd_id];
 
-    cmdbuf[7] = datetime[0];
-    cmdbuf[8] = datetime[1];
-    cmdbuf[9] = datetime[2];
-    cmdbuf[10] = datetime[3];
-    cmdbuf[11] = datetime[4];
-    cmdbuf[12] = datetime[5];
+    cmdbuf[7] = datetime->year;
+    cmdbuf[8] = datetime->month;
+    cmdbuf[9] = datetime->day;
+    cmdbuf[10] = datetime->hour;
+    cmdbuf[11] = datetime->minute;
+    cmdbuf[12] = datetime->second;
     return 0;
 }
 
@@ -140,6 +144,9 @@ S32 cmdbuf_update_crc(cmd_id_e cmd_id)
         pos = 13;
     else if(cmd_id == CMD_ID_GET_TIME)
         pos = 7;
+    else if(cmd_id == CMD_ID_HEARTBEAT)
+        pos = 7;
+    
     crc_value = crc16(cmdbuf, cmdbuf[5]-6, 0);
     cmdbuf[pos] = crc_value>>8 & 0xFF;
     cmdbuf[pos+1] = crc_value & 0xFF;
@@ -226,24 +233,46 @@ S32 recv_data_verify(cmd_id_e cmd_id, U8 *data, U32 len)
                  || (data[12] < 0) ||(data[12] > 59))
                  error_code = ERR_TIME;
             break;
+        case CMD_ID_HEARTBEAT:
+            CRC2 = (data[7]&0xFF)<<8 | data[8]&0xFF;
+            flag = data[4];
+            value = data[6];
+            
+            if(CRC1 != CRC2)
+                error_code = ERR_CRC;
+            else if(value > 0x12 || value < 0x10)
+                error_code =  ERR_VALUE;
+            break;
         default:
-            DNQ_ERROR(DNQ_MOD_MCU, "error command type[%d]! type should be 0~3!", cmd_id);
+            DNQ_ERROR(DNQ_MOD_MCU, "error command type[%d]! \
+                type should be 0~4!", cmd_id);
+            return -1;
             break;
     }
     
-
     if(error_code == 0)
         return 0;
-    
+
+    if(CMD_ID_CTRL_ALL == cmd_id)
+        DNQ_ERROR(DNQ_MOD_MCU, "ctrl all room response:");
+    else if(CMD_ID_CTRL_SINGLE == cmd_id)
+        DNQ_ERROR(DNQ_MOD_MCU, "ctrl all room response:");
+    else if(CMD_ID_SET_TIME== cmd_id)
+        DNQ_ERROR(DNQ_MOD_MCU, "set datetime response:");
+    else if(CMD_ID_GET_TIME == cmd_id)
+        DNQ_ERROR(DNQ_MOD_MCU, "set datetime response:");
+    else if(CMD_ID_HEARTBEAT== cmd_id)
+        DNQ_ERROR(DNQ_MOD_MCU, "heartbeat response:");
+                
     if(error_code == ERR_CRC)
         DNQ_ERROR(DNQ_MOD_MCU, "crc error! crc1=%d, crc2=%d!", CRC1, CRC2);
-    if(error_code == ERR_FLAG)
+    else if(error_code == ERR_FLAG)
         DNQ_ERROR(DNQ_MOD_MCU, "flag error! flag=%d!", flag);
-    if(error_code == ERR_VALUE)
+    else if(error_code == ERR_VALUE)
         DNQ_ERROR(DNQ_MOD_MCU, "value error! value=%d!", value);
-    if(error_code == ERR_AGAIN)
+    else if(error_code == ERR_AGAIN)
         DNQ_WARN(DNQ_MOD_MCU, "recv mcu response! val=%d, need send again!!", value);
-    if(error_code == ERR_TIME)
+    else if(error_code == ERR_TIME)
         DNQ_ERROR(DNQ_MOD_MCU, "date error! %04d-%02d-%02d %02d:%02d:%02d!", \
         2000+data[7], data[8], data[9], data[10], data[11], data[12]);   
 
@@ -326,7 +355,7 @@ S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array)
     S32 i;
     S32 ret;
     U8  recvbuf[64] = {0};
-    
+
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         cmdbuf_update_single_room_config(CMD_ID_CTRL_ALL, i, mode, value_array[i]);
@@ -337,7 +366,7 @@ S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array)
     return ret;
 }
 
-S32 dnq_rtc_set_time(U8 *datetime)
+S32 dnq_rtc_set_datetime(datetime_t *datetime)
 {
     S32 ret;
     U8  recvbuf[64] = {0};
@@ -351,7 +380,7 @@ S32 dnq_rtc_set_time(U8 *datetime)
     return ret;
 }
 
-S32 dnq_rtc_get_time(U8 *datetime)
+S32 dnq_rtc_get_datetime_str(U8 *datetime)
 {
     S32 ret;
     U8  recvbuf[64];
@@ -362,6 +391,37 @@ S32 dnq_rtc_get_time(U8 *datetime)
     memcpy(datetime, &recvbuf[7], 6);
     datetime[7] = '\0';
     return ret;
+}
+
+S32 dnq_rtc_get_datetime(datetime_t *datetime)
+{
+    S32 ret;
+    U8  str[16] = {0};
+
+    ret = dnq_rtc_get_datetime_str(str);
+    if(ret < 0)
+        return -1;
+
+    datetime->year = str[0];
+    datetime->month = str[1];
+    datetime->day = str[2];
+    datetime->hour = str[3];
+    datetime->minute = str[4];
+    datetime->second = str[5];
+
+    return ret;
+}
+
+U32 dnq_current_time()
+{
+    U32 second;
+    second = g_datatime.hour*3600+g_datatime.minute*60+g_datatime.second;
+    return second;
+}
+
+void dnq_current_datetime(datetime_t *datetime)
+{
+    memcpy(datetime, &g_datatime, sizeof(datetime_t));
 }
 
 S32 dnq_rs485_ctrl_enable()
@@ -393,7 +453,7 @@ S32 dnq_rs485_ctrl_low()
     return ret;
 }
 
-S32 dnq_room_get_temperature(U32 room_id)
+S32 dnq_get_room_temperature(U32 room_id)
 {
     S32   ret;
     S32   temperature;
@@ -408,10 +468,10 @@ S32 dnq_room_get_temperature(U32 room_id)
     cmdbuf[8] = crc_value & 0xFF;
 
     dnq_rs485_ctrl_high();
-    printf("dnq_rs485_ctrl_high!\n");
+    //printf("dnq_rs485_ctrl_high!\n");
     ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
     dnq_rs485_ctrl_low();
-    printf("dnq_rs485_ctrl_low!\n");
+    //printf("dnq_rs485_ctrl_low!\n");
     
     ret = dnq_sensor_uart_read(recvbuf, SENSOR_RESPONSE_LEN);
     if(ret == 0)
@@ -431,6 +491,7 @@ S32 dnq_mcu_heartbeat_check()
 {
     S32 ret;
     U8  recvbuf[64] = {0};
+    ret = cmdbuf_update_crc(CMD_ID_HEARTBEAT);
     ret = send_cmd_to_mcu(CMD_ID_HEARTBEAT);
     ret = recv_cmd_from_mcu(CMD_ID_HEARTBEAT, recvbuf, MCU_RESPONSE_LEN_HEART);
     return ret;
@@ -460,23 +521,118 @@ S32 dnq_close_all_heater()
     return dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, status);
 }
 
-S32 dnq_heater_led_test()
+S32 dnq_heater_ctrl_test()
 {
     S32 i;
-    for(i=0; i<5; i++)
+    for(i=0; i<3; i++)
     {
         dnq_open_all_heater();
-        usleep(100*1000);
+        dnq_msleep(100);
         dnq_close_all_heater();
-        usleep(100*1000);
-        printf("dnq_close_all_heater\n");
+        dnq_msleep(100);
+    }
+}
+
+/*  
+* function:
+* 1: get and sync localtime from mcu [RS232]
+* 2: get and sync room temperature from sensor [RS485]
+* 3: heartbeat check
+*
+*/
+
+void *sensor_task(void *args)
+{
+    U32 i;
+    S32 temperature;
+    
+    dnq_msg_t msg = {0};
+    
+    /* get room temperature from sensor */
+    for(i=0; i<DNQ_ROOM_CNT; i++)
+    {
+        temperature = dnq_get_room_temperature(i);
+        if(temperature < 0)
+        {
+            dnq_sleep(1);
+            continue;
+        }
+
+        msg.Class = MSG_CLASS_MCU;
+        msg.code = i;             /* room's id */
+        msg.lenght = temperature; /* room's temperature */
+
+        /* update room's current temperature */
+        send_msg_to_lcd(&msg);
+        
+        dnq_sleep(1);
+    }
+}
+
+void *mcu_task(void *args)
+{
+    S32 ret;
+    U32 count = 0;
+    U32 heart_drop_cnt = 0;
+    datetime_t datetime = {17,5,6,10,11,12};
+
+    dnq_rtc_set_datetime(&datetime);
+    count = 0;
+    while(1)
+    {
+        if(count%5 == 0)
+        {
+            /* get datetime from rtc */
+            ret = dnq_rtc_get_datetime(&datetime);
+            if(ret < 0)
+                DNQ_ERROR(DNQ_MOD_MCU, "CPU->MCU get datetime error!");
+            DNQ_INFO(DNQ_MOD_MCU, "get datetime: %04d-%02d-%02d %02d:%02d:%02d",\
+                2000+datetime.year, datetime.month, datetime.day,\
+                datetime.hour, datetime.minute, datetime.second);
+        }
+            
+        if(count%10 == 0)
+        {
+            /* heartbeat check */
+            ret = dnq_mcu_heartbeat_check();
+            if(ret < 0)
+            {
+                heart_drop_cnt++;
+                DNQ_ERROR(DNQ_MOD_MCU, "CPU->MCU heartbeat check failed..[%d]\n",\
+                    heart_drop_cnt);
+                if(heart_drop_cnt >= 3)
+                {
+                    DNQ_ERROR(DNQ_MOD_MCU, "the MCU is offline..\n");
+                }           
+            }
+            else
+            {
+                DNQ_INFO(DNQ_MOD_MCU, "recv heartbeat !");
+                heart_drop_cnt = 0;
+            }
+        }
+        
+
+        count++;
+        dnq_sleep(1);
     }
 }
 
 S32 dnq_mcu_init()
 {
+    S32 ret;
+    dnq_task_t *task;
     dnq_rs485_ctrl_enable();
-    dnq_heater_led_test();
+    dnq_heater_ctrl_test();
+    
+
+    task = dnq_task_create("mcu_task", 64*2048, mcu_task, NULL);
+    if(task == NULL)
+        return -1;
+    
+    task = dnq_task_create("sensor_task", 64*2048, sensor_task, NULL);
+    if(task == NULL)
+        return -1;
     
     return 0;
 }
@@ -489,16 +645,20 @@ S32 dnq_mcu_deinit()
 
 S32 rtc_test()
 {
-    U8 datetime[16] = {17, 5, 13, 22, 33, 44};
-    dnq_rtc_set_time(datetime);
-    sleep(1);
-    
+    datetime_t datetime = {17, 5, 13, 22, 33, 44};
+
+    printf("---------------rtc_test---------------\n");
+    printf("this is rtc_test [CPU <--> MCU] test! \n");
+    dnq_rtc_set_datetime(&datetime);
+    printf("set datetime: 2017-05-13 22:33:44 \n");
+    sleep(1); 
     while(1)
     {
-        dnq_rtc_get_time(datetime);
-        printf("datatime: %04d-%02d-%02d %02d:%02d:%02d!\n", \
-            2000+datetime[0],datetime[1],datetime[2],\
-            datetime[3],datetime[4],datetime[5] );
+        dnq_rtc_get_datetime(&datetime);
+        printf("get datatime: %04d-%02d-%02d %02d:%02d:%02d!\n", \
+            2000+datetime.year,datetime.month,datetime.day,\
+            datetime.hour,datetime.minute,datetime.second);
+        sleep(1);
     }
     return 0;
 }
@@ -508,10 +668,14 @@ S32 room_ctrl_test()
     U32 i , len;
     U8 cmd[] = {0xFF, 0xFE, 0xFE, 0xFF, 0xA0, 0x0D, 0xB2,\
     0x21, 0x57, 0xFE, 0xFF, 0xFF, 0xFE};
-    U32 array1[17];
-    U32 array2[17];
+    U32 array1[16];
+    U32 array2[16];
+    U32 array3[16];
     U8  buffer[64];
-    
+    U32 SLEEP_MS = 200;
+
+    printf("---------------room_ctrl_test---------------\n");
+    printf("this is room_ctrl [CPU <--> MCU] test! \n");
     sleep(1);
     while(1)
     {
@@ -520,15 +684,48 @@ S32 room_ctrl_test()
         //printf("write len=%d,buffer=%s\n",len,buffer);
         //dnq_heater_ctrl_single(0, 0xB1, 1);
         //sleep(1);
-        for(i=0;i<16;i++)
+        for(i=0;i<DNQ_ROOM_MAX;i++)
         {
             array1[i] = HEATER_OPEN;
             array2[i] = HEATER_CLOSE;
         }
-        dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, array1);
-        sleep(1);
-        dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, array2);
-        sleep(1);
+
+        printf("enter switch mode!!\n");
+        for(i=0; i<5; i++)
+        {
+            printf("ctrl all room!!\n");
+            dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, array1);
+            dnq_msleep(SLEEP_MS);
+            dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, array2);
+            dnq_msleep(SLEEP_MS);           
+        }
+
+        for(i=0; i<DNQ_ROOM_MAX; i++)
+        {
+            printf("ctrl single room!!\n");
+            dnq_heater_ctrl_single(i, HEATER_MODE_SWITCH, HEATER_OPEN);
+            dnq_msleep(SLEEP_MS);
+            dnq_heater_ctrl_single(i, HEATER_MODE_SWITCH, HEATER_CLOSE);
+            dnq_msleep(SLEEP_MS);
+        }
+        
+        for(i=0;i<DNQ_ROOM_MAX;i++)
+        {
+            array1[i] = HEATER_POWER_100;
+            array2[i] = HEATER_POWER_75;
+            array3[i] = HEATER_POWER_0;
+        }
+        printf("enter power mode!!\n");
+        for(i=0; i<5; i++)
+        {
+            printf("ctrl all room!!\n");
+            dnq_heater_ctrl_whole(HEATER_MODE_POWER, array1);
+            dnq_msleep(SLEEP_MS);
+            dnq_heater_ctrl_whole(HEATER_MODE_POWER, array2);
+            dnq_msleep(SLEEP_MS);
+            dnq_heater_ctrl_whole(HEATER_MODE_POWER, array3);
+            dnq_msleep(SLEEP_MS);
+        }
     }
     return 0;
 
@@ -538,14 +735,24 @@ S32 rs485_test()
 {
     S32 i;
     S32 val;
-    
+    U8 buffer[16] = "nihao !!!!\n";
+    printf("---------------rs485_test---------------\n");
+    printf("this is rs485 uart [CPU <--> SENSOR] test! \n");
     while(1)
     {
         for(i=0; i<16; i++)
         {
-            val = dnq_room_get_temperature(i);
-            printf("id[%d]: get temperature %.1f.", val);
-            usleep(200*1000);
+            dnq_sensor_uart_write(buffer, strlen(buffer));
+            printf("485 uart write test \n");
+            sleep(1);
+        }
+        
+        for(i=0; i<16; i++)
+        {
+            val = dnq_get_room_temperature(i);
+            printf("id[%d]: get temperature %.1f.", i, val);
+            dnq_msleep(200);
         }
     }
 }
+

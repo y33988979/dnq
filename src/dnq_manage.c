@@ -14,6 +14,7 @@
 #include "dnq_manage.h"
 #include "dnq_rabbitmq.h"
 #include "dnq_log.h"
+#include "dnq_lcd.h"
 #include "dnq_mcu.h"
 
 typedef enum heater_status
@@ -77,8 +78,8 @@ S32 dnq_proc()
 {
     S32 ret;
     S32 room_id;
-    U8  datetime[8] = {0};
-    U32 current_time;
+    datetime_t  datetime  = {0};
+    U32 current_second;
     U32 current_temp;
     U32 setting_temp;
     U16 temp_error;
@@ -90,19 +91,17 @@ S32 dnq_proc()
     rooms_policy = temp_policy_config->rooms;
 
     temp_error = dnq_get_room_temp_error(room_id);
-    dnq_rtc_get_time(datetime);
     
-
-    current_time;
+    current_second = dnq_current_time();
+    //current_second = datetime.hour*3600+datetime.minute*60+datetime.second;
 
     heater_status_e status = CLOSE_STATUS;
     
     /* Traversal all rooms */
     for(room_id=0; room_id<DNQ_ROOM_CNT; room_id++)
     {
-    
-        current_temp = dnq_room_get_temperature(room_id);
-        current_setting = dnq_get_room_setting_by_time(room_id, current_time);
+        current_temp = dnq_get_room_temperature(room_id);
+        current_setting = dnq_get_room_setting_by_time(room_id, current_second);
         setting_temp = current_setting->degrees;
 
         /*
@@ -181,21 +180,20 @@ void *manage_task(void *args)
         ret = dnq_msg_recv_timeout(manage_queue, pRecvMsg, 1000);
         if(ret < 0)
         {
+            dnq_proc();
             continue;
         }
 
-        switch(pRecvMsg->code)
+        switch(pRecvMsg->Class)
         {
             case DNQ_CONFIG_UPDATE:
 
-
+                send_msg_to_lcd();
                 break;
 
             default:
             break;
         }
-
-        
 
         /*  */
         
@@ -205,7 +203,7 @@ void *manage_task(void *args)
 S32 dnq_manage_init()
 {
     dnq_appinfo_t **appinfo = &manage_appinfo;
-    *appinfo = dnq_app_task_create("dnq_manage", 2048*32,\
+    *appinfo = dnq_app_task_create("dnq_manage", 64*2048,\
         QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, manage_task, NULL);
     if(!*appinfo)
     {

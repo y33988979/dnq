@@ -13,6 +13,22 @@
 #include "dnq_os.h"
 #include "dnq_log.h"
 
+
+void dnq_usleep(U32 time_us)
+{
+    usleep(time_us);
+}
+
+void dnq_msleep(U32 time_ms)
+{
+    usleep(time_ms*1000);
+}
+
+void dnq_sleep(U32 second)
+{
+    sleep(second);
+}
+
 dnq_queue_t *dnq_queue_create(U32 queue_size)
 {
     S32  ret;

@@ -1070,7 +1070,6 @@ void *lcd_task(void *args)
     
     while(1)
     {
-
         ret = dnq_msg_recv_timeout(lcd_queue, pRecvMsg, 1000);
         if(ret < 0)
         {
@@ -1085,6 +1084,13 @@ void *lcd_task(void *args)
         
         switch(pRecvMsg->Class)
         {
+            case MSG_CLASS_MCU:
+                DNQ_INFO(DNQ_MOD_LCD, "recv mcu msg: room_id=%d, temp=%d",\
+                    pRecvMsg->code, pRecvMsg->lenght);
+
+                lcd_room_current_temp_update(pRecvMsg->code, pRecvMsg->lenght, DEFAULT_COLOR);
+                
+                break;
             case MSG_CLASS_KEYPAD:
                 DNQ_INFO(DNQ_MOD_LCD, "recv keypad msg: val=%d, status=%d",\
                     pRecvMsg->code, pRecvMsg->payload);
@@ -1098,6 +1104,7 @@ void *lcd_task(void *args)
                 
                 lcd_rabbitmq_process();
             break;
+            
         }
     }
 

@@ -307,7 +307,7 @@ int uart_test(int argc, char **argv)
             buf[nRet] = 0;
             printf("send Data: %s, len=%d\n", buf, nRet);
         }
-        usleep(100*1000);
+        dnq_msleep(100);
         nRet = read(fd, buf, sizeof(buf));
         if(-1 == nRet)
         {
