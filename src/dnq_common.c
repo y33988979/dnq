@@ -109,7 +109,6 @@ S32 dnq_system_call(U8 *command)
     return 0;
 }
 
-
 S32 dnq_init()
 {
     ngx_pool_t * pool = NULL;
@@ -123,9 +122,6 @@ S32 dnq_init()
     pool = dnq_mempool_init(1024*1024);
     if(!pool)
         return -1;
-    
-    cJSON_Hooks hooks = {dnq_malloc, dnq_free};
-    cJSON_InitHooks(&hooks);
     
     mem_pool = pool;
     return 0;

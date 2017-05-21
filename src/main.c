@@ -76,7 +76,7 @@ int main()
     //sleep(1000);
 
     network_test();
-    sleep(1000);
+    //sleep(1000);
 
     MAIN_CHECK( dnq_lcd_init() );
     MAIN_CHECK( dnq_keypad_init() );

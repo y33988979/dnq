@@ -21,7 +21,7 @@
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
 
-
+#if 0
 /* used for dnqV1  */
 channel_t channels1[18] = {
 	{1,  "_authorization",      "exchange_authorization",   ""},
@@ -38,8 +38,17 @@ channel_t channels1[18] = {
 	{12, "queue_cloud_callback",     "exchange_cloud_callback",  "callback"},
 	{13, "queue_cloud_warn",         "exchange_cloud_warn",      "warn"},
 };
+#endif
 
-/* used for dnqV2  */
+/* recv channel: server to host */
+#define CHNL_RX_QUEUE_NAME_PREFIX  "queue_host_"
+#define CHNL_RX_EXCHANGE_NAME      "exchange_host"
+#define CHNL_RX_ROUTEKEY_NAME      ""
+
+/* send channel: host to server */
+#define CHNL_TX_EXCHANGE_NAME  "queue_host_"
+
+/* channel defined for rabbitmq  */
 channel_t channels[10] = {
     /* server to host */
 	{1,  "queue_host_",    "exchange_host",       ""}, 
@@ -1595,7 +1604,7 @@ int run(amqp_connection_state_t conn)
                     connected = 1;
                     error_count = 0;
                 }
-                if(error_count == 50)
+                if(error_count == 20)
                     return -1;
             }
         }
@@ -1643,7 +1652,7 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
 
     pchnl = &channels[0];
 
-    for(i=0; i<5; i++)
+    for(i=0; i<6; i++)
     {
         pchnl = &channels[i];
         //create channel
@@ -1651,7 +1660,7 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
         DNQ_INFO(DNQ_MOD_RABBITMQ, "Opening channel %d success!", pchnl->chid);
 
-        if(i == 0)
+        if(i == 0) /* recv channel */
         {
         //exchange declare
         amqp_exchange_declare(conn, /* Á¬½Ó */
@@ -1736,7 +1745,7 @@ int rabbitmq_task()
         dnq_get_server_ip(serverip);
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg_thread start!");
         rabbitmq_init(serverip, serverport, &g_conn);
-        
+        sleep(10);
     }
 }
 
@@ -1822,6 +1831,10 @@ S32 dnq_config_deinit(dnq_config_t *config)
 S32 dnq_rabbitmq_init()
 {
     S32 ret;
+
+    /* register cjson hooks! */
+    cJSON_Hooks hooks = {dnq_malloc, dnq_free};
+    cJSON_InitHooks(&hooks);
     
     ret = dnq_config_init(&dnq_config);
     ret = dnq_task_create("rabbitmq_task", 512*1024, rabbitmq_task, NULL);

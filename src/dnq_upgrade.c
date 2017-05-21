@@ -28,6 +28,15 @@
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
 
+#define UPGRD_INFO_DESC "47100101000070b3d5cf492400010101549F0415"
+
+#define UPGRD_CHNL_RX_QUEUE_NAME_PREFIX  "hostupdate_"
+#define UPGRD_CHNL_RX_EXCHANGE_NAME      "exchange_host_update"
+#define UPGRD_CHNL_RX_ROUTEKEY_NAME      ""
+
+#define UPGRD_CHNL_TX_QUEUE_NAME         "queue_cloud_callback"
+#define UPGRD_CHNL_TX_EXCHANGE_NAME      "exchange_cloud"
+#define UPGRD_CHNL_TX_ROUTEKEY_NAME      "callback"
 
 #define UPGRD_CHNL_TX_ID    10
 #define UPGRD_CHNL_RX_ID    11
@@ -53,10 +62,20 @@ amqp_connection_state_t  g_conn;
 upgrd_channel_t upgrd_channel[2] = 
 {
     /* host to server */
-    {UPGRD_CHNL_TX_ID, "queue_cloud_callback", "exchange_cloud", "callback"},
+    {
+        UPGRD_CHNL_TX_ID, 
+        UPGRD_CHNL_TX_QUEUE_NAME, 
+        UPGRD_CHNL_TX_EXCHANGE_NAME, 
+        UPGRD_CHNL_TX_ROUTEKEY_NAME
+    },
     
     /* server to host */
-    {UPGRD_CHNL_RX_ID, "hostupdate_", "exchange_host_update", ""}
+    {
+        UPGRD_CHNL_RX_ID, 
+        UPGRD_CHNL_RX_QUEUE_NAME_PREFIX, 
+        UPGRD_CHNL_RX_EXCHANGE_NAME, 
+        UPGRD_CHNL_RX_ROUTEKEY_NAME
+    }
     
 };
 
@@ -138,7 +157,7 @@ S32 send_msg_to_server(
 	                                amqp_cstring_bytes(message)),
 	             "Publishing");
     if(ret == 0)
-        UPGRD_INFO( "send success! chid=%d, ex=%s, key=%s",\
+        UPGRD_INFO("send success! chid=%d, ex=%s, key=%s",\
         pchnl->chid, pchnl->exchange, pchnl->rtkey);
     else
         UPGRD_ERROR( "send failed! chid=%d, ex=%s, key=%s",\
@@ -300,7 +319,7 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
     else if(info.file_type == FILE_TYPE_ZIP)
         strcat(upgrade_file, ".zip");
     
-    UPGRD_INFO( "open upgrade file \"%s\"", upgrade_file);
+    UPGRD_INFO("open upgrade file \"%s\"", upgrade_file);
     fd = open(upgrade_file, O_CREAT|O_WRONLY);
     if(fd < 0)
     {
@@ -313,7 +332,6 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
     total_len = 0;
     while(total_len < data_len)
     {
-        printf("data=0x%08x, len=%d\n", data, total_len);
         if(data_len-total_len > 1024)
             wlen = 1024;
         else
@@ -332,7 +350,7 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
 
     close(fd);
 
-    UPGRD_INFO( "write upgrade file \"%s\" done!", upgrade_file);
+    UPGRD_INFO("write upgrade file \"%s\" done!", upgrade_file);
     if(total_len > data_len)
         UPGRD_WARN("file write: writen total_len[%d] > data_len[%d] !",\
         total_len, data_len); 
@@ -341,17 +359,17 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
 
 static void upgrd_info_print(upgrd_info_t *info)
 {
-    UPGRD_INFO( "tag:\t0x%x", info->tag);
-    UPGRD_INFO( "upgrade_type:\t%d", info->upgrade_type);
-    UPGRD_INFO( "file_type:\t%d", info->file_type);
-    UPGRD_INFO( "mac:\t%02X:%02X:%02X:%02X:%02X:%02X", \
+    UPGRD_INFO("tag:\t0x%x", info->tag);
+    UPGRD_INFO("upgrade_type:\t%d", info->upgrade_type);
+    UPGRD_INFO("file_type:\t%d", info->file_type);
+    UPGRD_INFO("mac:\t%02X:%02X:%02X:%02X:%02X:%02X", \
         info->mac[0],info->mac[1],info->mac[2],\
         info->mac[3],info->mac[4],info->mac[5]);
-    UPGRD_INFO( "hw_ver:\t0x%04x", info->hw_ver);
-    UPGRD_INFO( "sw_ver:\t0x%04x", info->sw_ver);
-    UPGRD_INFO( "crc_32:\t0x%08x", info->crc_32);
-    UPGRD_INFO( "mode:\t%d", info->mode);
-    UPGRD_INFO( "need_ver:\t%d", info->need_ver);
+    UPGRD_INFO("hw_ver:\t0x%04x", info->hw_ver);
+    UPGRD_INFO("sw_ver:\t0x%04x", info->sw_ver);
+    UPGRD_INFO("crc_32:\t0x%08x", info->crc_32);
+    UPGRD_INFO("mode:\t%d", info->mode);
+    UPGRD_INFO("need_ver:\t%d", info->need_ver);
 }
 
 static S32 upgrd_data_check(U8 *data, U32 len)
@@ -360,15 +378,16 @@ static S32 upgrd_data_check(U8 *data, U32 len)
     upgrd_info_t info;
     
     get_upgrd_info(&info);
-    
-    calc_crc = crc32(0xFFFFFFFF, data, len);
+
+    printf("data len=%d\n", len);
+    calc_crc = crc32(0, data, len);
     if(calc_crc != info.crc_32)
     {
         UPGRD_ERROR("crc32 error! calc_crc=0x%08x, upgrd_crc=0x%08x",\
             calc_crc, info.crc_32);
-        //return ERR_CRC;
+        return ERR_CRC;
     }
-
+    UPGRD_INFO("upgrade data verify: crc32 ok!");
     return 1;
 }
 
@@ -385,7 +404,7 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
     /* check data lenght */
     if(len != UPGRD_INFO_LEN)
     {
-        UPGRD_ERROR( "upgrd_info lenght[%d] error! lenght should %d", \
+        UPGRD_ERROR("upgrd_info lenght[%d] error! lenght should %d", \
             len, UPGRD_INFO_LEN);
         return ERR_LENGHT;
     }
@@ -393,38 +412,38 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
     /* check upgrd tag */
     if(info->tag != UPGRD_TAG)
     {
-        UPGRD_ERROR( "upgrd_tag should be 0x%02x!", 0x47);
+        UPGRD_ERROR("upgrd_tag should be 0x%02x!", 0x47);
         return ERR_TAG;
     }
 
     /* check upgrade type */
     if(info->upgrade_type >= UPGRD_TYPE_MAX)
     {
-        UPGRD_ERROR( "upgrade_type should be 0~%d!", UPGRD_TYPE_MAX-1);
+        UPGRD_ERROR("upgrade_type should be 0~%d!", UPGRD_TYPE_MAX-1);
         return ERR_TYPE;
     }
 
     if(info->file_type >= FILE_TYPE_MAX)
     {
-        UPGRD_ERROR( "file_type should be 0~%d!", FILE_TYPE_MAX-1);
+        UPGRD_ERROR("file_type should be 0~%d!", FILE_TYPE_MAX-1);
         return ERR_TYPE;
     }
     
     /* check hardware version */
     if(info->hw_ver != HWVER)
     {
-        UPGRD_ERROR( "the hw_version is not match! \
-            host HWVER=0x%08x, upgrd HWVER=0x%08x", HWVER, info->hw_ver);
+        UPGRD_ERROR("the hw_version is not match!");
+        UPGRD_ERROR("host HWVER=0x%08x, upgrd HWVER=0x%08x", HWVER, info->hw_ver);
         return ERR_HWVER;
     }
 
     /* check mac addr */
     if(strncmp(host_mac, info->mac, 6) != 0)
     {
-        UPGRD_ERROR( "the mac_addr is not match!");
-        UPGRD_ERROR( "current mac=%02X:%02X:%02X:%02X:%02X:%02X", \
+        UPGRD_ERROR("the mac_addr is not match!");
+        UPGRD_ERROR("current mac=%02X:%02X:%02X:%02X:%02X:%02X", \
             host_mac[0],host_mac[1],host_mac[2],host_mac[3],host_mac[4],host_mac[5]); 
-        UPGRD_ERROR( "upgrd mac=%02X:%02X:%02X:%02X:%02X:%02X", \
+        UPGRD_ERROR("upgrd mac=%02X:%02X:%02X:%02X:%02X:%02X", \
             info->mac[0],info->mac[1],info->mac[2],info->mac[3],info->mac[4],info->mac[5]);
         //return ERR_MAC;
     }
@@ -458,11 +477,13 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
         UPGRD_ERROR( "upgrd_mode error! mode=%d", upgrd_mode);
         return ERR_MODE;
     }
-    
-    /* need upgrd */
-    UPGRD_INFO( "upgrd_mode:%d,CRC:0x%08x  need upgrd soft!! \
-                current SWVER=0x%08x, upgrd SWVER=0x%08x",\
-                upgrd_mode, info->crc_32, SWVER, info->sw_ver);
+
+    info->crc_32 = swap32(info->crc_32);
+
+    /* need upgrade */
+    UPGRD_INFO("upgrd_mode:%d,upgrade data CRC:0x%08x",upgrd_mode,info->crc_32);
+    UPGRD_INFO("current SWVER=0x%08x, upgrd SWVER=0x%08x", SWVER, info->sw_ver);
+    UPGRD_INFO("upgrade soft ready!!");
 
     /* save info */
     save_upgrd_info(info);
@@ -620,13 +641,13 @@ static S32 upgrd_wait_message(amqp_connection_state_t conn)
                     connected = 1;
                     error_count = 0;
                 }
-                if(error_count == 50)
+                if(error_count == 20)
                     return -1;
             }
         }
         else
         {
-            UPGRD_INFO( "recv content:");
+            UPGRD_INFO("recv content:");
             amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
             upgrd_msg_process(&envelope, conn);
             amqp_destroy_envelope(&envelope);
@@ -658,13 +679,13 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
     if(status < 0)
         dnq_error(status, "amqp_socket_open error!");
 
-    UPGRD_INFO( "create new connecting! socket=%d, ip=%s, port=%d", \
+    UPGRD_INFO("create new connecting! socket=%d, ip=%s, port=%d", \
         status, serverip, port);
 
     die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 30, AMQP_SASL_METHOD_PLAIN, \
     username, password), "Logging in");
 
-    UPGRD_INFO( "Login success! user=%s, passwd=%s", username, password);
+    UPGRD_INFO("Login success! user=%s, passwd=%s", username, password);
 
 
     pchnl = upgrd_channel;
@@ -675,49 +696,48 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
         //create channel
         amqp_channel_open(conn, pchnl->chid);
         die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
-        UPGRD_INFO( "Opening channel %d success!", pchnl->chid);
+        UPGRD_INFO("Opening channel %d success!", pchnl->chid);
 
         if(pchnl->chid == UPGRD_CHNL_RX_ID)
         {
-        //exchange declare
-        amqp_exchange_declare(conn, /* 连接 */
+            //exchange declare
+            amqp_exchange_declare(conn, /* 连接 */
+                                pchnl->chid, 
+                                amqp_cstring_bytes(pchnl->exchange),
+                                amqp_cstring_bytes("direct"),
+                                0, /* passive */
+                                1, /* durable 持久化 */
+                                0, /* auto delete */
+                                0, /* internal */
+                                amqp_empty_table);
+            UPGRD_INFO("exchange declare %s!", pchnl->exchange);
+
+            //queue declare
+            strcpy(pchnl->qname, UPGRD_CHNL_RX_QUEUE_NAME_PREFIX);
+            strcat(pchnl->qname, mac_addr);
+            r = amqp_queue_declare(conn, 
+                                pchnl->chid,
+                                amqp_cstring_bytes(pchnl->qname),
+                                0, /* passive */
+                                0, /* durable 持久化 */
+                                0, /* exclusive */
+                                1, /* auto delete */
+                                amqp_empty_table);
+
+            die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
+            UPGRD_INFO("queue declare %s!", pchnl->qname);
+
+            //bind
+            strcpy(pchnl->rtkey, mac_addr);
+            amqp_queue_bind(conn, 
                             pchnl->chid, 
+                            amqp_cstring_bytes(pchnl->qname), 
                             amqp_cstring_bytes(pchnl->exchange),
-                            amqp_cstring_bytes("direct"),
-                            0, /* passive */
-                            1, /* durable 持久化 */
-                            0, /* auto delete */
-                            0, /* internal */
+                            amqp_cstring_bytes(pchnl->rtkey), 
                             amqp_empty_table);
-        UPGRD_INFO( "exchange declare %s!", pchnl->exchange);
-
-        printf("mac_addr=%s\n", mac_addr);
-        printf("pchnl->qname=%s\n", pchnl->qname);
-        //queue declare
-        strcat(pchnl->qname, mac_addr);
-        r = amqp_queue_declare(conn, 
-                            pchnl->chid,
-                            amqp_cstring_bytes(pchnl->qname),
-                            0, /* passive */
-                            0, /* durable 持久化 */
-                            0, /* exclusive */
-                            1, /* auto delete */
-                            amqp_empty_table);
-
-        die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
-        UPGRD_INFO( "queue declare %s!", pchnl->qname);
-
-        //bind
-        strcpy(pchnl->rtkey, mac_addr);
-        amqp_queue_bind(conn, 
-                        pchnl->chid, 
-                        amqp_cstring_bytes(pchnl->qname), 
-                        amqp_cstring_bytes(pchnl->exchange),
-                        amqp_cstring_bytes(pchnl->rtkey), 
-                        amqp_empty_table);
-        die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
-        UPGRD_INFO( "queue %s bind on exchange=%s, rtkey=%s!", \
-            pchnl->qname, pchnl->exchange, pchnl->rtkey);
+            die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
+            UPGRD_INFO("queue %s bind on exchange=%s, rtkey=%s!", \
+                pchnl->qname, pchnl->exchange, pchnl->rtkey);
         }
     }
 
@@ -736,6 +756,7 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
     //purge
     amqp_queue_purge(conn, pchnl->chid, amqp_cstring_bytes(pchnl->qname));
 
+    //recv message and process
     upgrd_wait_message(conn);
 
     /* error close the channel */
@@ -756,7 +777,13 @@ S32 rabbitmq_task()
 {   
     while(1)
     {
-        UPGRD_INFO( "msg_thread start!");
+        
+        if(!dnq_net_link_isgood())
+        {
+            sleep(3);
+            continue;
+        }
+        UPGRD_INFO("msg_thread start!");
         upgrd_rabbitmq_init(serverip, serverport, &g_conn);
         sleep(15);
     }
@@ -767,6 +794,13 @@ S32 send_msg_to_upgrade(U8 *msg, U32 len)
     S32 ret;
     upgrd_msg_t *upgrd_msg = &g_upgrd_msg; /* used global buffer */
 
+    if(upgrd_msg->is_processing)
+    {
+        UPGRD_ERROR("message is processing, please wait..");
+        return -1;
+    }
+
+    upgrd_msg->is_processing = 1;
     /* small buffer */
     if(len < UPGRD_MSG_LEN_MAX)
     {
@@ -843,14 +877,12 @@ S32 upgrade_task()
         {
             continue;
         }
-
         
         /* process upgrade message */
         switch(upgrd_status)
         {
             /* check upgrd info */
             case UPGRD_WAIT:
-                #if 1
                 ret = upgrd_info_check((upgrd_info_t*)msg, len);
                 if(ret < 0)
                 {
@@ -858,7 +890,6 @@ S32 upgrade_task()
                     break;
                 }
                     
-                #endif
                 /* upgrade info correct, waiting upgrade data */
                 upgrd_status = UPGRD_READY;
                 err_code = UPGRD_READY;
@@ -896,9 +927,9 @@ S32 upgrade_task()
                 }
 
                 /* upgrade done! */
-                upgrd_status = UPGRD_DONE;
-                err_code = 0;
+                free(g_upgrd_msg.data);
                 upgrd_status = UPGRD_WAIT;
+                err_code = 0;
 
             break;
             default:
@@ -966,7 +997,7 @@ S32 net_status_check()
     return ret;
 }
 
-ngx_pool_t *mem_pool = NULL;
+static ngx_pool_t *mem_pool = NULL;
 
 S32 dnq_upgrd_init()
 {
@@ -987,15 +1018,8 @@ S32 dnq_upgrd_init()
 
     net_status_check();
 
-    dnq_app_task_create("rabbitmq_task", 4*1024*1024,\
-        QUEUE_MSG_SIZE, 5, rabbitmq_task, NULL);
-    create_task("upgrade_task", 4*1024*1024, upgrade_task, NULL);
-
-    
-    while(1)
-    {
-        sleep(1);
-    }
+    dnq_task_create("rabbitmq_task", 4*1024*1024, rabbitmq_task, NULL);
+    dnq_task_create("upgrade_task",  4*1024*1024, upgrade_task, NULL);
     
     return 0;
 }
@@ -1005,9 +1029,49 @@ S32 dnq_upgrd_deinit()
     return 0;
 }
 
-int main()
+S32 upgrade_main()
 {
     dnq_checksum_init();
+    dnq_debug_setlever(1, 3);
     dnq_upgrd_init();
+
+    //umask(0);
+    while(1)  sleep(3);
+}
+
+S32 main(int argc, char **argv)
+{
+    pid_t pid;
+    U32 is_daemon = 1;
+
+    /* foreground */
+    if(argc == 2 && strcmp("-F", argv[1])==0)
+    {
+        printf("Running in foreground!\n");
+        is_daemon = 0;
+        upgrade_main();
+        return 0;
+    }
+    else /* Background  */
+    {
+        printf("Forking into background!\n");
+        pid = fork();
+        switch(pid) 
+        {
+            case 0: /* child */			
+                setsid();
+                upgrade_main();
+                break;
+            case -1:
+                UPGRD_ERROR("fork error! errno=%d:%s", errno, strerror(errno));
+                exit(-1);
+                break;
+            default: /* parent */
+                exit(EXIT_SUCCESS);
+                break;
+        }
+    }
+    
+    return 0;
 }
 

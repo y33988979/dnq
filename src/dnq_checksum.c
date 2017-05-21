@@ -67,7 +67,21 @@ U16 crc16(U8 *addr, U32 num ,U32 crc)
 U32 crc32(U32 crc, U8 *buffer, U32 size)    
 {    
     U32 i;    
+
+    crc = crc ^ 0xffffffff;
+    for (i = 0; i < size; i++)   
+    {    
+        crc = crc_table[(crc ^ buffer[i]) & 0xff] ^ (crc >> 8);    
+    }    
   
+    return crc ^ 0xffffffff ;    
+}
+
+/* 计算buffer的crc校验码 */    
+U32 _crc32(U32 crc, U8 *buffer, U32 size)    
+{    
+    U32 i;    
+
     for (i = 0; i < size; i++)   
     {    
         crc = crc_table[(crc ^ buffer[i]) & 0xff] ^ (crc >> 8);    
@@ -75,6 +89,7 @@ U32 crc32(U32 crc, U8 *buffer, U32 size)
   
     return crc ;    
 } 
+
 
 /*  
 * 计算大文件的CRC校验码:crc32函数,是对一个buffer进行处理,  

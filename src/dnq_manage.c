@@ -172,15 +172,17 @@ void *manage_task(void *args)
     dnq_msg_t *pSendMsg = &sendMsg;
     dnq_msg_t *pRecvMsg = &recvMsg;
     server_temp_policy_t *temp_policy;
+    dnq_appinfo_t *appinfo = *(dnq_appinfo_t**)args;
     
-    manage_queue = (dnq_queue_t*)manage_appinfo->queue;
+    manage_queue = appinfo->queue;
     
     while(1)
     {
+
         ret = dnq_msg_recv_timeout(manage_queue, pRecvMsg, 1000);
         if(ret < 0)
         {
-            dnq_proc();
+            //dnq_proc();
             continue;
         }
 
@@ -203,8 +205,9 @@ void *manage_task(void *args)
 S32 dnq_manage_init()
 {
     dnq_appinfo_t **appinfo = &manage_appinfo;
+    
     *appinfo = dnq_app_task_create("dnq_manage", 64*2048,\
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, manage_task, NULL);
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, manage_task, appinfo);
     if(!*appinfo)
     {
         DNQ_ERROR(DNQ_MOD_LCD, "manage_task create error!");

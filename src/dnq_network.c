@@ -1015,6 +1015,7 @@ S32 dnq_net_link_isgood()
     
     while(count--)
     {
+        printf("check net!!\n");
         server_ip = dnq_net_get_host_by_name(DNQ_SERVER_URL);
         if(server_ip != 0)
         {

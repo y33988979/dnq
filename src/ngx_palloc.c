@@ -11,7 +11,7 @@
 ngx_uint_t  ngx_pagesize = 4096;
 ngx_uint_t  ngx_pagesize_shift;
 ngx_uint_t  ngx_cacheline_size;
-ngx_pool_t *dnq_mempool;
+static ngx_pool_t *dnq_mempool;
 
 static void *ngx_palloc_block(ngx_pool_t *pool, size_t size);
 static void *ngx_palloc_large(ngx_pool_t *pool, size_t size);

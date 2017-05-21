@@ -166,7 +166,7 @@ S32 dnq_keypad_init()
     }
 
     *appinfo = dnq_app_task_create("keypad", 2048*16, \
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, keypad_task, (void*)appinfo);
+        QUEUE_MSG_SIZE, 5, keypad_task, (void*)appinfo);
     if(!*appinfo)
     {
         close(keypad_fd);

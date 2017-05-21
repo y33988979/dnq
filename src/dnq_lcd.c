@@ -1065,8 +1065,9 @@ void *lcd_task(void *args)
     dnq_msg_t  recvMsg;
     dnq_msg_t *pSendMsg = &sendMsg;
     dnq_msg_t *pRecvMsg = &recvMsg;
+    dnq_appinfo_t *appinfo = *(dnq_appinfo_t**)args;
     
-    lcd_queue = (dnq_queue_t*)lcd_appinfo->queue;
+    lcd_queue = appinfo->queue;
     
     while(1)
     {
@@ -1119,20 +1120,8 @@ S32 dnq_lcd_init()
     lcd_clear_all();
     lcd_update_all();
     
-#if 0
-    lcd_room_setting_temp_update(0, 33.3, 0);
-sleep(1);
-lcd_room_setting_temp_update(0, 33.3, 1);
-sleep(1);
-lcd_room_setting_temp_update(0, 33.3, 0);
-sleep(1);
-lcd_room_setting_temp_update(0, 33.3, 1);
-sleep(1);
-    sleep(100);
-#endif
-
     *appinfo = dnq_app_task_create("lcd_task", 2048*32,\
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, NULL);
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, appinfo);
     if(!*appinfo)
     {
         DNQ_ERROR(DNQ_MOD_LCD, "lcd_task create error!");

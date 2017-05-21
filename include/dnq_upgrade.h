@@ -85,7 +85,8 @@ typedef enum _msg_type_e
 #define UPGRD_MSG_LEN_MAX  512
 typedef struct _upgrd_msg
 {
-    U32 type;          /* msg type */
+    U16 type;          /* msg type */
+    U16 is_processing; /* message is release or processing */ 
     U8  msg[UPGRD_MSG_LEN_MAX];   /* small memory */
     U8 *data;          /* malloc a large memory or point to msg */
     U32 data_len;      /* data lenght */

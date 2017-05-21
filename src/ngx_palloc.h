@@ -50,8 +50,6 @@ extern ngx_uint_t  ngx_cacheline_size;
 #define  NGX_DECLINED   -5
 #define  NGX_ABORT      -6
 
-extern ngx_pool_t *dnq_mempool;
-
 //#define dnq_malloc(size)   ngx_palloc(dnq_mempool, size)
 //#define dnq_free(size)     ngx_pfree(dnq_mempool, size)
 
