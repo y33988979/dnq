@@ -18,6 +18,9 @@ static void *ngx_palloc_large(ngx_pool_t *pool, size_t size);
 
 ngx_pool_t *dnq_mempool_init(size_t size)
 {
+    if(dnq_mempool)
+        return dnq_mempool;
+    
     dnq_mempool = ngx_create_pool(size);
     if(dnq_mempool == NULL)
     {

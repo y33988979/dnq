@@ -17,6 +17,7 @@
 static U8 g_dnq_dbg_module[DNQ_MOD_CNT] = {0};
 static U8 g_dnq_dbg_lever[DNQ_MOD_CNT] = {0};
 static U8 g_dbg_buf[2048] = {0};
+static U32 debug_inited = 0;
 
 typedef struct debug_module
 {
@@ -164,12 +165,16 @@ void dnq_debug_control()
 
 S32 dnq_debug_init()
 {
+    if(debug_inited)
+        return 0;
+    
     dnq_debug_setlever(1, 3);
     if(dnq_task_create("debug_ctrl", 32*2048, dnq_debug_control, NULL) == NULL)
     {
         DNQ_PRINT(DNQ_MOD_ALL, "debug_ctrl task create error: %s", strerror(errno));
         return -1;
     }
+    debug_inited = 1;
     DNQ_PRINT(DNQ_MOD_ALL, "debug_ctrl task create success!\n");
     return 0;
 }

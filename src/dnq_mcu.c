@@ -462,22 +462,36 @@ S32 dnq_get_room_temperature(U32 room_id)
     U16 crc_value;
 
     cmdbuf[6] = room_id; /* Fixed! */
-    
+
+    printf("room_id=%d, len=%d\n",room_id, cmdbuf[5]-6);
     crc_value = crc16(cmdbuf, cmdbuf[5]-6, 0);
     cmdbuf[7] = crc_value>>8 & 0xFF;
     cmdbuf[8] = crc_value & 0xFF;
 
+#if 1
     dnq_rs485_ctrl_high();
-    //printf("dnq_rs485_ctrl_high!\n");
-    ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
-    dnq_rs485_ctrl_low();
-    //printf("dnq_rs485_ctrl_low!\n");
     
+    printf("cmdbuf:\n");
+    for(ret=0;ret<cmdbuf[5];ret++)
+        printf("%02x ", cmdbuf[ret]);
+    printf("\n");
+    ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
+    if(ret < 0)
+        printf("dnq_sensor_uart_write error!\n");
+    //dnq_sensor_uart_sync();
+    dnq_msleep(200);
+    #endif
+    dnq_rs485_ctrl_low(); 
+
     ret = dnq_sensor_uart_read(recvbuf, SENSOR_RESPONSE_LEN);
     if(ret == 0)
     {
         return -1;
     }
+    printf("recv len:%d\n", ret);
+    for(ret=0;ret<16;ret++)
+        printf("%02x ", recvbuf[ret]);
+    printf("\n");
 
     temperature = recvbuf[5];
     DNQ_INFO(DNQ_MOD_MCU, "room %d temperature is %d'C!", room_id, temperature);
@@ -630,7 +644,7 @@ S32 dnq_mcu_init()
     if(task == NULL)
         return -1;
     
-    task = dnq_task_create("sensor_task", 64*2048, sensor_task, NULL);
+    //task = dnq_task_create("sensor_task", 64*2048, sensor_task, NULL);
     if(task == NULL)
         return -1;
     
@@ -740,18 +754,19 @@ S32 rs485_test()
     printf("this is rs485 uart [CPU <--> SENSOR] test! \n");
     while(1)
     {
+    #if 0
         for(i=0; i<16; i++)
         {
             dnq_sensor_uart_write(buffer, strlen(buffer));
             printf("485 uart write test \n");
             sleep(1);
         }
-        
+    #endif
         for(i=0; i<16; i++)
         {
-            val = dnq_get_room_temperature(i);
-            printf("id[%d]: get temperature %.1f.", i, val);
-            dnq_msleep(200);
+            val = dnq_get_room_temperature(0);
+            printf("id[%d]: get temperature %2.1f.\n", i, val);
+            dnq_sleep(2);
         }
     }
 }

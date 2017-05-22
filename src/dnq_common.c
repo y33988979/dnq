@@ -18,6 +18,7 @@
 #include <sys/types.h>  
 #include <sys/wait.h>
 
+static U32 g_dnq_init = 0;
 static ngx_pool_t *mem_pool;
 
 static U32 init_time_ms = 0;
@@ -113,22 +114,24 @@ S32 dnq_init()
 {
     ngx_pool_t * pool = NULL;
 
+    if(g_dnq_init)
+        return 0;
+    
     dnq_time_init();
     dnq_checksum_init();
-    
-    if(mem_pool)  /* already inited */
-        return 0; 
     
     pool = dnq_mempool_init(1024*1024);
     if(!pool)
         return -1;
     
     mem_pool = pool;
+    g_dnq_init = 1;
     return 0;
 }
 
 S32 dnq_deinit()
 {
+    g_dnq_init = 0;
     dnq_mempool_deinit(mem_pool);
     return 0;
 }

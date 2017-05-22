@@ -1729,12 +1729,14 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
     die_on_amqp_error(amqp_connection_close(conn, AMQP_REPLY_SUCCESS), "Closing connection");
     die_on_error(amqp_destroy_connection(conn), "Ending connection");
 
-    DNQ_ERROR(DNQ_MOD_RABBITMQ, "msg_thread exit...");
+    
     return 0;
 }
 
-int rabbitmq_task()
+S32 rabbitmq_task()
 {
+    U8 server_ip[16] = {0};
+    U32 server_port;
     while(1)
     {
         if(!dnq_net_link_isgood())
@@ -1742,9 +1744,13 @@ int rabbitmq_task()
             sleep(3);
             continue;
         }
-        dnq_get_server_ip(serverip);
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg_thread start!");
-        rabbitmq_init(serverip, serverport, &g_conn);
+        
+        dnq_get_server_ip(server_ip);
+        server_port = dnq_get_server_port();
+        
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "rabbitmq main_loop start..");
+        rabbitmq_init(server_ip, server_port, &g_conn);
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "rabbitmq main_loop exit...");
         sleep(10);
     }
 }

@@ -34,9 +34,12 @@
 #include "dnq_common.h"
 #include "dnq_network.h"
 
-//#define LINK_ON       1
-//#define LINK_OFF      0
+#define BAIDU_URL    "www.baidu.com"
+#define TENCENT_URL  "www.qq.com"
+#define TAOBAO_URL   "www.taobao.com"
+#define YOUKU_URL    "www.youku.com"
 
+extern S32 dnq_ping_test(U32 ip, U32 sec);
 
 static host_net_info_t g_host_netinfo;
 static U8 g_server_ip[16] = {0};
@@ -153,7 +156,7 @@ S32 dnq_net_ifup(U8 *if_name)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "sys up if: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno,strerror(errno));
         return -1;
     }
 
@@ -165,7 +168,7 @@ S32 dnq_net_ifup(U8 *if_name)
     ret = ioctl(sockfd, SIOCGIFFLAGS, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "sys get up if: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error! errno=%d:%s", errno,strerror(errno));
         close(sockfd);
         return -1;
     }
@@ -175,12 +178,13 @@ S32 dnq_net_ifup(U8 *if_name)
     ret = ioctl(sockfd, SIOCSIFFLAGS, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "sys set up if: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error! errno=%d:%s", errno,strerror(errno));
         close(sockfd);
         return -1;
     }
 
     close(sockfd);
+    DNQ_INFO(DNQ_MOD_NETWORK, "ifup %s success!", if_name);
     return 0;
 }
     
@@ -194,7 +198,7 @@ S32 dnq_net_ifdown(U8 *if_name)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "sys down if: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno,strerror(errno));
         return -1;
     }
 
@@ -205,23 +209,24 @@ S32 dnq_net_ifdown(U8 *if_name)
     ret = ioctl(sockfd, SIOCGIFFLAGS, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "sys get down if: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error! errno=%d:%s", errno,strerror(errno));
         close(sockfd);
         return -1;
     }
     //clear flag
     ifr.ifr_ifru.ifru_flags &= flag;
-    DNQ_ERROR(DNQ_MOD_NETWORK, "ip cfg down interface : falg [%lx] \n", ifr.ifr_ifru.ifru_flags);
+    //DNQ_ERROR(DNQ_MOD_NETWORK, "ip cfg down interface : falg [%lx] \n", ifr.ifr_ifru.ifru_flags);
 
     ret = ioctl(sockfd, SIOCSIFFLAGS, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "sys set down if: ioctl open error");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error! errno=%d:%s", errno,strerror(errno));
         close(sockfd);
         return -1;
     }
 
     close(sockfd);
+    DNQ_INFO(DNQ_MOD_NETWORK, "ifdown %s success!", if_name);
     return 0;
 }
 
@@ -236,6 +241,7 @@ U32 dnq_net_get_dns()
     char dns_buf[20];
     unsigned int dns_addr;
     char BufferTmp[100];
+    struct in_addr addr;
 
     //pFile = fopen("/FlashData/resolv.conf","r");
     //pFile = fopen("/etc/config/resolv.conf","r");
@@ -243,8 +249,7 @@ U32 dnq_net_get_dns()
     //printf("STBDNS_Get begin\n");
     if(pFile == NULL)
     {
-        perror("fopen");
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get dns : open file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "fopen error! errno=%d:%s", errno, strerror(errno));
         return 0;
     }
     //IPSET_DEBUG(("Get DNS step1 (open file)is OK!\n"));
@@ -255,7 +260,7 @@ U32 dnq_net_get_dns()
     if(Result==0||Result<=19) /* nameserver 0.0.0.0 */
     {
         fclose(pFile);
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get dns : read file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "fread error! errno=%d:%s", errno,strerror(errno));
         return 0;
     }
 
@@ -278,28 +283,29 @@ U32 dnq_net_get_dns()
 
     strncpy(dns_buf,BufferTmp+i1,i2-i1);
     dns_buf[i2-i1] = '\0';
-    dns_addr = ipcfg_htonl(inet_addr(dns_buf));
+    dns_addr = (inet_addr(dns_buf));
     fclose(pFile);
-    //DNQ_ERROR(DNQ_MOD_NETWORK, "Get DNS is OK %lx\n",dns_addr);
+    addr.s_addr = dns_addr;
+    DNQ_INFO(DNQ_MOD_NETWORK, "get dns success: %s", inet_ntoa(addr));
 
     return dns_addr;
 }
 
-S32 dnq_net_get_dns2(U32 *dnsaddrs)
+S32 dnq_net_get_dns2(U32 *dns_addrs)
 {
     int i1,i2,Result;
     FILE *pFile=NULL;
     char dns_buf[20];
     unsigned int dns_addr;
     char BufferTmp[100];
+    struct in_addr addr;
 
     //pFile = fopen("/FlashData/resolv.conf","r");
     pFile = fopen("/etc/resolv.conf","r");
     //printf("STBDNS_Get begin\n");
     if(pFile == NULL)
     {
-        perror("fopen");
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get dns : open file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "fopen error! errno=%d:%s", errno, strerror(errno));
         return 0;
     }
     //IPSET_DEBUG(("Get DNS step1 (open file)is OK!\n"));
@@ -310,7 +316,7 @@ S32 dnq_net_get_dns2(U32 *dnsaddrs)
     if(Result==0||Result<=19) /* nameserver 0.0.0.0 */
     {
         fclose(pFile);
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get dns : read file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "fread error! errno=%d:%s", errno,strerror(errno));
         return 0;
     }
 
@@ -333,9 +339,9 @@ S32 dnq_net_get_dns2(U32 *dnsaddrs)
 
     strncpy(dns_buf,BufferTmp+i1,i2-i1);
     dns_buf[i2-i1] = '\0';
-    dns_addr = ipcfg_htonl(inet_addr(dns_buf));
+    dns_addr = (inet_addr(dns_buf));
 
-    dnsaddrs[0] = dns_addr;
+    dns_addrs[0] = dns_addr;
 
     /* get dns 2 */
     i1 = i2;
@@ -358,13 +364,15 @@ S32 dnq_net_get_dns2(U32 *dnsaddrs)
 
     strncpy(dns_buf,BufferTmp+i1,i2-i1);
     dns_buf[i2-i1] = '\0';
-    dns_addr = ipcfg_htonl(inet_addr(dns_buf));
+    dns_addr = (inet_addr(dns_buf));
 
-    dnsaddrs[1] = dns_addr;
+    dns_addrs[1] = dns_addr;
 
     fclose(pFile);
-    //DNQ_ERROR(DNQ_MOD_NETWORK, "Get DNS is OK %lx\n",dns_addr);
-
+    addr.s_addr = dns_addrs[0];
+    DNQ_INFO(DNQ_MOD_NETWORK, "get dns1 success: %s", inet_ntoa(addr));
+    addr.s_addr = dns_addrs[1];
+    DNQ_INFO(DNQ_MOD_NETWORK, "get dns2 success: %s", inet_ntoa(addr));
     return 0;
 }
 
@@ -379,15 +387,15 @@ S32 dnq_net_set_dns(U32 dnsaddr)
     char dns_buf[20];
     struct in_addr dns_addr;
     char BufferTmp[100];
-    system("ifconfig eth0 up");
-    //pFile = fopen("/FlashData/resolv.conf","w+");
-    //pFile = fopen("/etc/config/resolv.conf","w+");
+    struct in_addr addr;
+    
+    //system("ifconfig eth0 up");
     pFile = fopen("/etc/resolv.conf","w+");
     //printf("STBDNS_Get begin\n");
     if(pFile == NULL)
     {
         perror("fopen");
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set dns : open file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "fopen error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
     //IPSET_DEBUG(("Get DNS step1 (open file)is OK!\n"));
@@ -395,7 +403,7 @@ S32 dnq_net_set_dns(U32 dnsaddr)
     memset(BufferTmp,0,sizeof(BufferTmp));
 
     /* 202.106.0.20 */
-    dns_addr.s_addr = ipcfg_htonl(dnsaddr);
+    dns_addr.s_addr = (dnsaddr);
     p = inet_ntoa(dns_addr);
     strcpy(dns_buf,p);
     strcpy(dns_buf+strlen(p)," \r\n");
@@ -407,16 +415,16 @@ S32 dnq_net_set_dns(U32 dnsaddr)
     Result = fwrite(BufferTmp, sizeof(char), strlen(BufferTmp), pFile);
     if(Result <= 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set dns : write file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "write file error! errno=%d:%s", errno,strerror(errno));
         return -1;
     }
 
     fclose(pFile);
-
+    DNQ_INFO(DNQ_MOD_NETWORK, "set dns success: %s", inet_ntoa(dns_addr));
     return 0;
 }
 
-S32 dnq_net_set_dns2(U32 dnsaddr1, U32 dnsaddr2)
+S32 dnq_net_set_dns2(U32 dns_addr1, U32 dns_addr2)
 {
     int Result;
     FILE *pFile=NULL;
@@ -425,15 +433,14 @@ S32 dnq_net_set_dns2(U32 dnsaddr1, U32 dnsaddr2)
     struct in_addr dns_addr;
     char BufferTmp[100];
     int buf_pos=0;
-    system("ifconfig eth0 up");
-    //pFile = fopen("/FlashData/resolv.conf","w+");
-    //pFile = fopen("/etc/config/resolv.conf","w+");
+    struct in_addr addr;
+    
     pFile = fopen("/etc/resolv.conf","w+");
     //printf("STBDNS_Get begin\n");
     if(pFile == NULL)
     {
         perror("fopen");
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set dns : open file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "fopen error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
     //IPSET_DEBUG(("Get DNS step1 (open file)is OK!\n"));
@@ -441,7 +448,7 @@ S32 dnq_net_set_dns2(U32 dnsaddr1, U32 dnsaddr2)
     memset(BufferTmp,0,sizeof(BufferTmp));
 
     /* dns addr 1 */
-    dns_addr.s_addr = ipcfg_htonl(dnsaddr1);
+    dns_addr.s_addr = (dns_addr1);
     p = inet_ntoa(dns_addr);
     strcpy(dns_buf,p);
     strcpy(dns_buf+strlen(p),"\n");
@@ -453,7 +460,7 @@ S32 dnq_net_set_dns2(U32 dnsaddr1, U32 dnsaddr2)
     buf_pos += (strlen(p)+1);
 
     /* dns addr 2 */
-    dns_addr.s_addr = ipcfg_htonl(dnsaddr2);
+    dns_addr.s_addr = (dns_addr2);
     p = inet_ntoa(dns_addr);
     strcpy(dns_buf,p);
     strcpy(dns_buf+strlen(p),"\n");
@@ -466,12 +473,15 @@ S32 dnq_net_set_dns2(U32 dnsaddr1, U32 dnsaddr2)
     Result = fwrite(BufferTmp, sizeof(char), strlen(BufferTmp), pFile);
     if(Result <= 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set dns : write file error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "write file error! errno=%d:%s", errno,strerror(errno));
         return -1;
     }
 
     fclose(pFile);
-
+    addr.s_addr = dns_addr1;
+    DNQ_INFO(DNQ_MOD_NETWORK, "set dns1 success: %s", inet_ntoa(addr));
+    addr.s_addr = dns_addr2;
+    DNQ_INFO(DNQ_MOD_NETWORK, "set dns2 success: %s", inet_ntoa(addr));
     return 0;
 }
 
@@ -480,13 +490,13 @@ S32 dnq_net_set_gw_addr(U8 *if_name, U32 gw)
     int skfd;
     struct rtentry rt;
     int err;
+    struct in_addr addr;
 
     skfd = socket(/*PF_INET*/AF_INET, SOCK_DGRAM, 0);
     if(skfd < 0)
     {
-        skfd = socket(PF_INET, SOCK_DGRAM, 0);
-        if(skfd<0)
-            return -1;
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno,strerror(errno));
+        return -1;
     }
 
     /* Delete existing defalt gateway */
@@ -501,7 +511,13 @@ S32 dnq_net_set_gw_addr(U8 *if_name, U32 gw)
     rt.rt_flags = RTF_UP;
 
     err = ioctl(skfd, SIOCDELRT, &rt);
-
+    if(err < 0)
+    {
+        close(skfd);
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
+        return -1;
+    }
+    
     if((err == 0 || errno == ESRCH) && gw)
     {
         /* Set default gateway */
@@ -511,7 +527,7 @@ S32 dnq_net_set_gw_addr(U8 *if_name, U32 gw)
         ((struct sockaddr_in *)&rt.rt_dst)->sin_addr.s_addr = 0;
 
         rt.rt_gateway.sa_family = AF_INET;
-        ((struct sockaddr_in *)&rt.rt_gateway)->sin_addr.s_addr = ipcfg_htonl(gw);
+        ((struct sockaddr_in *)&rt.rt_gateway)->sin_addr.s_addr = (gw);
 
         rt.rt_genmask.sa_family = AF_INET;
         ((struct sockaddr_in *)&rt.rt_genmask)->sin_addr.s_addr = 0;
@@ -519,9 +535,17 @@ S32 dnq_net_set_gw_addr(U8 *if_name, U32 gw)
         rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
         err = ioctl(skfd, SIOCADDRT, &rt);
+        if(err < 0)
+        {
+            close(skfd);
+            DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
+            return -1;
+        }
     }
 
     close(skfd);
+    addr.s_addr = gw;
+    DNQ_INFO(DNQ_MOD_NETWORK, "set gateway success: %s", inet_ntoa(addr));
     return err;
 }
 
@@ -534,10 +558,11 @@ U32 dnq_net_get_gw_addr(U8 *if_name)
     struct _route_info *rtInfo;
     char msgBuf[_BUFSIZE];
     int sock, len, msgSeq = 0;
+    struct in_addr addr;
 
     if((sock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE)) < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "Socket Creation: error \n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno,strerror(errno));
         return 0;
     }
 
@@ -555,14 +580,15 @@ U32 dnq_net_get_gw_addr(U8 *if_name)
 
     if(send(sock, nlMsg, nlMsg->nlmsg_len, 0) < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "Write To Socket Failed...\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket send error! errno=%d:%s", errno,strerror(errno));
         close(sock);
         return 0;
     }
 
     if((len = _readNlSock(sock, msgBuf, msgSeq, getpid())) < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "Read From Socket Failed...\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket read error! errno=%d:%s", errno,strerror(errno));
+
         close(sock);
         return 0;
     }
@@ -574,8 +600,9 @@ U32 dnq_net_get_gw_addr(U8 *if_name)
     }
     free(rtInfo);
     close(sock);
-    //DNQ_ERROR(DNQ_MOD_NETWORK, "\nGet gateway is Ok! %s\n",gateway);
-    return ipcfg_htonl(gw);
+    addr.s_addr = gw;
+    DNQ_INFO(DNQ_MOD_NETWORK, "get gateway success: %s", inet_ntoa(addr));
+    return (gw);
 }
 
 S32 dnq_net_set_mask(U8 *if_name, U32 submask)
@@ -584,11 +611,12 @@ S32 dnq_net_set_mask(U8 *if_name, U32 submask)
     int ret;
     struct ifreq ifr;
     struct sockaddr_in *sin;
+    struct in_addr addr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set sub mask: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
 
@@ -597,18 +625,20 @@ S32 dnq_net_set_mask(U8 *if_name, U32 submask)
 
     //ifr.ifr_ifru.ifru_addr.sin_addr = ipcfg_htonl(submask);
     sin = (struct sockaddr_in *)&ifr.ifr_ifru.ifru_addr;
-    sin->sin_addr.s_addr = ipcfg_htonl(submask);
+    sin->sin_addr.s_addr = (submask);
     sin->sin_family = AF_INET;
 
     ret = ioctl(sockfd, SIOCSIFNETMASK, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set sub mask: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(sockfd);
         return -1;
     }
 
     close(sockfd);
+    addr.s_addr = submask;
+    DNQ_INFO(DNQ_MOD_NETWORK, "set netmask success: %s", inet_ntoa(addr));
     return 0;
 }
 
@@ -619,11 +649,12 @@ U32 dnq_net_get_mask(U8 *if_name)
     int ret;
     struct ifreq ifr;
     struct sockaddr_in   *sin;
+    struct in_addr addr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get sub mask: socket open error!\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return 0;
     }
 
@@ -633,16 +664,19 @@ U32 dnq_net_get_mask(U8 *if_name)
     ret = ioctl(sockfd, SIOCGIFNETMASK, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get sub mask: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         return 0;
     }
 
     //sbmask = ipcfg_htonl(ifr.ifr_ifru.ifru_addr.sin_addr);
     sin = (struct sockaddr_in *)&ifr.ifr_ifru.ifru_addr;
 
-    sbmask = ipcfg_htonl(sin->sin_addr.s_addr);
+    sbmask = (sin->sin_addr.s_addr);
 
     close(sockfd);
+    addr.s_addr = sbmask;
+    DNQ_INFO(DNQ_MOD_NETWORK, "get netmask success: %s", inet_ntoa(addr));
+
     return sbmask;
 }
 
@@ -652,11 +686,12 @@ S32 dnq_net_set_broad_addr(U8 *if_name, U32 brdaddr)
     int ret;
     struct ifreq ifr;
     struct sockaddr_in *sin;
+    struct in_addr addr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set broadcast addr: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
 
@@ -665,18 +700,21 @@ S32 dnq_net_set_broad_addr(U8 *if_name, U32 brdaddr)
 
     //ifr.ifr_ifru.broad_addr.sin_addr = ipcfg_htonl(brdaddr);
     sin = (struct sockaddr_in *)&ifr.ifr_ifru.ifru_broadaddr;
-    sin->sin_addr.s_addr = ipcfg_htonl(brdaddr);
+    sin->sin_addr.s_addr = (brdaddr);
     sin->sin_family = AF_INET;
 
     ret = ioctl(sockfd, SIOCSIFBRDADDR, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set broadcast addr: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(sockfd);
         return -1;
     }
 
     close(sockfd);
+    addr.s_addr = brdaddr;
+    DNQ_INFO(DNQ_MOD_NETWORK, "set broadcast success: %s", inet_ntoa(addr));
+
     return 0;
 }
 
@@ -687,11 +725,12 @@ U32 dnq_net_get_broad_addr(U8 *if_name)
     int ret;
     struct ifreq ifr;
     struct sockaddr_in *sin;
+    struct in_addr addr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get broadcast addr: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return 0;
     }
 
@@ -701,16 +740,19 @@ U32 dnq_net_get_broad_addr(U8 *if_name)
     ret = ioctl(sockfd, SIOCGIFBRDADDR, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get broadcast addr: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(sockfd);
         return 0;
     }
 
     //bdaddr = ipcfg_htonl(ifr.ifr_ifru.broad_addr.sin_addr);
     sin = (struct sockaddr_in *)&ifr.ifr_ifru.ifru_broadaddr;
-    bdaddr = ipcfg_htonl(sin->sin_addr.s_addr);
+    bdaddr = (sin->sin_addr.s_addr);
 
     close(sockfd);
+    addr.s_addr = bdaddr;
+    DNQ_INFO(DNQ_MOD_NETWORK, "get broadcast success: %s", inet_ntoa(addr));
+
     return bdaddr;
 }
 
@@ -720,11 +762,12 @@ S32 dnq_net_set_ipaddr(U8 *if_name, U32 ip_addr)
     int ret;
     struct ifreq ifr;
     struct sockaddr_in   *sin;
+    struct in_addr addr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set ip addr: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
 
@@ -734,18 +777,21 @@ S32 dnq_net_set_ipaddr(U8 *if_name, U32 ip_addr)
     //ifr.ifr_ifru.ifru_addr.sin_addr = ipcfg_htonl(ip_addr);
     sin = (struct sockaddr_in   *)&ifr.ifr_ifru.ifru_addr;
     sin->sin_family = AF_INET;
-    sin->sin_addr.s_addr = ipcfg_htonl(ip_addr);
+    sin->sin_addr.s_addr = (ip_addr);
 
     //IPCFG_DownInterface(if_name);
     ret = ioctl(sockfd, SIOCSIFADDR, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set ip addr: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(sockfd);
         return -1;
     }
     //IPCFG_UpInterface(if_name);
     close(sockfd);
+    addr.s_addr = ip_addr;
+    DNQ_INFO(DNQ_MOD_NETWORK, "set ipaddr success: %s", inet_ntoa(addr));
+
     return 0; //success
 }
 
@@ -756,11 +802,12 @@ U32 dnq_net_get_ipaddr(U8 *if_name)
     int ret;
     struct ifreq ifr;
     struct sockaddr_in   *sin;
+    struct in_addr addr;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get ip addr : socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return 0;
     }
 
@@ -771,7 +818,7 @@ U32 dnq_net_get_ipaddr(U8 *if_name)
     ret = ioctl(sockfd, SIOCGIFADDR, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get ip addr : ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(sockfd);
         return 0;
     }
@@ -779,8 +826,11 @@ U32 dnq_net_get_ipaddr(U8 *if_name)
     //ip_addr = ipcfg_htonl(ifr.ifr_ifru.ifru_addr.sin_addr);
     //sin = (struct sockaddr_in *)$ifr.ifr_addr;
     sin = (struct sockaddr_in   *)&ifr.ifr_ifru.ifru_addr;
-    ip_addr = ipcfg_htonl(sin->sin_addr.s_addr);
+    ip_addr = (sin->sin_addr.s_addr);
     close(sockfd);
+    addr.s_addr = ip_addr;
+    DNQ_INFO(DNQ_MOD_NETWORK, "get ipaddr success: %s\n", inet_ntoa(addr));
+
     return ip_addr;
 }
 
@@ -793,7 +843,7 @@ S32 dnq_net_set_macaddr(U8 *if_name, U8 *mac_addr)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, " set mac addr: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
 
@@ -807,13 +857,17 @@ S32 dnq_net_set_macaddr(U8 *if_name, U8 *mac_addr)
     ret = ioctl(sockfd, SIOCSIFHWADDR, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "set mac addr: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(sockfd);
         return -1;
     }
     dnq_net_ifup(if_name);
 
     close(sockfd);
+    DNQ_INFO(DNQ_MOD_NETWORK, "set mac_addr success: %02X:%02X:%02X:%02X:%02X:%02X",\
+        mac_addr[0], mac_addr[1], mac_addr[2],\
+        mac_addr[3], mac_addr[4], mac_addr[5]);
+
     sleep(1); /* fixed ??*/
     return 0;
 }
@@ -827,7 +881,7 @@ S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if(sockfd < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get mac addr: socket open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
 
@@ -837,7 +891,7 @@ S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr)
     ret = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "get mac addr: ioctl open error !\n");
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(sockfd);
         return -1;
     }
@@ -849,12 +903,11 @@ S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr)
     mac_addr[4] = ifr.ifr_ifru.ifru_hwaddr.sa_data[4];
     mac_addr[5] = ifr.ifr_ifru.ifru_hwaddr.sa_data[5];
 
-    DNQ_INFO(DNQ_MOD_NETWORK, "mac_addr:");
-    for(ret=0; ret<6; ret++)
-        DNQ_PRINT(DNQ_MOD_NETWORK, "%02x ", mac_addr[ret]);
-    DNQ_PRINT(DNQ_MOD_NETWORK, "\n");
-    
+    DNQ_INFO(DNQ_MOD_NETWORK, "set mac_addr success: %02X:%02X:%02X:%02X:%02X:%02X",\
+    mac_addr[0], mac_addr[1], mac_addr[2],\
+    mac_addr[3], mac_addr[4], mac_addr[5]);
     close(sockfd);
+    
     return 0;
 }
 
@@ -872,10 +925,14 @@ S32 dnq_net_get_link_status(U8 *if_name)
     ifr.ifr_data = (char *) &edata;
 
     if((skfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+       DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return -1;
+    }
 
     if(ioctl(skfd, SIOCETHTOOL, &ifr) == -1)
     {
+        DNQ_ERROR(DNQ_MOD_NETWORK, "ioctl error!, errno=%d:%s", errno, strerror(errno));
         close(skfd);
         return -1;
     }
@@ -907,7 +964,7 @@ U32 dnq_net_get_host_by_name(U8 *cname)
     {
         pptr = p_hostent->h_addr_list;
         ipaddr = *(struct in_addr *)*pptr;
-        return ipcfg_htonl(ipaddr.s_addr);
+        return (ipaddr.s_addr);
     }
     return 0;
 }
@@ -1015,7 +1072,7 @@ S32 dnq_net_link_isgood()
     
     while(count--)
     {
-        printf("check net!!\n");
+        //dnq_ping_test();
         server_ip = dnq_net_get_host_by_name(DNQ_SERVER_URL);
         if(server_ip != 0)
         {

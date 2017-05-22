@@ -25,6 +25,7 @@ S32 dnq_mcu_uart_read(U8 *buffer, U32 len);
 S32 dnq_mcu_uart_write(U8 *buffer, U32 len);
 S32 dnq_sensor_uart_read(U8 *buffer, U32 len);
 S32 dnq_sensor_uart_write(U8 *buffer, U32 len);
+S32 dnq_sensor_uart_sync();
 
 
 #endif /* _DNQ_UART_H_ */

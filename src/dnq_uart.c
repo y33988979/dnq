@@ -82,6 +82,7 @@ S32 dnq_uart_open(U8 *dev)
         dev, strerror(errno));
         return -1;
     }
+    dnq_uart_set_baudrate(fd, B9600);
 
     return fd;
 }
@@ -139,6 +140,12 @@ S32 dnq_uart_set_timeout(S32 fd, U32 timeout, U32 read_min)
 	tcflush(fd,TCIOFLUSH);
 
 	return ret;
+}
+
+
+S32 dnq_uart_sync(U32 fd)
+{
+    return tcdrain(fd);
 }
 
 S32 dnq_uart_close(U32 fd)
@@ -274,6 +281,10 @@ S32 dnq_sensor_uart_write(U8 *buffer, U32 len)
     return ret;
 }
 
+S32 dnq_sensor_uart_sync()
+{
+    return dnq_uart_sync(sensor_uart_fd);
+}
 
 int uart_test(int argc, char **argv)
 {

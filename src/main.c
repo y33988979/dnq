@@ -72,15 +72,15 @@ int main()
 
     //dnq_debug_setlever(1,5);
     
-    //rs485_test();
+    rs485_test();
     //sleep(1000);
 
     network_test();
-    //sleep(1000);
+    sleep(1000);
 
     MAIN_CHECK( dnq_lcd_init() );
     MAIN_CHECK( dnq_keypad_init() );
-    //MAIN_CHECK( dnq_rabbitmq_init());
+    MAIN_CHECK( dnq_rabbitmq_init());
     MAIN_CHECK( dnq_manage_init() );
 
     queue = dnq_queue_create(QUEUE_SIZE_MAX);

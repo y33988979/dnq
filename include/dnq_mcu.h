@@ -26,7 +26,7 @@
 #define MCU_RESPONSE_LEN_HEART    13
 
 /* sensor response data lenght */
-#define SENSOR_RESPONSE_LEN       13
+#define SENSOR_RESPONSE_LEN       15
 #define SENSOR_REQUEST_LEN        13
 
 /* error code */
