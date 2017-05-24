@@ -67,7 +67,7 @@ typedef enum json_type
 #define JSON_ITEM_ROOMID          "id" //"roomid"
 #define JSON_ITEM_DPID            "dpid"
 #define JSON_ITEM_TIMESETTING_CNT "timesetting_cnt"
-#define JSON_ITEM_TIMESETTINGS    "timesettings"
+#define JSON_ITEM_TIMESETTINGS    "timesetting"
 #define JSON_ITEM_START_TIME      "starttime"
 #define JSON_ITEM_END_TIME        "endtime"
 #define JSON_ITEM_DEGREES         "degrees"

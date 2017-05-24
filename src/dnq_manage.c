@@ -192,7 +192,8 @@ void *manage_task(void *args)
 
                 send_msg_to_lcd();
                 break;
-
+            case MSG_CLASS_RABBITMQ:
+                DNQ_INFO(DNQ_MOD_MANAGE, "recv rabbitmq msg!");
             default:
             break;
         }
@@ -210,11 +211,11 @@ S32 dnq_manage_init()
         QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, manage_task, appinfo);
     if(!*appinfo)
     {
-        DNQ_ERROR(DNQ_MOD_LCD, "manage_task create error!");
+        DNQ_ERROR(DNQ_MOD_MANAGE, "manage_task create error!");
         return -1;
     }
     
-    DNQ_INFO(DNQ_MOD_LCD, "dnq_manage_init ok!");
+    DNQ_INFO(DNQ_MOD_MANAGE, "dnq_manage_init ok!");
     return 0;
 }
 

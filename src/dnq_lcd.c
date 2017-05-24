@@ -1025,9 +1025,11 @@ S32 lcd_key_process(U32 key_code, U32 key_status)
     return 0;
 }    
 
-S32 lcd_rabbitmq_process()
+S32 lcd_rabbitmq_process(dnq_msg_t *msg)
 {
-
+    S32 ret;
+    
+    return ret;
 }
 
 
@@ -1100,10 +1102,10 @@ void *lcd_task(void *args)
                 
             break;
             case MSG_CLASS_RABBITMQ:
-                DNQ_INFO(DNQ_MOD_LCD, "recv rabbitmq msg: val=%d, status=%d",\
+                DNQ_INFO(DNQ_MOD_LCD, "recv rabbitmq msg: code=%d, status=%d",\
                     pRecvMsg->code, pRecvMsg->payload);
                 
-                lcd_rabbitmq_process();
+                lcd_rabbitmq_process(pRecvMsg);
             break;
             
         }

@@ -475,14 +475,16 @@ S32 dnq_get_room_temperature(U32 room_id)
     for(ret=0;ret<cmdbuf[5];ret++)
         printf("%02x ", cmdbuf[ret]);
     printf("\n");
+    
     ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
     if(ret < 0)
         printf("dnq_sensor_uart_write error!\n");
     //dnq_sensor_uart_sync();
-    dnq_msleep(200);
+    dnq_msleep(500);
     #endif
+    
     dnq_rs485_ctrl_low(); 
-
+    
     ret = dnq_sensor_uart_read(recvbuf, SENSOR_RESPONSE_LEN);
     if(ret == 0)
     {
@@ -493,9 +495,9 @@ S32 dnq_get_room_temperature(U32 room_id)
         printf("%02x ", recvbuf[ret]);
     printf("\n");
 
-    temperature = recvbuf[5];
+    temperature = recvbuf[7]<<8|recvbuf[8];
     DNQ_INFO(DNQ_MOD_MCU, "room %d temperature is %d'C!", room_id, temperature);
-    exit(1);
+    //exit(1);
 
     return temperature;
 }
@@ -600,9 +602,11 @@ void *mcu_task(void *args)
             ret = dnq_rtc_get_datetime(&datetime);
             if(ret < 0)
                 DNQ_ERROR(DNQ_MOD_MCU, "CPU->MCU get datetime error!");
+            /*
             DNQ_INFO(DNQ_MOD_MCU, "get datetime: %04d-%02d-%02d %02d:%02d:%02d",\
                 2000+datetime.year, datetime.month, datetime.day,\
                 datetime.hour, datetime.minute, datetime.second);
+                */
         }
             
         if(count%10 == 0)
@@ -621,7 +625,7 @@ void *mcu_task(void *args)
             }
             else
             {
-                DNQ_INFO(DNQ_MOD_MCU, "recv heartbeat !");
+                //DNQ_INFO(DNQ_MOD_MCU, "recv heartbeat !");
                 heart_drop_cnt = 0;
             }
         }
@@ -764,9 +768,10 @@ S32 rs485_test()
     #endif
         for(i=0; i<16; i++)
         {
-            val = dnq_get_room_temperature(0);
-            printf("id[%d]: get temperature %2.1f.\n", i, val);
-            dnq_sleep(2);
+            printf("id[%d]: --get temperature begin--.\n", i, val);
+            val = dnq_get_room_temperature(i);
+            printf("id[%d]: --get temperature end--.\n", i, val);
+            sleep(4);
         }
     }
 }

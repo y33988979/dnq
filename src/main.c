@@ -54,7 +54,7 @@ void *send_test(void *args)
         n += 100;
         dnq_msleep(100);
         if(cnt++ % 5 == 0)
-            sleep(60);
+            sleep(600);
     }
 }
 
@@ -64,19 +64,26 @@ int main()
     U8 buffer[1024];
     dnq_queue_t *queue = NULL;
     dnq_msg_t recv_msg;
-    
+    while(1)
+    {
+        break;
+        usleep(1000*1000);
+        printf("12312312312\n");
+    }
+
+   
     MAIN_CHECK( dnq_init() );
     MAIN_CHECK( dnq_debug_init() );
     MAIN_CHECK( dnq_uart_init() );
     MAIN_CHECK( dnq_mcu_init() );
 
-    //dnq_debug_setlever(1,5);
+    dnq_debug_setlever(1,3);
     
-    rs485_test();
+    //rs485_test();
     //sleep(1000);
 
     network_test();
-    sleep(1000);
+    //sleep(1000);
 
     MAIN_CHECK( dnq_lcd_init() );
     MAIN_CHECK( dnq_keypad_init() );

@@ -176,7 +176,7 @@ S32 dnq_uart_init()
     dnq_uart_set_baudrate(sensor_uart_fd, 9600);
     dnq_uart_set_timeout(lcd_uart_fd, 2, 0);
     dnq_uart_set_timeout(mcu_uart_fd, 2, 0);
-    dnq_uart_set_timeout(sensor_uart_fd, 2, 0);
+    dnq_uart_set_timeout(sensor_uart_fd, 20, 0);
     
     DNQ_INFO(DNQ_MOD_UART, "dnq_uart_init ok!");
     return 0;

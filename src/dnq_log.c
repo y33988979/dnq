@@ -36,7 +36,10 @@ static debug_module_t g_dbg_modules[DNQ_MOD_CNT] =
     DNQ_MOD_RABBITMQ,"RABBITMQ Module",
     DNQ_MOD_OS,      "OS     Module",
     DNQ_MOD_RTC,     "RTC    Module",
-    DNQ_MOD_NETWORK, "NETWORK Module",
+    DNQ_MOD_MANAGE,  "MANAGE Module",
+    DNQ_MOD_GPIO,    "GPIO Module",
+    DNQ_MOD_UPGRADE, "UPGRADE Module",
+    
 };
 
 int dnq_debug(U32 module_id, U32 lever, const char *fmt, ...)
@@ -102,7 +105,7 @@ void dnq_debug_control()
 {
     U32  module_id;
     U32  dbg_lever;
-    U32  len;
+    S32  len;
     char *ptr = NULL;
     char cmdline[512];
 
@@ -144,6 +147,7 @@ void dnq_debug_control()
         while(len-- && *ptr == '\0')
             ptr++;
 
+        printf("len=%d\n", len);
         if(len < 0) {debug_help();continue;}
         module_id = atoi(ptr);
 
