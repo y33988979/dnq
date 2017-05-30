@@ -1018,7 +1018,7 @@ static void net_status_change(net_status_e status)
         break;
         case LINK_ON:
             DNQ_INFO(DNQ_MOD_NETWORK, "link up!");
-            dnq_dhcp_start(ETH_NAME);
+            //dnq_dhcp_start(ETH_NAME);
         break;
         case IP_BOUND:
         break;
@@ -1046,7 +1046,7 @@ void *network_task(void *args)
             last_status = current_status;
         }
 
-        dnq_usleep(300*1000);
+        dnq_usleep(1000*1000);
     }
 }
 
@@ -1085,6 +1085,41 @@ S32 dnq_net_link_isgood()
     
     /* link bad */
     return 0;
+}
+
+S32 dnq_network_getinfo()
+{
+    U32   ip;
+    U8    mac[16] = {0};
+    struct in_addr addr;
+
+    ip = dnq_net_get_link_status(ETH_NAME);
+    DNQ_INFO(DNQ_MOD_NETWORK, "link: %s", ip?"on":"off");
+    
+    addr.s_addr = dnq_net_get_ipaddr(ETH_NAME);
+    DNQ_INFO(DNQ_MOD_NETWORK, "ipaddr: %s", inet_ntoa(addr));
+    addr.s_addr = dnq_net_get_mask(ETH_NAME);
+    DNQ_INFO(DNQ_MOD_NETWORK, "mask: %s", inet_ntoa(addr));
+    addr.s_addr = dnq_net_get_gw_addr(ETH_NAME);
+    DNQ_INFO(DNQ_MOD_NETWORK, "gateway: %s", inet_ntoa(addr));
+    addr.s_addr = dnq_net_get_broad_addr(ETH_NAME);
+    DNQ_INFO(DNQ_MOD_NETWORK, "broadcast: %s", inet_ntoa(addr));
+    
+    dnq_net_get_macaddr(ETH_NAME, mac);
+    DNQ_INFO(DNQ_MOD_NETWORK, "mac: %02x:%02x:%02x:%02x:%02x:%02x",\
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+    addr.s_addr = dnq_net_get_host_by_name(DNQ_SERVER_URL);
+    DNQ_INFO(DNQ_MOD_NETWORK, "the url: %s to ipaddr: %s",\
+        DNQ_SERVER_URL, inet_ntoa(addr));
+    return 0;
+}
+
+void dnq_network_printinfo()
+{
+    host_net_info_t *netinfo = &g_host_netinfo;
+    DNQ_INFO(DNQ_MOD_NETWORK, "intf name:\t%s", netinfo->if_name);
+    DNQ_INFO(DNQ_MOD_NETWORK, "link status:\t%s", netinfo->link_status);
 }
 
 S32 dnq_network_check()
@@ -1140,36 +1175,11 @@ S32 dnq_network_deinit()
     return 0;
 }
 
-
 S32 network_test()
 {
-    
-    U32   ip;
-    U8    mac[16] = {0};
-    struct in_addr addr;
-
     dnq_init();
     dnq_debug_init();
-
-    ip = dnq_net_get_link_status(ETH_NAME);
-    DNQ_INFO(DNQ_MOD_NETWORK, "link: %s", ip?"on":"off");
-    
-    addr.s_addr = dnq_net_get_ipaddr(ETH_NAME);
-    DNQ_INFO(DNQ_MOD_NETWORK, "ipaddr: %s", inet_ntoa(addr));
-    addr.s_addr = dnq_net_get_mask(ETH_NAME);
-    DNQ_INFO(DNQ_MOD_NETWORK, "mask: %s", inet_ntoa(addr));
-    addr.s_addr = dnq_net_get_gw_addr(ETH_NAME);
-    DNQ_INFO(DNQ_MOD_NETWORK, "gateway: %s", inet_ntoa(addr));
-    addr.s_addr = dnq_net_get_broad_addr(ETH_NAME);
-    DNQ_INFO(DNQ_MOD_NETWORK, "broadcast: %s", inet_ntoa(addr));
-    
-    dnq_net_get_macaddr(ETH_NAME, mac);
-    DNQ_INFO(DNQ_MOD_NETWORK, "mac: %02x:%02x:%02x:%02x:%02x:%02x",\
-        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-    addr.s_addr = dnq_net_get_host_by_name(DNQ_SERVER_URL);
-    DNQ_INFO(DNQ_MOD_NETWORK, "the url: %s to ipaddr: %s",\
-        DNQ_SERVER_URL, inet_ntoa(addr));
+    dnq_network_getinfo();
     return 0;
 }
 

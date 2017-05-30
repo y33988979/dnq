@@ -64,11 +64,18 @@ int main()
     U8 buffer[1024];
     dnq_queue_t *queue = NULL;
     dnq_msg_t recv_msg;
+
+    int cnt = 0;
     while(1)
     {
         break;
-        usleep(1000*1000);
-        printf("12312312312\n");
+        sleep(1);
+        //printf("12312312312\n");
+        if(cnt++ % 10 == 0)
+        {
+            dnq_system_call("cat /proc/uptime");
+            printf("time_now=%d\n",dnq_time_now());
+        }
     }
 
    
@@ -76,13 +83,14 @@ int main()
     MAIN_CHECK( dnq_debug_init() );
     MAIN_CHECK( dnq_uart_init() );
     MAIN_CHECK( dnq_mcu_init() );
+    MAIN_CHECK( dnq_network_init() );
 
     dnq_debug_setlever(1,3);
     
     //rs485_test();
     //sleep(1000);
 
-    network_test();
+    dnq_network_getinfo();
     //sleep(1000);
 
     MAIN_CHECK( dnq_lcd_init() );

@@ -81,7 +81,7 @@ typedef enum json_type
 #define JSON_ITEM_CORRECT         "correct"
 #define JSON_ITEM_ROOM_CNT        "room_cnt"
 
-#define JSON_ITEM_PARTITION       "partition"
+#define JSON_ITEM_PARTITION       "partation"
 #define JSON_ITEM_NO              "no"
 #define JSON_ITEM_MEMO            "memo"
 #define JSON_ITEM_NAME            "name"
@@ -309,7 +309,7 @@ typedef struct room_info
     U8        room_name[SIZE_16];
     U16       room_order;
     U16       room_floor;
-    U16       position;
+    U8        position[SIZE_16];
 }room_info_t;
 
 typedef struct server_init_info
@@ -353,9 +353,9 @@ typedef struct _dnq_config
 */
 typedef struct client_room
 {
-    U32       room_id;
-    U32       value;
-    U32       loss;
+    U16       room_id;
+    U16       degree;
+    U16       loss;
 }client_room_t;
 
 typedef struct client_config_room
@@ -418,6 +418,7 @@ extern dnq_config_t dnq_config;
 
 S32 dnq_rabbitmq_init();
 S32 dnq_rabbitmq_deinit();
+S32 send_room_status_to_server(client_status_t *client_status);
 
 #endif /* _DNQ_RABBITMQ_H_ */
 

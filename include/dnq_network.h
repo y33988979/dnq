@@ -28,6 +28,7 @@ typedef struct _host_net_info
     U32 dns_ex;
     U32 server_ip;
     U32 port;
+    U32 link_status;
 }host_net_info_t;
 
 typedef void (*netlink_callback)(net_status_e status);
@@ -52,6 +53,7 @@ S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr);
 S32 dnq_net_get_link_status(U8 *if_name);
 U32 dnq_net_get_host_by_name(U8 *cname);
 S32 dnq_net_link_isgood();
+S32 dnq_network_getinfo();
 S32 dnq_network_check();
 S32 dnq_network_init();
 S32 dnq_network_deinit();

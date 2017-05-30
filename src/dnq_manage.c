@@ -166,6 +166,7 @@ void *manage_task(void *args)
 {
     S32  ret;
     S32  status;
+    U32  second = 0;
     dnq_queue_t *manage_queue;
     dnq_msg_t  sendMsg;
     dnq_msg_t  recvMsg;
@@ -178,19 +179,22 @@ void *manage_task(void *args)
     
     while(1)
     {
-
         ret = dnq_msg_recv_timeout(manage_queue, pRecvMsg, 1000);
         if(ret < 0)
         {
             //dnq_proc();
+            second++;
+            if(second%300 == 0) /* five minutes */
+            {
+                send_room_status_to_server(NULL);
+            }
             continue;
         }
 
         switch(pRecvMsg->Class)
         {
-            case DNQ_CONFIG_UPDATE:
-
-                send_msg_to_lcd();
+            case MSG_CLASS_LCD:
+                DNQ_INFO(DNQ_MOD_MANAGE, "recv lcd msg!"); 
                 break;
             case MSG_CLASS_RABBITMQ:
                 DNQ_INFO(DNQ_MOD_MANAGE, "recv rabbitmq msg!");

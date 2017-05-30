@@ -771,7 +771,7 @@ S32 rs485_test()
             printf("id[%d]: --get temperature begin--.\n", i, val);
             val = dnq_get_room_temperature(i);
             printf("id[%d]: --get temperature end--.\n", i, val);
-            sleep(4);
+            sleep(2);
         }
     }
 }
