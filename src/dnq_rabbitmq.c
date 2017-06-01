@@ -109,16 +109,16 @@ static char *password = "123456";
 
 
 
-S32 json_file_read(char *filename, char *buffer, int len)
+S32 json_file_read(char *filepath, char *buffer, int len)
 {
     S32    ret = 0;
     FILE  *fp = NULL;
 
-    //memset(buffer, 0, len);
-    fp = fopen(filename, "r");
+    memset(buffer, 0, len);
+    fp = fopen(filepath, "r");
     if(fp == NULL)
     {
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filename, strerror(errno));
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filepath, strerror(errno));
         return -1;
     }
     
@@ -126,7 +126,7 @@ S32 json_file_read(char *filename, char *buffer, int len)
     if(len < 0)
     {
         fclose(fp);
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "read error! err=%s!", filename, strerror(errno));
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "read error! err=%s!", filepath, strerror(errno));
         return -1;
     }
     printf("read len=%d\n", ret);
@@ -136,19 +136,15 @@ S32 json_file_read(char *filename, char *buffer, int len)
     return ret; 
 }
 
-S32 json_file_write(char *filename, char *buffer, int len)
+S32 json_file_write(char *filepath, char *buffer, int len)
 {
     S32    ret = 0;
-    U8     file_path[128] = {0};
     FILE  *fp = NULL;
-
-    strcpy(file_path, "/root/configs/");
-    strcat(file_path, filename);
     
-    fp = fopen(file_path, "w+");
+    fp = fopen(filepath, "w+");
     if(fp == NULL)
     {
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", file_path, strerror(errno));
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "open file %s error! err=%s!", filepath, strerror(errno));
         return -1;
     }
     
@@ -156,12 +152,41 @@ S32 json_file_write(char *filename, char *buffer, int len)
     if(len < 0)
     {
         fclose(fp);
-        DNQ_ERROR(DNQ_MOD_RABBITMQ, "write error! err=%s!", file_path, strerror(errno));
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "write error! err=%s!", filepath, strerror(errno));
         return -1;
     }
 
     fclose(fp);
     return ret; 
+}
+
+S32 dnq_config_init(dnq_config_t *config)
+{
+    memset(config, 0, sizeof(dnq_config_t));
+    return 0;
+}
+
+S32 dnq_config_deinit(dnq_config_t *config)
+{
+    memset(config, 0, sizeof(dnq_config_t));
+    return 0;
+}
+
+S32 dnq_config_load(dnq_config_t *config)
+{
+    U8  filepath[128] = {0};
+    U8  buffer[1024];
+    U8  cjson_struct[3072] = {0};
+    S32 ret;
+    S32 type;
+    
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_AUTHORRIZATION);
+    ret = json_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, &config->authorization);
+
+    /* un finished...... */
+    
+    return 0;
 }
 
 S32 dnq_config_check_authorization(void *cjson_struct)
@@ -268,11 +293,13 @@ S32 dnq_config_check(json_type_e type, void *cjson_struct)
 S32 dnq_config_save_file(U8 *file_name, U8 *data, U32 len)
 {
     U32 i = 0;
+    U8 filepath[128] = {0};
     S32 ret;
         
     for(i=0; i<3; i++)
     {
-        ret = json_file_write(file_name, data, len);
+        sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, file_name);
+        ret = json_file_write(filepath, data, len);
         if(ret == len)
             break;
         dnq_msleep(200);
@@ -1472,7 +1499,7 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     send_response_to_server(conn, pchnl, json_type);
 
     
-    sendmsg.Class = MSG_CLASS_LCD;
+    sendmsg.Class = MSG_CLASS_RABBITMQ;
     sendmsg.code = json_type;
     
     send_msg_to_lcd(&sendmsg);
@@ -1820,18 +1847,6 @@ void *rabbitmq_send_test()
 }
 
 
-S32 dnq_config_init(dnq_config_t *config)
-{
-    memset(config, 0, sizeof(dnq_config_t));
-    return 0;
-}
-
-S32 dnq_config_deinit(dnq_config_t *config)
-{
-    memset(config, 0, sizeof(dnq_config_t));
-    return 0;
-}
-
 S32 dnq_rabbitmq_init()
 {
     S32 ret;
@@ -1940,47 +1955,6 @@ int json_parse_test()
     return 0;
 }
 
-#if 0
-char json_data[] =
-    "{\"type\": \"control\",\
-    \"time\": \"2011200000000\",\
-    \"mode\": \"0\",\
-    \"rooms\": [\
-        {\
-\"id\": \"0\",\
-\"dpid\": \"0\",\
-            \"timesetting\": [\
-                {\
-                    \"starttime\": \"11:11\",\
-                    \"endtime\": \"22:22\",\
-                    \"degrees\": \"33\"\
-                },\
-                {\
-                    \"starttime\": \"44:44\",\
-                    \"endtime\": \"55:55\",\
-                    \"degrees\": \"66\"\
-                }\
-            ]\
-        },\
-        {\
-\"id\": \"2\",\
-\"dpid\": \"0\",\
-            \"timesetting\": [\
-                {\
-                    \"starttime\": \"77:77\",\
-                    \"endtime\": \"88:88\",\
-                    \"degrees\": \"99\"\
-                },\
-                {\
-                    \"starttime\": \"01:23\",\
-                    \"endtime\": \"01:23\",\
-                    \"degrees\": \"123456789\"\
-                }\
-            ]\
-        }\
-    ]\
-}";
-#endif
 
 int json_test()
 {
@@ -2165,143 +2139,5 @@ YLOG("[ychen]: amqp_channel_open! chnl=%d\n", pchnl->chid);
 
   return 0;
 }
-
-int main1(int argc, char const *const *argv)
-{
-  char const *hostname;
-  int port, status;
-  char const *exchange;
-  char const *bindingkey;
-  amqp_socket_t *socket = NULL;
-  amqp_connection_state_t conn;
-
-  amqp_bytes_t queuename;
-  channel_t *pchnl;
-  char real_queue[64];
-  char *pcrtlid;
-
-  if (argc < 5) {
-    //fprintf(stderr, "Usage: amqp_listen host port exchange bindingkey\n");
-    //return 1;
-  }
-
-  hostname = argv[1];
-  port = atoi(argv[2]);
-  exchange = argv[3];
-  bindingkey = argv[4];
-
-  hostname = serverip;
-  port = serverport;
-  pchnl = &channels[13];
-  pcrtlid = "192.168.30.189";
-
-  strcpy(real_queue, "192.168.30.186");
-  sprintf(real_queue,"%s%s",pcrtlid,pchnl->qname);
-
-  conn = amqp_new_connection();
-
-    YLOG("[ychen]: amqp_new_connection!\n");
-  socket = amqp_tcp_socket_new(conn);
-  if (!socket) {
-    die("creating TCP socket");
-  }
-
-YLOG("[ychen]: amqp_tcp_socket_new!\n");
-  status = amqp_socket_open(socket, hostname, port);
-  if (status) {
-    die("opening TCP socket");
-  }
-YLOG("[ychen]: amqp_socket_open!\n");
-  die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 30, AMQP_SASL_METHOD_PLAIN, \
-    username, password),
-                    "Logging in");
-  YLOG("[ychen]: amqp_login!\n");
-  amqp_channel_open(conn, pchnl->chid);
-  die_on_amqp_error(amqp_get_rpc_reply(conn), "Opening channel");
-YLOG("[ychen]: amqp_channel_open!\n");
-  {
-    /* */
-    amqp_exchange_declare(conn, pchnl->chid, amqp_cstring_bytes(pchnl->exchange),\
-        amqp_cstring_bytes("direct"),  0, 1 /* durable ³Ö¾Ã»¯ */, 0, 0, amqp_empty_table);
-    YLOG("[ychen]: amqp_exchange_declare!\n");
-    amqp_queue_declare_ok_t *r = amqp_queue_declare(conn, pchnl->chid,\
-        amqp_cstring_bytes(real_queue), 0, 0, 0, 1, amqp_empty_table);
-    die_on_amqp_error(amqp_get_rpc_reply(conn), "Declaring queue");
-    YLOG("[ychen]: amqp_queue_declare!\n");
-    queuename = amqp_bytes_malloc_dup(r->queue);
-    if (queuename.bytes == NULL) {
-      fprintf(stderr, "Out of memory while copying queue name");
-      return 1;
-    }
-  }
-
-    YLOG("[ychen]: queuename=%s, len=%d!\n", queuename.bytes, queuename.len);
-  amqp_queue_bind(conn, pchnl->chid, queuename, amqp_cstring_bytes(pchnl->exchange), \
-    amqp_cstring_bytes(pchnl->rtkey), amqp_empty_table);
-  die_on_amqp_error(amqp_get_rpc_reply(conn), "Binding queue");
-  YLOG("[ychen]: amqp_queue_bind!\n");
-
-  amqp_basic_consume(conn, pchnl->chid, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
-  die_on_amqp_error(amqp_get_rpc_reply(conn), "Consuming");
-    YLOG("[ychen]: amqp_basic_consume!\n");
-  {
-    for (;;) {
-      amqp_rpc_reply_t res;
-      amqp_envelope_t envelope;
-
-        /* send msg */
-      {
-        char *messagebody = "sichuan";
-        amqp_basic_properties_t props;
-        props._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
-        props.content_type = amqp_cstring_bytes("text/plain");
-        props.delivery_mode = 2; /* persistent delivery mode */
-        die_on_error(amqp_basic_publish(conn,
-                                        1,
-                                        amqp_cstring_bytes(pchnl->exchange),
-                                        amqp_cstring_bytes(pchnl->rtkey),
-                                        0,
-                                        0,
-                                        &props,
-                                        amqp_cstring_bytes(messagebody)),
-                     "Publishing");
-      }
-        YLOG("[ychen]: amqp_basic_publish!\n");
-
-      amqp_maybe_release_buffers(conn);
-
-      res = amqp_consume_message(conn, &envelope, NULL, 0);
-
-      if (AMQP_RESPONSE_NORMAL != res.reply_type) {
-        break;
-      }
-
-      printf("Delivery %u, exchange %.*s routingkey %.*s\n",
-             (unsigned) envelope.delivery_tag,
-             (int) envelope.exchange.len, (char *) envelope.exchange.bytes,
-             (int) envelope.routing_key.len, (char *) envelope.routing_key.bytes);
-
-      if (envelope.message.properties._flags & AMQP_BASIC_CONTENT_TYPE_FLAG) {
-        printf("Content-type: %.*s\n",
-               (int) envelope.message.properties.content_type.len,
-               (char *) envelope.message.properties.content_type.bytes);
-      }
-      printf("----\n");
-
-      amqp_dump(envelope.message.body.bytes, envelope.message.body.len);
-
-      amqp_destroy_envelope(&envelope);
-    }
-  }
-
-  die_on_amqp_error(amqp_channel_close(conn, 1, AMQP_REPLY_SUCCESS), "Closing channel");
-  die_on_amqp_error(amqp_connection_close(conn, AMQP_REPLY_SUCCESS), "Closing connection");
-  die_on_error(amqp_destroy_connection(conn), "Ending connection");
-
-  return 0;
-}
-
-
-
 
 

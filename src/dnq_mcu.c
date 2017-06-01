@@ -475,12 +475,13 @@ S32 dnq_get_room_temperature(U32 room_id)
     for(ret=0;ret<cmdbuf[5];ret++)
         printf("%02x ", cmdbuf[ret]);
     printf("\n");
-    
+
+    //dnq_msleep(200);
     ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
     if(ret < 0)
         printf("dnq_sensor_uart_write error!\n");
-    //dnq_sensor_uart_sync();
-    dnq_msleep(500);
+    dnq_sensor_uart_sync();
+    dnq_msleep(300);
     #endif
     
     dnq_rs485_ctrl_low(); 
@@ -771,7 +772,7 @@ S32 rs485_test()
             printf("id[%d]: --get temperature begin--.\n", i, val);
             val = dnq_get_room_temperature(i);
             printf("id[%d]: --get temperature end--.\n", i, val);
-            sleep(2);
+            sleep(1);
         }
     }
 }

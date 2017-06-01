@@ -104,7 +104,7 @@ typedef enum json_type
 * json config define
 * json配置文件 文件名称定义
 */
-
+#define DNQ_CONFIG_PATH           "/root/configs"
 #define JSON_FILE_AUTHORRIZATION  "authorization.json"
 #define JSON_FILE_POLICY          "policy.json"
 #define JSON_FILE_LIMIT           "limit.json"

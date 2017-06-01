@@ -87,8 +87,8 @@ int main()
 
     dnq_debug_setlever(1,3);
     
-    //rs485_test();
-    //sleep(1000);
+    rs485_test();
+    sleep(1000);
 
     dnq_network_getinfo();
     //sleep(1000);
