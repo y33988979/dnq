@@ -53,8 +53,10 @@ extern ngx_uint_t  ngx_cacheline_size;
 //#define dnq_malloc(size)   ngx_palloc(dnq_mempool, size)
 //#define dnq_free(size)     ngx_pfree(dnq_mempool, size)
 
-ngx_pool_t *dnq_mempool_init(size_t size);
-void dnq_mempool_deinit(ngx_pool_t *pool);
+S32 dnq_mempool_init();
+void dnq_mempool_deinit();
+void *dnq_os_malloc(size_t size);
+void dnq_os_free(void *ptr);
 void *dnq_malloc(size_t size);
 void dnq_free(void *ptr);
 #endif //add by ychen

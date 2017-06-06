@@ -17,6 +17,8 @@ static int lcd_uart_fd = 0;
 static int mcu_uart_fd = 0;
 static int sensor_uart_fd = 0;
 
+static U8 uart_name[4][8] = {"lcd", "mcu", "sensor", "unknown"}; 
+
 struct termios stNew;
 struct termios stOld;
 
@@ -176,7 +178,7 @@ S32 dnq_uart_init()
     dnq_uart_set_baudrate(sensor_uart_fd, 9600);
     dnq_uart_set_timeout(lcd_uart_fd, 2, 0);
     dnq_uart_set_timeout(mcu_uart_fd, 2, 0);
-    dnq_uart_set_timeout(sensor_uart_fd, 20, 0);
+    dnq_uart_set_timeout(sensor_uart_fd, 4, 0);
     
     DNQ_INFO(DNQ_MOD_UART, "dnq_uart_init ok!");
     return 0;
@@ -251,33 +253,91 @@ static S32 dnq_uart_write(U32 fd, U8 *buffer, U32 len)
 
 S32 dnq_lcd_uart_read(U8 *buffer, U32 len)
 {
-    return dnq_uart_read(lcd_uart_fd, buffer, len);
+    S32 i = 0;
+    S32 ret;
+    ret = dnq_uart_read(lcd_uart_fd, buffer, len);
+    if(ret > 0)
+    {
+        DNQ_DEBUG(DNQ_MOD_LCD, "total=%d, recv=%d, data:",len, ret);
+        for(i=0; i<ret; i++)
+            DNQ_PRINT2(DNQ_MOD_LCD, "%02x ", buffer[i]);
+        DNQ_PRINT2(DNQ_MOD_LCD, "\n\n");
+    }
+    return ret;
 }
 
 S32 dnq_lcd_uart_write(U8 *buffer, U32 len)
 {
-    return dnq_uart_write(lcd_uart_fd, buffer, len);
+    S32 i = 0;
+    S32 ret;
+    ret = dnq_uart_write(lcd_uart_fd, buffer, len);
+    if(ret > 0)
+    {
+        DNQ_DEBUG(DNQ_MOD_LCD, "total=%d, sent=%d, data:",len, ret);
+        for(i=0; i<ret; i++)
+            DNQ_PRINT2(DNQ_MOD_LCD, "%02x ", buffer[i]);
+        DNQ_PRINT2(DNQ_MOD_LCD, "\n\n");
+    }
+    return ret;
 }
 
 S32 dnq_mcu_uart_read(U8 *buffer, U32 len)
 {
-    return dnq_uart_read(mcu_uart_fd, buffer, len);
+    S32 i = 0;
+    S32 ret;
+    ret = dnq_uart_read(mcu_uart_fd, buffer, len);
+    if(ret > 0)
+    {
+        DNQ_DEBUG(DNQ_MOD_MCU, "total=%d, recv=%d, data:",len, ret);
+        for(i=0; i<ret; i++)
+            DNQ_PRINT2(DNQ_MOD_MCU, "%02x ", buffer[i]);
+        DNQ_PRINT2(DNQ_MOD_MCU, "\n\n");
+    }
+    return ret;
 }
 
 S32 dnq_mcu_uart_write(U8 *buffer, U32 len)
 {
-    return dnq_uart_write(mcu_uart_fd, buffer, len);
+    S32 i = 0;
+    S32 ret;
+    ret = dnq_uart_write(mcu_uart_fd, buffer, len);
+    if(ret > 0)
+    {
+        DNQ_DEBUG(DNQ_MOD_MCU, "total=%d, sent=%d, data:",len, ret);
+        for(i=0; i<ret; i++)
+            DNQ_PRINT2(DNQ_MOD_MCU, "%02x ", buffer[i]);
+        DNQ_PRINT2(DNQ_MOD_MCU, "\n\n");
+    }
+    return ret;
 }
 
 S32 dnq_sensor_uart_read(U8 *buffer, U32 len)
 {
-    return dnq_uart_read(sensor_uart_fd, buffer, len);
+    S32 i = 0;
+    S32 ret;
+    ret = dnq_uart_read(sensor_uart_fd, buffer, len);
+    if(ret > 0)
+    {
+        DNQ_DEBUG(DNQ_MOD_MCU, "total=%d, recv=%d, data:",len, ret);
+        for(i=0; i<ret; i++)
+            DNQ_PRINT2(DNQ_MOD_MCU, "%02x ", buffer[i]);
+        DNQ_PRINT2(DNQ_MOD_MCU, "\n\n");
+    }
+    return ret;
 }
 
 S32 dnq_sensor_uart_write(U8 *buffer, U32 len)
 {
+    S32 i = 0;
     S32 ret;
     ret = dnq_uart_write(sensor_uart_fd, buffer, len);
+    if(ret > 0)
+    {
+        DNQ_DEBUG(DNQ_MOD_MCU, "total=%d, sent=%d, data:",len, ret);
+        for(i=0; i<ret; i++)
+            DNQ_PRINT2(DNQ_MOD_MCU, "%02x ", buffer[i]);
+        DNQ_PRINT2(DNQ_MOD_MCU, "\n\n");
+    }
     return ret;
 }
 

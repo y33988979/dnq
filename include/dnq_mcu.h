@@ -25,10 +25,6 @@
 #define MCU_RESPONSE_LEN_GETTIME  19
 #define MCU_RESPONSE_LEN_HEART    13
 
-/* sensor response data lenght */
-#define SENSOR_RESPONSE_LEN       15
-#define SENSOR_REQUEST_LEN        13
-
 /* error code */
 #define ERR_HEADER     -1
 #define ERR_FLAG       -2
@@ -47,12 +43,6 @@ typedef enum cmd_id
     CMD_ID_GET_TIME,
     CMD_ID_HEARTBEAT
 }cmd_id_e;
-
-typedef struct uart_data
-{
-    int  len;
-    char data[64];
-}uart_data_t;
 
 typedef struct _datatime
 {
@@ -73,9 +63,11 @@ S32 dnq_close_all_heater();
 S32 dnq_rtc_set_datetime(datetime_t *datetime);
 S32 dnq_rtc_get_datetime(datetime_t *datetime);
 S32 dnq_rtc_get_datetime_str(U8 *datetime);
-U32 dnq_current_time();
-void dnq_current_datetime(datetime_t *datetime);
-S32 dnq_get_room_temperature(U32 room_id);
+U32 dnq_get_current_second();
+void dnq_set_current_second(U32 second);
+void dnq_get_current_datetime(datetime_t *datetime);
+S32 dnq_datetime_check(datetime_t *datetime);
+void dnq_datetime_print(datetime_t *datetime);
 
 #endif /* _DNQ_MCU_H_ */
 

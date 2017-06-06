@@ -2,6 +2,7 @@
 #define _DNQ_LCD_H_
 
 #include "common.h"
+#include "dnq_os.h"
 
 #define ITEM_ADDR_OFFSET      0x20
 
@@ -37,7 +38,7 @@
 
 #define LCD_ID_ROOM_ITEM_START    3
 #define LCD_ID_ROOM_ITEM_END     (LCD_ID_ROOM_ITEM_START + ALL_ROOM_ITEM_CNT -1)
-#define LCD_ITEM_MAX          188
+#define LCD_ITEM_MAX          218
 
 /* used for key process, roomid: 0~(ROOM_CNT_PER_PAGE-1) */
 #define FIRST_ROOM_IN_PAGE     0
@@ -55,13 +56,16 @@
 #define STATUS_STR_WORK       "工作"
 #define STATUS_STR_STOP       "停止"
 
+#define SN_STATUS_STR_WORK    "工作"
+#define SN_STATUS_STR_STOP    "异常"
+
 /* lcd status */
 #define LCD_STATUS_SHOWING    0
 #define LCD_STATUS_SETTING    1
 
 /* some string  */
 #define SOME_SPACE            "                                         "
-#define TITLE_STR " 松花江小学-主楼-三楼西/一号箱  2017年5月15日 18:33:33"
+#define TITLE_STR " 松花江小学-主楼-三楼西/一号箱 "
 #define HEADER_STR " 序号     房间       室温   设置温度    状态     SN    温度校准 "
 #define DATE_STR "2017年5月15日 18:33:33"
      
@@ -147,21 +151,22 @@ typedef struct room_item
 {
     U32      id;
     U8       name[16];
-    float    curr_temp;
-    float    set_temp;
+    S32      curr_temp;
+    S32      set_temp;
     U16      work_status;
     U16      sn_status;
     S32      correct;
 }room_item_t;
 
+#define ITEM_CONTENT_SIZE 64
 typedef struct lcd_item
 {
     U8    id;
     U8    size;
     U16   addr;
     U16   addr2;
-    U32   color;
-    U8    content[64];
+    U16   color;
+    U8    content[ITEM_CONTENT_SIZE];
     
 }lcd_item_t;
 
@@ -169,17 +174,25 @@ typedef struct lcd_item
 #define FOUCS_ITEM_SETTING_TEMP   1
 #define FOUCS_ITEM_CORRECT_TEMP   2
 #define FOUCS_ITEM_MAX            3
-typedef struct lcd_status
+typedef struct _lcd_status
 {
     U32   status;
+    U32   around_enable;
+    U32   room_count;
+    U32   page_count;
     U32   current_page;
     U32   current_room;
     U32   current_foucs;
 }lcd_status_t;
 
+extern room_item_t g_rooms[DNQ_ROOM_MAX+1];
+
+
 S32 dnq_lcd_init();
 S32 dnq_lcd_deinit();
-
+S32 send_msg_to_lcd(dnq_msg_t *msg);
+room_item_t *dnq_get_rooms();
+room_item_t *dnq_get_room_item(U32 room_id);
 
 #endif /* _DNQ_LCD_H_ */
 

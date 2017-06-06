@@ -13,6 +13,7 @@
 #include "dnq_log.h"
 #include "dnq_common.h"
 #include "dnq_manage.h"
+#include "dnq_network.h"
 #include "dnq_rabbitmq.h"
 #include "ngx_palloc.h"
 
@@ -20,25 +21,6 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
-
-#if 0
-/* used for dnqV1  */
-channel_t channels1[18] = {
-	{1,  "_authorization",      "exchange_authorization",   ""},
-	{2,  "_control",            "exchange_control",         ""},
-	{3,  "_limit",              "exchange_limit",           ""},
-	{4,  "_adjust",             "exchange_adjust",          ""},
-	{5,  "_degreeerror",        "exchange_degreeerror",     ""},
-	{6,  "_power",              "exchange_power",           ""},
-	{7,  "_response",           "exchange_response",        ""},
-	{8,  "_rectify",           "exchange_rectify",        ""},
-	{9,  "_timecontrol",           "exchange_timecontrol",        ""},
-	{10,  "queue_cloud_degree",       "exchange_cloud_degree",    "state"},
-	{11,  "queue_cloud_heartbeat",    "exchange_cloud_heartbeat", "heartbeat"},
-	{12, "queue_cloud_callback",     "exchange_cloud_callback",  "callback"},
-	{13, "queue_cloud_warn",         "exchange_cloud_warn",      "warn"},
-};
-#endif
 
 /* recv channel: server to host */
 #define CHNL_RX_QUEUE_NAME_PREFIX  "queue_host_"
@@ -61,7 +43,217 @@ channel_t channels[10] = {
 	{7,  "_power",         "exchange_power",       ""}
 };
 
-dnq_config_t dnq_config;
+
+server_authorization_t g_authorization = {0};
+
+server_temp_policy_t   g_temp_policy = 
+{
+    .rooms_cnt = DNQ_ROOM_MAX,
+    .rooms = 
+    {
+        /* room_id, dpid, setting_cnt, setting[] */
+        {0, 0, 1, {0, 60*60*24-1, 16}},
+        {1, 0, 1, {0, 60*60*24-1, 18}},
+        {2, 0, 1, {0, 60*60*24-1, 20}},
+        {3, 0, 1, {0, 60*60*24-1, 22}},
+        {4, 0, 1, {0, 60*60*24-1, 24}},
+        {5, 0, 1, {0, 60*60*24-1, 25}},
+        {6, 0, 1, {0, 60*60*24-1, 26}},
+        {7, 0, 1, {0, 60*60*24-1, 27}},
+        {8, 0, 1, {0, 60*60*24-1, 18}},
+        {9, 0, 1, {0, 60*60*24-1, 19}},
+        {10, 0, 1, {0, 60*60*24-1, 20}},
+        {11, 0, 1, {0, 60*60*24-1, 21}},
+        {12, 0, 1, {0, 60*60*24-1, 22}},
+        {13, 0, 1, {0, 60*60*24-1, 23}},
+        {14, 0, 1, {0, 60*60*24-1, 24}},
+        {15, 0, 1, {0, 60*60*24-1, 30}}  
+    },
+};
+server_temp_limit_t    g_temp_limit =
+{
+    .rooms_cnt = DNQ_ROOM_MAX,
+    .rooms = 
+    {
+        /* room_id, max, min */
+        {0, 20, 28},
+        {1, 20, 28},
+        {2, 20, 28},
+        {3, 20, 28},
+        {4, 20, 28},
+        {5, 20, 28},
+        {6, 20, 28},
+        {7, 20, 28},
+        {8, 20, 28},
+        {9, 20, 28},
+        {10, 20, 28},
+        {11, 20, 28},
+        {12, 20, 28},
+        {13, 20, 28},
+        {14, 20, 28},
+        {15, 20, 28},
+    }
+};
+
+server_temp_error_t    g_temp_error =
+{
+    .rooms_cnt = DNQ_ROOM_MAX,
+    .rooms = 
+    {
+        /* room_id, error */
+        {0, 4},
+        {1, 4},
+        {2, 4},
+        {3, 4},
+        {4, 4},
+        {5, 4},
+        {6, 4},
+        {7, 4},
+        {8, 4},
+        {9, 4},
+        {10, 4},
+        {11, 4},
+        {12, 4},
+        {13, 4},
+        {14, 4},
+        {15, 4}
+    }
+};
+
+server_power_config_t  g_power_config;
+server_response_t      g_response;
+server_temp_correct_t  g_temp_correct = 
+{
+    .rooms_cnt = DNQ_ROOM_MAX,
+    .rooms = 
+    {
+        /* room_id, correct */
+        {0, -2},
+        {1, -2},
+        {2, -2},
+        {3, -1},
+        {4, -1},
+        {5, -2},
+        {6, -2},
+        {7, -2},
+        {8, 1},
+        {9, 1},
+        {10, -1},
+        {11, -1},
+        {12, -1},
+        {13, -1},
+        {14, 2},
+        {15, -2}
+    }
+};
+server_init_info_t     g_init;
+
+dnq_config_t g_dnq_config = 
+{
+    .inited = 0,
+    .authorization = {0},
+    .temp_policy = 
+    {
+        .rooms_cnt = DNQ_ROOM_MAX,
+        .rooms = 
+        {
+            /* room_id, dpid, setting_cnt, setting[] */
+            {0, 0, 1, {0, 60*60*24-1, 16}},
+            {1, 0, 1, {0, 60*60*24-1, 18}},
+            {2, 0, 1, {0, 60*60*24-1, 20}},
+            {3, 0, 1, {0, 60*60*24-1, 22}},
+            {4, 0, 1, {0, 60*60*24-1, 24}},
+            {5, 0, 1, {0, 60*60*24-1, 25}},
+            {6, 0, 1, {0, 60*60*24-1, 26}},
+            {7, 0, 1, {0, 60*60*24-1, 27}},
+            {8, 0, 1, {0, 60*60*24-1, 18}},
+            {9, 0, 1, {0, 60*60*24-1, 19}},
+            {10, 0, 1, {0, 60*60*24-1, 20}},
+            {11, 0, 1, {0, 60*60*24-1, 21}},
+            {12, 0, 1, {0, 60*60*24-1, 22}},
+            {13, 0, 1, {0, 60*60*24-1, 23}},
+            {14, 0, 1, {0, 60*60*24-1, 24}},
+            {15, 0, 1, {0, 60*60*24-1, 30}}  
+        },
+    },
+    .temp_limit = 
+    {
+        .rooms_cnt = DNQ_ROOM_MAX,
+        .rooms = 
+        {
+            /* room_id, max, min */
+            {0, 20, 28},
+            {1, 20, 28},
+            {2, 20, 28},
+            {3, 20, 28},
+            {4, 20, 28},
+            {5, 20, 28},
+            {6, 20, 28},
+            {7, 20, 28},
+            {8, 20, 28},
+            {9, 20, 28},
+            {10, 20, 28},
+            {11, 20, 28},
+            {12, 20, 28},
+            {13, 20, 28},
+            {14, 20, 28},
+            {15, 20, 28},
+        }
+    },
+    .temp_error = 
+    {
+        .rooms_cnt = DNQ_ROOM_MAX,
+        .rooms = 
+        {
+            /* room_id, error */
+            {0, 4},
+            {1, 4},
+            {2, 4},
+            {3, 4},
+            {4, 4},
+            {5, 4},
+            {6, 4},
+            {7, 4},
+            {8, 4},
+            {9, 4},
+            {10, 4},
+            {11, 4},
+            {12, 4},
+            {13, 4},
+            {14, 4},
+            {15, 4}
+        }
+    },
+    .power_config = {0},
+    .response = {0},
+    .temp_correct = 
+    {
+        .rooms_cnt = DNQ_ROOM_MAX,
+        .rooms = 
+        {
+            /* room_id, correct */
+            {0, -2},
+            {1, -2},
+            {2, -2},
+            {3, -1},
+            {4, -1},
+            {5, -2},
+            {6, -2},
+            {7, -2},
+            {8, 1},
+            {9, 1},
+            {10, -1},
+            {11, -1},
+            {12, -1},
+            {13, -1},
+            {14, 2},
+            {15, -2}
+        }
+    },
+    .init = {0},
+
+};
+
 
 #if 1
 static char *serverip = "112.74.43.136";
@@ -83,12 +275,12 @@ static char *password = "123456";
         obj = cJSON_GetObjectItem(json, item_name);\
         if(!obj)\
         {\
-            DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s not found!", item_name);\
+            DNQ_ERROR(DNQ_MOD_RABBITMQ, "item \"%s\" not found!", item_name);\
             return -1;\
         }\
         if(obj->type != item_type)\
         {\
-            DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s type[%d] error, should be [%d]!", \
+            DNQ_ERROR(DNQ_MOD_RABBITMQ, "item \"%s\" type=%d error, should be %d!", \
             item_name, obj->type, item_type);\
             return -1;\
         }\
@@ -107,9 +299,9 @@ static char *password = "123456";
     }while(0);\
     obj = NULL;
 
+S32 dnq_config_save_file(U8 *file_name, U8 *data, U32 len);
 
-
-S32 json_file_read(char *filepath, char *buffer, int len)
+S32 dnq_file_read(char *filepath, char *buffer, int len)
 {
     S32    ret = 0;
     FILE  *fp = NULL;
@@ -129,14 +321,14 @@ S32 json_file_read(char *filepath, char *buffer, int len)
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "read error! err=%s!", filepath, strerror(errno));
         return -1;
     }
-    printf("read len=%d\n", ret);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "read len=%d\n", ret);
     buffer[ret] = '\0';
 
     fclose(fp);
     return ret; 
 }
 
-S32 json_file_write(char *filepath, char *buffer, int len)
+S32 dnq_file_write(char *filepath, char *buffer, int len)
 {
     S32    ret = 0;
     FILE  *fp = NULL;
@@ -160,11 +352,7 @@ S32 json_file_write(char *filepath, char *buffer, int len)
     return ret; 
 }
 
-S32 dnq_config_init(dnq_config_t *config)
-{
-    memset(config, 0, sizeof(dnq_config_t));
-    return 0;
-}
+
 
 S32 dnq_config_deinit(dnq_config_t *config)
 {
@@ -172,24 +360,263 @@ S32 dnq_config_deinit(dnq_config_t *config)
     return 0;
 }
 
-S32 dnq_config_load(dnq_config_t *config)
+void dnq_config_print()
+{
+    U32 i = 0;
+    U32 j = 0;
+
+    dnq_config_t *config = &g_dnq_config;
+
+    printf("=================================\n");
+    
+    DNQ_PRINT(DNQ_MOD_ALL, "====authorization config===\n");
+    DNQ_PRINT(DNQ_MOD_ALL, "type=\t%s\n", config->authorization.type);
+    DNQ_PRINT(DNQ_MOD_ALL, "time=\t%s\n", config->authorization.time);
+    DNQ_PRINT(DNQ_MOD_ALL, "authorization=\t%s\n", config->authorization.authorization);
+
+    DNQ_PRINT(DNQ_MOD_ALL, "====temp_policy config===\n");
+    DNQ_PRINT(DNQ_MOD_ALL, "type=\t%s\n", config->temp_policy.type);
+    DNQ_PRINT(DNQ_MOD_ALL, "time=\t%s\n", config->temp_policy.time);
+    DNQ_PRINT(DNQ_MOD_ALL, "ctrl_id=\t%s\n", config->temp_policy.ctrl_id);
+    DNQ_PRINT(DNQ_MOD_ALL, "mode=\t%d\n", config->temp_policy.mode);
+    DNQ_PRINT(DNQ_MOD_ALL, "rooms_cnt=\t%d\n", config->temp_policy.rooms_cnt);
+    
+    for(i=0; i<config->temp_policy.rooms_cnt; i++)
+    {
+        DNQ_PRINT(DNQ_MOD_ALL, "id=\t%d\n", config->temp_policy.rooms[i].room_id);
+        DNQ_PRINT(DNQ_MOD_ALL, "dpid=\t%d\n", config->temp_policy.rooms[i].dpid);
+        DNQ_PRINT(DNQ_MOD_ALL, "setting_cnt=\t%d\n", config->temp_policy.rooms[i].time_setting_cnt);
+
+        for(j=0; j<config->temp_policy.rooms[i].time_setting_cnt; j++)
+        {
+            DNQ_PRINT(DNQ_MOD_ALL, "start=\t%d\n", config->temp_policy.rooms[i].time_setting[j].start);
+            DNQ_PRINT(DNQ_MOD_ALL, "starttime=\t%s\n", config->temp_policy.rooms[i].time_setting[j].starttime);
+            DNQ_PRINT(DNQ_MOD_ALL, "end=\t%d\n", config->temp_policy.rooms[i].time_setting[j].end);
+            DNQ_PRINT(DNQ_MOD_ALL, "endtime=\t%s\n", config->temp_policy.rooms[i].time_setting[j].endtime);
+            DNQ_PRINT(DNQ_MOD_ALL, "degrees=\t%d\n", config->temp_policy.rooms[i].time_setting[j].degrees);
+        }
+    }
+
+    DNQ_PRINT(DNQ_MOD_ALL, "====temp_limit config===\n");
+    DNQ_PRINT(DNQ_MOD_ALL, "type=\t%s\n", config->temp_limit.type);
+    DNQ_PRINT(DNQ_MOD_ALL, "time=\t%s\n", config->temp_limit.time);
+    DNQ_PRINT(DNQ_MOD_ALL, "ctrl_id=\t%s\n", config->temp_limit.ctrl_id);
+    DNQ_PRINT(DNQ_MOD_ALL, "mode=\t%d\n", config->temp_limit.mode);
+    
+    for(i=0; i<config->temp_limit.rooms_cnt; i++)
+    {
+        DNQ_PRINT(DNQ_MOD_ALL, "id=\t%d\n", config->temp_limit.rooms[i].room_id);
+        DNQ_PRINT(DNQ_MOD_ALL, "max=\t%d\n", config->temp_limit.rooms[i].max);
+        DNQ_PRINT(DNQ_MOD_ALL, "min=\t%d\n", config->temp_limit.rooms[i].min);
+    }
+
+    //temp_error
+    DNQ_PRINT(DNQ_MOD_ALL, "====temp_error config===\n");
+    DNQ_PRINT(DNQ_MOD_ALL, "type=\t%s\n", config->temp_error.type);
+    DNQ_PRINT(DNQ_MOD_ALL, "time=\t%s\n", config->temp_error.time);
+    DNQ_PRINT(DNQ_MOD_ALL, "ctrl_id=\t%s\n", config->temp_error.ctrl_id);
+    DNQ_PRINT(DNQ_MOD_ALL, "mode=\t%d\n", config->temp_error.mode);
+    
+    for(i=0; i<config->temp_error.rooms_cnt; i++)
+    {
+        DNQ_PRINT(DNQ_MOD_ALL, "id=\t%d\n", config->temp_error.rooms[i].room_id);
+        DNQ_PRINT(DNQ_MOD_ALL, "error=\t%d\n", config->temp_error.rooms[i].error);
+    }
+
+    //temp_correct
+    DNQ_PRINT(DNQ_MOD_ALL, "====temp_correct config===\n");
+    DNQ_PRINT(DNQ_MOD_ALL, "type=\t%s\n", config->temp_correct.type);
+    DNQ_PRINT(DNQ_MOD_ALL, "time=\t%s\n", config->temp_correct.time);
+    DNQ_PRINT(DNQ_MOD_ALL, "ctrl_id=\t%s\n", config->temp_correct.ctrl_id);
+    DNQ_PRINT(DNQ_MOD_ALL, "mode=\t%d\n", config->temp_correct.mode);
+    
+    for(i=0; i<config->temp_error.rooms_cnt; i++)
+    {
+        DNQ_PRINT(DNQ_MOD_ALL, "id=\t%d\n", config->temp_correct.rooms[i].room_id);
+        DNQ_PRINT(DNQ_MOD_ALL, "correct=\t%d\n", config->temp_correct.rooms[i].correct);
+    }
+    printf("=================================\n");
+}
+
+S32 dnq_config_load()
+{
+    S32  ret = 0;
+    ret |= dnq_file_read(DNQ_DATA_FILE, &g_dnq_config, sizeof(dnq_config_t));
+    return ret;
+}
+
+S32 dnq_data_file_create()
+{
+    S32 ret = 0;
+    dnq_config_t *all_config = &g_dnq_config;
+    ret |= dnq_file_write(DNQ_DATA_FILE, &g_dnq_config, sizeof(dnq_config_t));
+    
+#if 0
+    ret |= dnq_config_save_file(JSON_FILE_AUTHORRIZATION, \
+        all_config->authorization, sizeof(server_authorization_t));
+    ret |= dnq_config_save_file(JSON_FILE_POLICY, \
+        all_config->temp_policy, sizeof(server_temp_policy_t));
+    ret |= dnq_config_save_file(JSON_FILE_LIMIT, \
+        all_config->temp_limit, sizeof(server_temp_limit_t));
+    ret |= dnq_config_save_file(JSON_FILE_ERROR, \
+        all_config->temp_error, sizeof(server_temp_error_t));
+    ret |= dnq_config_save_file(JSON_FILE_POWER, \
+        all_config->power_config, sizeof(server_power_config_t));
+    ret |= dnq_config_save_file(JSON_FILE_RESPONSE, \
+        all_config->response, sizeof(server_response_t));
+    ret |= dnq_config_save_file(JSON_FILE_CORRECT, \
+        all_config->temp_correct, sizeof(server_temp_correct_t));
+    ret |= dnq_config_save_file(JSON_FILE_INIT, \
+        all_config->init, sizeof(server_init_info_t));
+#endif
+    if(ret != -1)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "create defult data success!!!");
+        remove(DNQ_DATA_FILE);
+    }
+    else
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "create defult data failed!!!");
+    return ret;
+}
+
+S32 dnq_data_file_save()
+{
+    return dnq_file_write(DNQ_DATA_FILE, &g_dnq_config, sizeof(dnq_config_t));
+}
+
+S32 dnq_config_load1()
 {
     U8  filepath[128] = {0};
     U8  buffer[1024];
     U8  cjson_struct[3072] = {0};
     S32 ret;
     S32 type;
+
+    dnq_config_t *config = &g_dnq_config;
     
     sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_AUTHORRIZATION);
-    ret = json_file_read(filepath, buffer, sizeof(buffer));
-    type = json_parse(buffer, &config->authorization);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->authorization);
 
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_POLICY);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->temp_policy);
+
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_LIMIT);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->temp_limit);
+
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_ERROR);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->temp_error);
+
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_POWER);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->power_config);
+
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_RESPONSE);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->response);
+
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_CORRECT);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->temp_correct);
+
+    sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, JSON_FILE_INIT);
+    ret = dnq_file_read(filepath, buffer, sizeof(buffer));
+    type = json_parse(buffer, config->init);
+
+    config->inited = 1;
     /* un finished...... */
+
+    DNQ_INFO(DNQ_MOD_RABBITMQ, "load all config!!!");
     
     return 0;
 }
 
-S32 dnq_config_check_authorization(void *cjson_struct)
+S32 dnq_config_init()
+{
+    S32 ret = 0;
+
+    if((ret=access(DNQ_DATA_FILE, F_OK)) < 0)
+    {
+        ret = dnq_data_file_create(); 
+    }
+    else
+    {
+        dnq_config_load();
+    }
+
+    printf("$$$$$ret=%d, config size=%d\n", ret, sizeof(dnq_config_t));
+    
+    return 0;
+}
+
+server_authorization_t*
+    dnq_get_authorization_config(server_authorization_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.authorization, sizeof(server_authorization_t));
+    return &g_dnq_config.authorization;
+}
+
+server_temp_policy_t* 
+    dnq_get_temp_policy_config(server_temp_policy_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.temp_policy, sizeof(server_temp_policy_t));
+    return &g_dnq_config.temp_policy;
+}
+
+server_temp_limit_t* 
+    dnq_get_temp_limit_config(server_temp_limit_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.temp_limit, sizeof(server_temp_limit_t));
+    return &g_dnq_config.temp_limit;
+}
+
+server_temp_error_t*
+    dnq_get_temp_error_config(server_temp_error_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.temp_error, sizeof(server_temp_error_t));
+    return &g_dnq_config.temp_error;
+}
+
+server_power_config_t*
+    dnq_get_power_config_config(server_power_config_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.power_config, sizeof(server_power_config_t));
+    return &g_dnq_config.power_config;
+}
+
+server_response_t*
+    dnq_get_response_config(server_response_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.response, sizeof(server_response_t));
+    return &g_dnq_config.response;
+}
+
+server_temp_correct_t*
+    dnq_get_temp_correct_config(server_temp_correct_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.temp_correct, sizeof(server_temp_correct_t));
+    return &g_dnq_config.temp_correct;
+}
+
+server_init_info_t*
+    dnq_get_init_config(server_init_info_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config.init, sizeof(server_init_info_t));
+    return &g_dnq_config.init;
+}
+
+S32 dnq_config_update_authorization(void *cjson_struct)
 {
     server_authorization_t *authorization = NULL;
     authorization = (server_authorization_t *)cjson_struct;
@@ -197,15 +624,36 @@ S32 dnq_config_check_authorization(void *cjson_struct)
     return 0;
 }
 
-S32 dnq_config_check_temp_policy(void *cjson_struct)
+S32 dnq_config_update_temp_policy(void *cjson_struct)
 {
-    server_temp_policy_t *temp_policy;
+    server_temp_policy_t *temp_policy, curr_policy;
     temp_policy = (server_temp_policy_t *)cjson_struct;
+    U32 i, room_id;
+
+    dnq_get_temp_policy_config(&curr_policy);
+    /* single */
+    if(temp_policy->mode == 1)
+    {
+        room_id = temp_policy->rooms[0].room_id;
+        memcpy(&curr_policy.rooms[room_id],\
+            &temp_policy->rooms[0], sizeof(room_temp_policy_t));
+        
+    }
+    else if(temp_policy->mode == 0) /* whole all config */
+    {
+        for(i=0; i<curr_policy.rooms_cnt; i++)
+        {
+            memcpy(&curr_policy.rooms[i], \
+                &temp_policy->rooms[0], sizeof(room_temp_policy_t));
+        }
+    }
+
+    DNQ_INFO(DNQ_MOD_RABBITMQ, "update config!");
     
     return 0;
 }
 
-S32 dnq_config_check_temp_limit(void *cjson_struct)
+S32 dnq_config_update_temp_limit(void *cjson_struct)
 {
     server_temp_limit_t *temp_limit;
     temp_limit = (server_temp_limit_t *)cjson_struct;
@@ -213,7 +661,7 @@ S32 dnq_config_check_temp_limit(void *cjson_struct)
     return 0;
 }
 
-S32 dnq_config_check_temp_error(void *cjson_struct)
+S32 dnq_config_update_temp_error(void *cjson_struct)
 {
     server_temp_error_t *temp_error;
     temp_error = (server_temp_error_t *)cjson_struct;
@@ -221,7 +669,7 @@ S32 dnq_config_check_temp_error(void *cjson_struct)
     return 0;
 }
 
-S32 dnq_config_check_power_config(void *cjson_struct)
+S32 dnq_config_update_power_config(void *cjson_struct)
 {
     server_power_config_t *power_config;
     power_config = (server_power_config_t *)cjson_struct;
@@ -229,7 +677,7 @@ S32 dnq_config_check_power_config(void *cjson_struct)
     return 0;
 }
 
-S32 dnq_config_check_response(void *cjson_struct)
+S32 dnq_config_update_response(void *cjson_struct)
 {
     server_response_t *response;
     response = (server_response_t *)cjson_struct;
@@ -237,7 +685,7 @@ S32 dnq_config_check_response(void *cjson_struct)
     return 0;
 }
 
-S32 dnq_config_check_temp_correct(void *cjson_struct)
+S32 dnq_config_update_temp_correct(void *cjson_struct)
 {
     server_temp_correct_t *temp_correct;
     temp_correct = (server_temp_correct_t *)cjson_struct;
@@ -246,7 +694,7 @@ S32 dnq_config_check_temp_correct(void *cjson_struct)
 }
 
 
-S32 dnq_config_check_init_info(void *cjson_struct)
+S32 dnq_config_update_init_info(void *cjson_struct)
 {
     server_init_info_t *init_info;
     init_info = (server_init_info_t *)cjson_struct;
@@ -254,34 +702,34 @@ S32 dnq_config_check_init_info(void *cjson_struct)
     return 0;
 }
 
-S32 dnq_config_check(json_type_e type, void *cjson_struct)
+S32 dnq_config_update(json_type_e type, void *cjson_struct)
 {
     S32 ret = -1;
     switch(type)
     {
         case JSON_TYPE_AUTHORRIZATION:
-            ret = dnq_config_check_authorization(cjson_struct);
+            ret = dnq_config_update_authorization(cjson_struct);
         break;
         case JSON_TYPE_TEMP_POLICY:
-            ret = dnq_config_check_temp_policy(cjson_struct);
+            ret = dnq_config_update_temp_policy(cjson_struct);
         break;
         case JSON_TYPE_TEMP_LIMIT:
-            ret = dnq_config_check_temp_limit(cjson_struct);
+            ret = dnq_config_update_temp_limit(cjson_struct);
         break;
         case JSON_TYPE_TEMP_ERROR:
-            ret = dnq_config_check_temp_error(cjson_struct);
+            ret = dnq_config_update_temp_error(cjson_struct);
         break;
         case JSON_TYPE_POWER_CONFIG:
-            ret = dnq_config_check_power_config(cjson_struct);
+            ret = dnq_config_update_power_config(cjson_struct);
         break;
         case JSON_TYPE_RESPONSE:
-            ret = dnq_config_check_response(cjson_struct);
+            ret = dnq_config_update_response(cjson_struct);
         break;
         case JSON_TYPE_CORRECT:
-            ret = dnq_config_check_temp_correct(cjson_struct);
+            ret = dnq_config_update_temp_correct(cjson_struct);
         break;
         case JSON_TYPE_INIT:
-            ret = dnq_config_check_init_info(cjson_struct);     
+            ret = dnq_config_update_init_info(cjson_struct);     
         break;
         default:
             break;
@@ -290,7 +738,7 @@ S32 dnq_config_check(json_type_e type, void *cjson_struct)
     return ret;
 }
 
-S32 dnq_config_save_file(U8 *file_name, U8 *data, U32 len)
+S32 dnq_json_save_file(U8 *file_name, U8 *data, U32 len)
 {
     U32 i = 0;
     U8 filepath[128] = {0};
@@ -299,85 +747,86 @@ S32 dnq_config_save_file(U8 *file_name, U8 *data, U32 len)
     for(i=0; i<3; i++)
     {
         sprintf(filepath, "%s/%s", DNQ_CONFIG_PATH, file_name);
-        ret = json_file_write(filepath, data, len);
+        ret = dnq_file_write(filepath, data, len);
         if(ret == len)
             break;
         dnq_msleep(200);
     }
     
-    return ret;
+    return (ret==len)?0:-1;
 }
 
 S32 dnq_config_check_and_sync(json_type_e json_type, U8 *data, U32 len, void *cjson_struct)
 {
-    S32 ret = -1;
+    S32 ret = 0;
     switch(json_type)
     {
         case JSON_TYPE_AUTHORRIZATION:
-            ret = dnq_config_check(JSON_TYPE_AUTHORRIZATION, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_AUTHORRIZATION, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.authorization, cjson_struct, sizeof(server_authorization_t));
-                dnq_config_save_file(JSON_FILE_AUTHORRIZATION, data, len);
+                memcpy(&g_dnq_config.authorization, cjson_struct, sizeof(server_authorization_t));
+                dnq_json_save_file(JSON_FILE_AUTHORRIZATION, data, len);
             }
         break;
         case JSON_TYPE_TEMP_POLICY:
-            ret = dnq_config_check(JSON_TYPE_TEMP_POLICY, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_TEMP_POLICY, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.temp_policy, cjson_struct, sizeof(server_temp_policy_t));
-                dnq_config_save_file(JSON_FILE_POLICY, data, len);
+                memcpy(&g_dnq_config.temp_policy, cjson_struct, sizeof(server_temp_policy_t));
+                dnq_json_save_file(JSON_FILE_POLICY, data, len);
             }
         break;
         case JSON_TYPE_TEMP_LIMIT:
-            ret = dnq_config_check(JSON_TYPE_TEMP_LIMIT, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_TEMP_LIMIT, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.temp_limit, cjson_struct, sizeof(server_temp_limit_t));
-                dnq_config_save_file(JSON_FILE_LIMIT, data, len);
+                memcpy(&g_dnq_config.temp_limit, cjson_struct, sizeof(server_temp_limit_t));
+                dnq_json_save_file(JSON_FILE_LIMIT, data, len);
             }
         break;
         case JSON_TYPE_TEMP_ERROR:
-            ret = dnq_config_check(JSON_TYPE_TEMP_ERROR, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_TEMP_ERROR, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.temp_error, cjson_struct, sizeof(server_temp_error_t));
-                dnq_config_save_file(JSON_FILE_ERROR, data, len);
+                memcpy(&g_dnq_config.temp_error, cjson_struct, sizeof(server_temp_error_t));
+                dnq_json_save_file(JSON_FILE_ERROR, data, len);
             }
         break;
         case JSON_TYPE_POWER_CONFIG:
             
-            ret = dnq_config_check(JSON_TYPE_POWER_CONFIG, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_POWER_CONFIG, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.power_config, cjson_struct, sizeof(server_power_config_t));
-                dnq_config_save_file(JSON_FILE_POWER, data, len);
+                memcpy(&g_dnq_config.power_config, cjson_struct, sizeof(server_power_config_t));
+                dnq_json_save_file(JSON_FILE_POWER, data, len);
             }
         break;
         case JSON_TYPE_RESPONSE:
             
-            ret = dnq_config_check(JSON_TYPE_RESPONSE, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_RESPONSE, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.response, cjson_struct, sizeof(server_response_t));
-                dnq_config_save_file(JSON_FILE_RESPONSE, data, len);
+                memcpy(&g_dnq_config.response, cjson_struct, sizeof(server_response_t));
+                dnq_json_save_file(JSON_FILE_RESPONSE, data, len);
             }
         break;
         case JSON_TYPE_CORRECT:
-            ret = dnq_config_check(JSON_TYPE_CORRECT, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_CORRECT, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.temp_correct, cjson_struct, sizeof(server_temp_correct_t));
-                dnq_config_save_file(JSON_FILE_CORRECT, data, len);
+                memcpy(&g_dnq_config.temp_correct, cjson_struct, sizeof(server_temp_correct_t));
+                dnq_json_save_file(JSON_FILE_CORRECT, data, len);
             }
         break;
         case JSON_TYPE_INIT:
             
-            ret = dnq_config_check(JSON_TYPE_INIT, cjson_struct);
+            ret = dnq_config_update(JSON_TYPE_INIT, cjson_struct);
             if(!ret)
             {
-                memcpy(&dnq_config.init, cjson_struct, sizeof(server_init_info_t));
-                dnq_config_save_file(JSON_FILE_INIT, data, len);
+                memcpy(&g_dnq_config.init, cjson_struct, sizeof(server_init_info_t));
+                dnq_json_save_file(JSON_FILE_INIT, data, len);
+                //dnq_data_file_save();
             }
         break;
         default:
@@ -385,6 +834,10 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *data, U32 len, void *cj
             break;
     
     }
+
+    if(ret == 0)
+        dnq_data_file_save();
+    return ret;
 }
     
 /*
@@ -783,7 +1236,7 @@ S32 json_parse_response(cJSON *pjson, server_response_t *pdst)
 
     //mode
     copy_json_item_to_struct_item(\
-    obj, pjson, JSON_ITEM_STATUS, &pdst->status, cJSON_String);
+    obj, pjson, JSON_ITEM_STATUS, pdst->status, cJSON_String);
     
     return 0;
 }
@@ -909,6 +1362,9 @@ S32 json_parse_init(cJSON *pjson, server_init_info_t *pdst)
     //equipmentMac
     copy_json_item_to_struct_item(\
     obj, pjson, JSON_ITEM_EQUIPMENT_MAC, pdst->equipment_mac, cJSON_String);
+    //time
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_TIME, pdst->time, cJSON_String);
 
     //rooms
     rooms = cJSON_GetObjectItem(pjson, JSON_ITEM_ROOMS);
@@ -940,6 +1396,9 @@ S32 json_parse_init(cJSON *pjson, server_init_info_t *pdst)
         //correct
         copy_json_item_to_struct_item(\
         obj, room_obj, JSON_ITEM_CORRECT, &pdst->rooms[i].correct, cJSON_Number);
+        //room_id
+        copy_json_item_to_struct_item(\
+        obj, room_obj, JSON_ITEM_ROOM_ID, &pdst->rooms[i].room_id, cJSON_Number);
         //room_name
         copy_json_item_to_struct_item(\
         obj, room_obj, JSON_ITEM_ROOM_NAME, pdst->rooms[i].room_name, cJSON_String);
@@ -954,6 +1413,10 @@ S32 json_parse_init(cJSON *pjson, server_init_info_t *pdst)
         copy_json_item_to_struct_item(\
         obj, room_obj, JSON_ITEM_ROOM_POSITION, pdst->rooms[i].position, cJSON_String);
     }
+
+    /* 标识  已经收到初始化信息。 */
+    g_init.inited = 1;
+    printf("!!!!!!!!!!!g_init.inited=%d\n",g_init.inited);
     
     return 0;
 }
@@ -973,6 +1436,15 @@ S32 json_parse(char *json,void *cjson_struct)
     cJSON *item = NULL;
     char  *type = NULL;
     json_type_e  msg_type = -1;
+
+    //char buffer[] = "[123,34,112,97,1,-9,-19";
+    //json = buffer;
+    
+    if(*json != '{')
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "json first byte must be '{' !!");
+        return -1;
+    }
 
     pjson = cJSON_Parse(json);
     if(!pjson)
@@ -1135,10 +1607,12 @@ char *json_create_response(client_response_t *pdst)
     int    i = 0;
     cJSON *pjson = NULL;
     char  *pstr = NULL;
-    
+
     pjson = cJSON_CreateObject();
+
     if(!pjson)
     {
+
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "cJSON_CreateObject error!");
         return NULL;
     }
@@ -1267,6 +1741,12 @@ char *json_create_init(U8 *MAC)
     return pstr;
 }
 
+
+U32 dnq_rabbitmq_link_is_ok()
+{
+    return g_conn?1:0;
+}
+
 /* unused */
 int send_response_msg_to_server(
     amqp_connection_state_t conn,
@@ -1303,7 +1783,13 @@ S32 send_msg_to_server(
 	props.content_type = amqp_cstring_bytes("text/plain");
 	props.delivery_mode = 2; /* persistent delivery mode */
 	//snprintf(response_buffer,128, "50#%s#%s#%s",data);
-	
+    
+    if(!conn)
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "can't send msg! rabbitmq link is down!");
+        return -1;
+    }
+    
 	ret = die_on_error(amqp_basic_publish(conn,
 	                                pchnl->chid,
 	                                amqp_cstring_bytes(pchnl->exchange),
@@ -1330,18 +1816,19 @@ S32 send_response_to_server(
     S32 ret = -1;
     char  *json_response = NULL;
     client_response_t response;
-    
+
     /* send response to server */
     if(json_type == JSON_TYPE_AUTHORRIZATION)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: authorization");
 
-        
         strcpy(response.type, TYPE_STR_AUTHORRIZATION);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "authorization");
         
         json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
@@ -1352,8 +1839,9 @@ S32 send_response_to_server(
         strcpy(response.type, TYPE_STR_TEMP_POLICY);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "policy");
-        
         json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
@@ -1365,6 +1853,8 @@ S32 send_response_to_server(
         strcpy(response.status, "limit");
         
         json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
@@ -1374,8 +1864,9 @@ S32 send_response_to_server(
         strcpy(response.type, TYPE_STR_DEGREE_ERROR);
         strcpy(response.mac, MAC_ADDR);
         strcpy(response.status, "error");
-        
         json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
@@ -1387,6 +1878,8 @@ S32 send_response_to_server(
         strcpy(response.status, "power");
         
         json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
@@ -1402,6 +1895,8 @@ S32 send_response_to_server(
         strcpy(response.status, "correct");
         
         json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
@@ -1413,6 +1908,8 @@ S32 send_response_to_server(
         strcpy(response.status, "init");
         
         json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
@@ -1433,6 +1930,32 @@ S32 send_room_status_to_server(client_status_t *client_status)
     
     return ret;
 }
+
+S32 send_init_request_to_server()
+{
+    S32 ret = 0;
+    U8 *msg = NULL;
+    U8  mac_addr[8] = {0};
+    U8  mac_str[16] = {0};
+
+    //ret = dnq_net_get_macaddr(ETH_NAME, mac_addr);
+    if(ret < 0)
+        return -1;
+    
+    sprintf(mac_str, "%02x%02x%02x%02x%02x%02x", \
+        mac_addr[0], mac_addr[1], mac_addr[2],\
+        mac_addr[3], mac_addr[4], mac_addr[5]);
+ //
+    //msg = json_create_init("22");
+    msg = json_create_init(MAC_ADDR);
+    send_msg_to_server(g_conn, &channels[5], msg);
+    dnq_free(msg);
+    DNQ_INFO(DNQ_MOD_RABBITMQ, "send init msg:\n%s", msg);
+    
+    return ret;
+}
+
+
 
 cJSON *json_data_prepare_warn(char *data)
 {
@@ -1465,10 +1988,9 @@ cJSON *json_data_prepare_warn(char *data)
     cJSON_Delete(pjson);
 }
 
-
 U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 {
-    U32 ret = -1;
+    S32 ret = -1;
     char  *json_msg = NULL;
     char   cjson_struct[3072] = {0};
     char  *json_response = NULL;
@@ -1480,6 +2002,7 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     pchnl = &channels[2]; /* response  */
     json_msg = penve->message.body.bytes;
     json_len = penve->message.body.len;
+
     json_type = json_parse(json_msg, cjson_struct);
     if(json_type < 0)
     {
@@ -1489,15 +2012,16 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 
     DNQ_INFO(DNQ_MOD_RABBITMQ, "json_parse: msg_type=%d", json_type);
     ret = dnq_config_check_and_sync(json_type, json_msg, json_len, cjson_struct);
-    if(!ret)
+    if(ret < 0)
     {
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "config data check error!");
         return -1;
     }
 
     /* send response to server */
-    send_response_to_server(conn, pchnl, json_type);
-
+    ret = send_response_to_server(conn, pchnl, json_type);
+    if(ret < 0)
+        return -1;
     
     sendmsg.Class = MSG_CLASS_RABBITMQ;
     sendmsg.code = json_type;
@@ -1540,7 +2064,7 @@ int run(amqp_connection_state_t conn)
         timeout.tv_usec = 0;
         ret = amqp_consume_message(conn, &envelope, &timeout, 0);
         if(ret.library_error != AMQP_STATUS_TIMEOUT)
-        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "recv msg! type=%d,%d, errno=%d", \
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "@@@@@recv msg! type=%d,%d, errno=%d", \
             ret.reply_type, frame.frame_type, ret.library_error);
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type)
@@ -1651,7 +2175,6 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
     channel_t  *pchnl = NULL;
     
     conn = amqp_new_connection();
-    *pconn = conn;
     if(!conn)
         dnq_error(-1, "amqp_new_connection error!");
 
@@ -1661,12 +2184,16 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
    
     status = amqp_socket_open(socket, serverip, port);
     if(status < 0)
-        dnq_error(status, "amqp_socket_open error!");
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "amqp_socket_open error! ip=%s,port=%d", serverip, port);
+        //dnq_error(status, "amqp_socket_open error! ip=%s,port=%d", serverip, port);
+        return status;
+    }
 
     DNQ_INFO(DNQ_MOD_RABBITMQ, "create new connecting! socket=%d, ip=%s, port=%d", \
         status, serverip, port);
 
-    die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 30, AMQP_SASL_METHOD_PLAIN, \
+    die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 60, AMQP_SASL_METHOD_PLAIN, \
     username, password), "Logging in");
 
     DNQ_INFO(DNQ_MOD_RABBITMQ, "Login success! user=%s, passwd=%s", username, password);
@@ -1724,6 +2251,7 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
         DNQ_INFO(DNQ_MOD_RABBITMQ, "queue %s bind on exchange=%s, rtkey=%s!", \
             pchnl->qname, pchnl->exchange, pchnl->rtkey);
         }
+        //dnq_msleep(100);
     }
 
     pchnl = &channels[0];
@@ -1741,8 +2269,10 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
     //purge
     amqp_queue_purge(conn, pchnl->chid, amqp_cstring_bytes(pchnl->qname));
 
+    *pconn = conn;
     run(conn);
-
+    *pconn = NULL;
+    
     /* error close the channel */
     for(i=0; i<5; i++)
     {
@@ -1756,22 +2286,35 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
     return 0;
 }
 
+S32 rabbitmq_start_notify()
+{
+    dnq_msg_t msg = {0};
+
+    msg.Class = MSG_CLASS_RABBITMQ;
+    msg.code = 0;
+
+    return send_msg_to_manage(&msg);
+}
+
 S32 rabbitmq_task()
 {
     U8 server_ip[16] = {0};
     U32 server_port;
+
     while(1)
     {
         DNQ_INFO(DNQ_MOD_RABBITMQ, "check netlink status...");
-        if(!dnq_net_link_isgood())
+        if(!dnq_server_link_isgood(1))
         {
             sleep(3);
             continue;
         }
         
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "link is on!");
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "rabbitmq link is good!");
         dnq_get_server_ip(server_ip);
         server_port = dnq_get_server_port();
+
+        rabbitmq_start_notify();
         
         DNQ_INFO(DNQ_MOD_RABBITMQ, "rabbitmq main_loop start..");
         rabbitmq_init(server_ip, server_port, &g_conn);
@@ -1806,6 +2349,13 @@ void *rabbitmq_send_test()
         }
     #else
         /* test code: host to server */
+    
+        msg = json_create_init(MAC_ADDR);
+        send_msg_to_server(g_conn, &channels[5], msg);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "send init msg:\n%s", msg);
+        dnq_free(msg);
+        sleep(time);
+        
         msg = json_create_status(&status);
         send_msg_to_server(g_conn, &channels[1], msg);
         DNQ_DEBUG(DNQ_MOD_RABBITMQ, "send status msg:\n%s", msg);
@@ -1834,11 +2384,6 @@ void *rabbitmq_send_test()
         dnq_free(msg);
         sleep(time);
 
-        msg = json_create_init(MAC_ADDR);
-        send_msg_to_server(g_conn, &channels[5], msg);
-        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "send init msg:\n%s", msg);
-        dnq_free(msg);
-        sleep(time);
     #endif
         
         //send_response_to_server(g_conn, &channels[0], buffer);
@@ -1854,11 +2399,13 @@ S32 dnq_rabbitmq_init()
     /* register cjson hooks! */
     cJSON_Hooks hooks = {dnq_malloc, dnq_free};
     cJSON_InitHooks(&hooks);
-    
-    ret = dnq_config_init(&dnq_config);
+
+    ret = dnq_config_init();
+    //dnq_config_print();
     ret = dnq_task_create("rabbitmq_task", 512*1024, rabbitmq_task, NULL);
     if(!ret) 
         return -1;
+    
     return 0;
 }
 
@@ -1872,10 +2419,14 @@ int rabbitmq_test()
     ngx_pool_t *pool = NULL;
     
     dnq_init();
-    dnq_debug_setlever(1, 5);
+    cJSON_Hooks hooks = {dnq_malloc, dnq_free};
+    cJSON_InitHooks(&hooks);
     
-    dnq_task_create("rabbitmq_test", 32*2048, rabbitmq_send_test, NULL);
-    rabbitmq_task();
+    dnq_debug_setlever(1, 3);
+    
+    dnq_task_create("rabbitmq_test", 64*2048, rabbitmq_send_test, NULL);
+    dnq_task_create("rabbitmq_test", 512*2048, rabbitmq_task, NULL);
+    //rabbitmq_task();
     return 0;
 }
 
@@ -1889,37 +2440,37 @@ int json_parse_test()
     
     //server config file 
     printf("==================server json===================\n");
-    json_file_read("configs/"SERVER_CFG_FILE_AUTHORRIZATION, buffer, sizeof(buffer));
+    dnq_file_read("configs/"SERVER_CFG_FILE_AUTHORRIZATION, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"SERVER_CFG_FILE_POLICY, buffer, sizeof(buffer));
+    dnq_file_read("configs/"SERVER_CFG_FILE_POLICY, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"SERVER_CFG_FILE_LIMIT, buffer, sizeof(buffer));
+    dnq_file_read("configs/"SERVER_CFG_FILE_LIMIT, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"SERVER_CFG_FILE_ERROR, buffer, sizeof(buffer));
+    dnq_file_read("configs/"SERVER_CFG_FILE_ERROR, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"SERVER_CFG_FILE_POWER, buffer, sizeof(buffer));
+    dnq_file_read("configs/"SERVER_CFG_FILE_POWER, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"SERVER_CFG_FILE_RESPONSE, buffer, sizeof(buffer));
+    dnq_file_read("configs/"SERVER_CFG_FILE_RESPONSE, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"SERVER_CFG_FILE_CORRECT, buffer, sizeof(buffer));
+    dnq_file_read("configs/"SERVER_CFG_FILE_CORRECT, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
@@ -1927,27 +2478,27 @@ int json_parse_test()
 
     //client config file 
     printf("==================client json===================\n");
-    json_file_read("configs/"CLIENT_CFG_FILE_STATUS, buffer, sizeof(buffer));
+    dnq_file_read("configs/"CLIENT_CFG_FILE_STATUS, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
     
-    json_file_read("configs/"CLIENT_CFG_FILE_LOSS, buffer, sizeof(buffer));
+    dnq_file_read("configs/"CLIENT_CFG_FILE_LOSS, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
     
-    json_file_read("configs/"CLIENT_CFG_FILE_RESPONSE, buffer, sizeof(buffer));
+    dnq_file_read("configs/"CLIENT_CFG_FILE_RESPONSE, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"CLIENT_CFG_FILE_CONFIG, buffer, sizeof(buffer));
+    dnq_file_read("configs/"CLIENT_CFG_FILE_CONFIG, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
 
-    json_file_read("configs/"CLIENT_CFG_FILE_WARN, buffer, sizeof(buffer));
+    dnq_file_read("configs/"CLIENT_CFG_FILE_WARN, buffer, sizeof(buffer));
     printf("json data:\n %s\n", buffer);
     type = json_parse(buffer, cbuffer);
     printf("result: type=%d\n", type);
@@ -1961,13 +2512,13 @@ int json_test()
     int ret = 0;
     ngx_pool_t *pool = NULL;
     
-    pool = dnq_mempool_init(1024*1024);
+    pool = dnq_mempool_init();
     cJSON_Hooks hooks = {dnq_malloc, dnq_free};
     cJSON_InitHooks(&hooks);
     
     json_parse_test();
     
-    dnq_mempool_deinit(pool);
+    dnq_mempool_deinit();
     
     return ret;
 }
@@ -1988,7 +2539,7 @@ int main0(int argc, char const *const *argv)
   char real_queue[64];
   char *pcrtlid;
 
-    dnq_mempool_init(1024*1024);
+    dnq_mempool_init();
     cJSON_Hooks hooks = {dnq_malloc, dnq_free};
     cJSON_InitHooks(&hooks);
 

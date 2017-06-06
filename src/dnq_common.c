@@ -12,6 +12,7 @@
 #include "dnq_common.h"
 #include "ngx_palloc.h"
 #include "dnq_checksum.h"
+#include "dnq_log.h"
 #include "cJSON.h"
 
 #include <sys/time.h>
@@ -19,7 +20,6 @@
 #include <sys/wait.h>
 
 static U32 g_dnq_init = 0;
-static ngx_pool_t *mem_pool;
 
 static U32 init_time_ms = 0;
 
@@ -112,19 +112,17 @@ S32 dnq_system_call(U8 *command)
 
 S32 dnq_init()
 {
-    ngx_pool_t * pool = NULL;
-
+    S32 ret;
     if(g_dnq_init)
         return 0;
     
     dnq_time_init();
     dnq_checksum_init();
     
-    pool = dnq_mempool_init(1024*1024);
-    if(!pool)
+    ret = dnq_mempool_init();
+    if(ret < 0)
         return -1;
     
-    mem_pool = pool;
     g_dnq_init = 1;
     return 0;
 }
@@ -132,7 +130,7 @@ S32 dnq_init()
 S32 dnq_deinit()
 {
     g_dnq_init = 0;
-    dnq_mempool_deinit(mem_pool);
+    dnq_mempool_deinit();
     return 0;
 }
 

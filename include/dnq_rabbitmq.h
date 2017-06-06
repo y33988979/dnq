@@ -104,7 +104,9 @@ typedef enum json_type
 * json config define
 * json配置文件 文件名称定义
 */
-#define DNQ_CONFIG_PATH           "/root/configs"
+#define DNQ_CONFIG_PATH           "/root/dnq/configs"
+#define DNQ_DATA_FILE             "/root/dnq/dnq.dat"
+#define DNQ_CONFIG_FILE           "/root/dnq/dnq.conf"
 #define JSON_FILE_AUTHORRIZATION  "authorization.json"
 #define JSON_FILE_POLICY          "policy.json"
 #define JSON_FILE_LIMIT           "limit.json"
@@ -150,11 +152,11 @@ typedef struct server_authorization
 */
 typedef struct timesetting
 {
-    U8   starttime[SIZE_16];
-    U8   endtime[SIZE_16];
     U32  start;  /* starttime second */
     U32  end;    /* endtime second */
     U16  degrees;
+    U8   starttime[SIZE_16];
+    U8   endtime[SIZE_16];
 }timesetting_t;
 
 typedef struct room_temp_policy
@@ -184,8 +186,9 @@ typedef struct server_temp_policy
 typedef struct room_temp_limit
 {
     U16       room_id;  
-    U16       max;  
     U16       min;  
+    U16       max;  
+    
 }room_temp_limit_t;
 
 typedef struct server_temp_limit
@@ -315,6 +318,7 @@ typedef struct room_info
 typedef struct server_init_info
 {
     U8        type[SIZE_32];
+    U8        time[SIZE_32];
     partition_info_t partition;
     U32       project_id;
     U32       building_id;
@@ -324,6 +328,7 @@ typedef struct server_init_info
     U8        equipment_mac[SIZE_32];
     U16       rooms_cnt;
     room_info_t    rooms[DNQ_ROOM_MAX];
+    U32       inited;
     
 }server_init_info_t;
 
@@ -405,19 +410,31 @@ typedef struct client_warn
     client_room_t  rooms[DNQ_ROOM_MAX];
 }client_warn_t;
 
+server_authorization_t*
+    dnq_get_authorization_config(server_authorization_t *config);
+server_temp_policy_t*
+    dnq_get_temp_policy_config(server_temp_policy_t *config);
+server_temp_limit_t*
+    dnq_get_temp_limit_config(server_temp_limit_t *config);
+server_temp_error_t*
+    dnq_get_temp_error_config(server_temp_error_t *config);
+server_power_config_t*
+    dnq_get_power_config_config(server_power_config_t *config);
+server_response_t*
+    dnq_get_response_config(server_response_t *config);
+server_temp_correct_t*
+    dnq_get_temp_correct_config(server_temp_correct_t *config);
+server_init_info_t*
+    dnq_get_init_config(server_init_info_t *config);
 
-extern dnq_config_t dnq_config;
-#define dnq_get_authorization_config()  &dnq_config.authorization
-#define dnq_get_temp_policy_config()  &dnq_config.temp_policy
-#define dnq_get_temp_limit_config()  &dnq_config.temp_limit
-#define dnq_get_temp_error_config()  &dnq_config.temp_error
-#define dnq_get_power_config_config()  &dnq_config.power_config
-#define dnq_get_response_config()  &dnq_config.response
-#define dnq_get_temp_correct_config()  &dnq_config.temp_correct
-#define dnq_get_init_config()  &dnq_config.init
+extern dnq_config_t g_dnq_config;
+
+#define init_info_is_ok()  (g_dnq_config.init.inited)
 
 S32 dnq_rabbitmq_init();
 S32 dnq_rabbitmq_deinit();
+U32 dnq_rabbitmq_link_is_ok();
+S32 send_init_request_to_server();
 S32 send_room_status_to_server(client_status_t *client_status);
 
 #endif /* _DNQ_RABBITMQ_H_ */

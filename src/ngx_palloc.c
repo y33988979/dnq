@@ -8,50 +8,118 @@
 #include "ngx_palloc.h"
 #include "dnq_log.h"
 
+#define KB_SIZE   (1024)
+#define MB_SIZE   (1024*1024)
+
 ngx_uint_t  ngx_pagesize = 4096;
 ngx_uint_t  ngx_pagesize_shift;
 ngx_uint_t  ngx_cacheline_size;
-static ngx_pool_t *dnq_mempool;
+static ngx_pool_t *os_mem_pool = NULL;
+static ngx_pool_t *app_mem_pool = NULL;
+
 
 static void *ngx_palloc_block(ngx_pool_t *pool, size_t size);
 static void *ngx_palloc_large(ngx_pool_t *pool, size_t size);
 
-ngx_pool_t *dnq_mempool_init(size_t size)
+S32 dnq_mempool_init()
 {
-    if(dnq_mempool)
-        return dnq_mempool;
+    ngx_pool_t *pool = NULL;
     
-    dnq_mempool = ngx_create_pool(size);
-    if(dnq_mempool == NULL)
+    if(os_mem_pool || app_mem_pool)
     {
-        DNQ_ERROR(DNQ_MOD_ALL, "dnq_mempool_init error!");
-        return NULL;
+        DNQ_ERROR(DNQ_MOD_ALL, "mempool already exist! os_mempool=0x%0x8, app_mempool=0x%08x\n",\
+            os_mem_pool, app_mem_pool);
+        return 0;
     }
-    return dnq_mempool;
+
+    /* create os mem pool, it is used by dnq_os_malloc, dnq_os_free */
+    pool= ngx_create_pool(DNQ_OS_MEM_POOL_SIZE);
+    if(pool == NULL)
+    {
+        DNQ_ERROR(DNQ_MOD_ALL, "create os mempol error!!");
+        return -1;
+    }
+    os_mem_pool = pool;
+
+    DNQ_INFO(DNQ_MOD_ALL, "create os mempool success! base_addr=0x%08x, size=%d(%dM)", \
+        pool, DNQ_OS_MEM_POOL_SIZE, DNQ_OS_MEM_POOL_SIZE/MB_SIZE);
+
+    /* create app mem pool, it is used by dnq_malloc, dnq_free */
+    pool= ngx_create_pool(DNQ_APP_MEM_POOL_SIZE);
+    if(pool == NULL)
+    {
+        ngx_destroy_pool(os_mem_pool);
+        DNQ_ERROR(DNQ_MOD_ALL, "create app mempool error!!");
+        return -1;
+    }
+    app_mem_pool = pool;
+
+    DNQ_INFO(DNQ_MOD_ALL, "create app mempool success! base_addr=0x%08x, size=%d(%dM)", \
+        pool, DNQ_APP_MEM_POOL_SIZE, DNQ_APP_MEM_POOL_SIZE/MB_SIZE);
+    
+    return 0;
 }
 
-void dnq_mempool_deinit(ngx_pool_t *pool)
+void dnq_mempool_deinit()
 {
-    if(pool)
-        ngx_destroy_pool(pool);
-    pool = NULL;
+    if(app_mem_pool)
+        ngx_destroy_pool(app_mem_pool);
+    if(os_mem_pool)
+        ngx_destroy_pool(os_mem_pool);
+    app_mem_pool = NULL;
+    os_mem_pool = NULL;
+    DNQ_INFO(DNQ_MOD_ALL, "destroy all mempool success!");
 }
 
+void *dnq_os_malloc(size_t size)
+{
+    //return malloc(size);
+    void *p = NULL;
+    p = ngx_palloc(os_mem_pool, size);
+    if(!p)
+    {
+        printf("####dnq_os_malloc error!!\n");
+        ngx_destroy_pool(os_mem_pool);
+        exit(1);
+    }
+    //printf(" dnq_os_malloc: ptr=0x%08x, len=%d\n", p, size);
+    return p;
+}
 
+void dnq_os_free(void *ptr)
+{
+    //printf(" os_free: ptr=0x%08x\n", ptr);
+    if(ptr)
+    {
+        ngx_pfree(os_mem_pool, ptr);
+        ptr = NULL;
+    }
+    return ;
+}
 
 void *dnq_malloc(size_t size)
 {
-    void *p = NULL;;
-    p = ngx_palloc(dnq_mempool, size);
-    //printf("dnq_malloc: ptr=0x%08x, len=%d\n", p, size);
+    //return malloc(size);
+    void *p = NULL;
+    p = ngx_palloc(app_mem_pool, size);
+    if(!p)
+    {
+        printf("####dnq_malloc error!!\n");
+        ngx_destroy_pool(app_mem_pool);
+        exit(1);
+    }
+    //printf(" dnq_malloc: ptr=0x%08x, len=%d\n", p, size);
     return p;
 }
 
 void dnq_free(void *ptr)
 {
-    //printf("dnq_free: ptr=0x%08x\n", p);
-    ngx_pfree(dnq_mempool, ptr);
-    ptr = NULL;
+    //printf(" dnq_free: ptr=0x%08x\n", ptr);
+    if(ptr)
+    {
+        ngx_pfree(app_mem_pool, ptr);
+        ptr = NULL;
+    }
     return ;
 }
     
@@ -276,6 +344,8 @@ ngx_palloc_large(ngx_pool_t *pool, size_t size)
     ngx_uint_t         n;
     ngx_pool_large_t  *large;
 
+    DNQ_ERROR(DNQ_MOD_ALL, "###dnq alloc large memory!!!");
+    exit(1);
     p = ngx_alloc(size);
     if (p == NULL) {
         return NULL;

@@ -87,7 +87,7 @@ int dnq_debug_test(int lever)
     DNQ_WARN(DNQ_MOD_RABBITMQ, "WARN: test!");
     DNQ_DEBUG(DNQ_MOD_RABBITMQ, "DEBUG: test!");
     DNQ_ERROR(DNQ_MOD_RABBITMQ, "ERROR: test!");
-    DNQ_PRINT(DNQ_MOD_RABBITMQ, "PRINT: test!\n");
+    DNQ_PRINT(DNQ_MOD_RABBITMQ, "PRINT: test!");
 }
 void debug_help()
 {

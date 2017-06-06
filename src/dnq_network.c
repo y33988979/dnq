@@ -601,7 +601,7 @@ U32 dnq_net_get_gw_addr(U8 *if_name)
     free(rtInfo);
     close(sock);
     addr.s_addr = gw;
-    DNQ_INFO(DNQ_MOD_NETWORK, "get gateway success: %s", inet_ntoa(addr));
+    //DNQ_INFO(DNQ_MOD_NETWORK, "get gateway success: %s", inet_ntoa(addr));
     return (gw);
 }
 
@@ -675,7 +675,7 @@ U32 dnq_net_get_mask(U8 *if_name)
 
     close(sockfd);
     addr.s_addr = sbmask;
-    DNQ_INFO(DNQ_MOD_NETWORK, "get netmask success: %s", inet_ntoa(addr));
+    //DNQ_INFO(DNQ_MOD_NETWORK, "get netmask success: %s", inet_ntoa(addr));
 
     return sbmask;
 }
@@ -751,7 +751,7 @@ U32 dnq_net_get_broad_addr(U8 *if_name)
 
     close(sockfd);
     addr.s_addr = bdaddr;
-    DNQ_INFO(DNQ_MOD_NETWORK, "get broadcast success: %s", inet_ntoa(addr));
+    //DNQ_INFO(DNQ_MOD_NETWORK, "get broadcast success: %s", inet_ntoa(addr));
 
     return bdaddr;
 }
@@ -829,7 +829,7 @@ U32 dnq_net_get_ipaddr(U8 *if_name)
     ip_addr = (sin->sin_addr.s_addr);
     close(sockfd);
     addr.s_addr = ip_addr;
-    DNQ_INFO(DNQ_MOD_NETWORK, "get ipaddr success: %s\n", inet_ntoa(addr));
+    //DNQ_INFO(DNQ_MOD_NETWORK, "get ipaddr success: %s\n", inet_ntoa(addr));
 
     return ip_addr;
 }
@@ -903,7 +903,7 @@ S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr)
     mac_addr[4] = ifr.ifr_ifru.ifru_hwaddr.sa_data[4];
     mac_addr[5] = ifr.ifr_ifru.ifru_hwaddr.sa_data[5];
 
-    DNQ_INFO(DNQ_MOD_NETWORK, "set mac_addr success: %02X:%02X:%02X:%02X:%02X:%02X",\
+    //DNQ_INFO(DNQ_MOD_NETWORK, "set mac_addr success: %02X:%02X:%02X:%02X:%02X:%02X",\
     mac_addr[0], mac_addr[1], mac_addr[2],\
     mac_addr[3], mac_addr[4], mac_addr[5]);
     close(sockfd);
@@ -957,7 +957,8 @@ U32 dnq_net_get_host_by_name(U8 *cname)
     
     if(p_hostent == NULL)
     {
-        DNQ_ERROR(DNQ_MOD_NETWORK, "gethostbyname error! errno=%d:%s\n",errno, strerror(errno));
+        DNQ_DEBUG(DNQ_MOD_NETWORK, "gethost error! cname=%s, errno=%d:%s\n",\
+            cname, errno, strerror(errno));
         return 0;
     }
     else
@@ -999,57 +1000,6 @@ S32 dnq_dhcp_stop(U8 *if_name)
     return ret;
 }
 
-static netlink_callback netlink_status_callback = NULL;
-
-void netlink_callback_enable(netlink_callback callback)
-{
-    if(callback)
-        netlink_status_callback = callback;
-    else
-        netlink_status_callback = NULL;
-}
-
-static void net_status_change(net_status_e status)
-{
-    switch(status)
-    {
-        case LINK_OFF:
-            DNQ_INFO(DNQ_MOD_NETWORK, "link down!");
-        break;
-        case LINK_ON:
-            DNQ_INFO(DNQ_MOD_NETWORK, "link up!");
-            //dnq_dhcp_start(ETH_NAME);
-        break;
-        case IP_BOUND:
-        break;
-        case IP_LOST:
-        break;
-        default:
-        break;
-    }
-    if(netlink_status_callback)
-        netlink_status_callback(status);
-    //lcd_net_status_update(status);
-}
-
-void *network_task(void *args)
-{
-    static U32 last_status = LINK_OFF;
-    U32  current_status;
-    while(1)
-    {
-        
-        current_status = dnq_net_get_link_status(ETH_NAME);
-        if(current_status != last_status)
-        {
-            net_status_change(current_status?LINK_ON:LINK_OFF);
-            last_status = current_status;
-        }
-
-        dnq_usleep(1000*1000);
-    }
-}
-
 S32 dnq_get_server_ip(U8 *server_ip)
 {
     if(server_ip)
@@ -1064,27 +1014,170 @@ U32 dnq_get_server_port()
     return g_server_port;
 }
 
-S32 dnq_net_link_isgood()
+S32 dnq_server_link_isgood(U32 isSaveIp)
 {
     U32 server_ip;
-    U32 count = 4;
     struct in_addr addr;
     
-    while(count--)
+    server_ip = dnq_net_get_ipaddr(ETH_NAME);
+    if(server_ip == 0)
+        return 0;
+
+    server_ip = dnq_net_get_host_by_name(DNQ_SERVER_URL);
+    if(server_ip != 0)
     {
-        //dnq_ping_test();
-        server_ip = dnq_net_get_host_by_name(DNQ_SERVER_URL);
-        if(server_ip != 0)
+        /* save server ipaddr */
+        if(isSaveIp)
         {
             addr.s_addr = server_ip;
             strcpy(g_server_ip, inet_ntoa(addr));
-            return 1;/* link well*/
-        }   
-        dnq_msleep(500);        
+        }  
+        return 1;/* got ip */
     }
     
-    /* link bad */
     return 0;
+}
+
+S32 dnq_net_link_isgood()
+{
+    S32 ret;
+    U32 server_ip;
+    U32 count = 4;
+    struct in_addr addr;
+
+    server_ip = dnq_net_get_ipaddr(ETH_NAME);
+    if(server_ip == 0)
+        return 0;
+
+    ret = dnq_net_get_host_by_name(BAIDU_URL);
+    if(ret != 0)
+        return 1;
+    ret = dnq_net_get_host_by_name(TENCENT_URL);
+    if(ret != 0)
+        return 1;
+    ret = dnq_net_get_host_by_name(TAOBAO_URL);
+    if(ret != 0)
+        return 1;
+    ret = dnq_net_get_host_by_name(YOUKU_URL);
+    if(ret != 0)
+        return 1;  
+    
+    return 0;
+}
+
+S32 dnq_get_rabbitmq_ipaddr(U8 *url, U8 *ip_addr)
+{
+    U32 server_ip;
+    U32 count = 2;
+    struct in_addr addr;
+
+    server_ip = dnq_net_get_host_by_name(url);
+    if(server_ip != 0)
+    {
+        addr.s_addr = server_ip;
+        strcpy(ip_addr, inet_ntoa(addr));
+        strcpy(g_server_ip, inet_ntoa(addr));
+        return 1;/* got ip */
+    }   
+       
+    return 0;
+}
+
+static netlink_callback netlink_status_callback = NULL;
+
+void netlink_callback_register(netlink_callback callback)
+{
+    if(callback)
+        netlink_status_callback = callback;
+    else
+        netlink_status_callback = NULL;
+}
+
+static void net_status_change(net_status_e status)
+{
+    switch(status)
+    {
+        case LINK_DOWN:
+            DNQ_INFO(DNQ_MOD_NETWORK, "link down!");
+        break;
+        case LINK_UP:
+            DNQ_INFO(DNQ_MOD_NETWORK, "link up!");
+            //dnq_dhcp_start(ETH_NAME);
+        break;
+        case IP_REQUEST:
+            DNQ_INFO(DNQ_MOD_NETWORK, "ip request!");
+        break;
+        case IP_BOUND:
+            DNQ_INFO(DNQ_MOD_NETWORK, "ip bound!");
+        break;
+        case IP_LOST:
+            DNQ_INFO(DNQ_MOD_NETWORK, "ip lost!");
+        break;
+        case HOST_ONLINE:
+            DNQ_INFO(DNQ_MOD_NETWORK, "host online!");
+        break;
+        case HOST_OFFLINE:
+            DNQ_INFO(DNQ_MOD_NETWORK, "host offline!");
+        break;
+        default:
+            DNQ_ERROR(DNQ_MOD_NETWORK, "link unknown status!");
+        break;
+    }
+    if(netlink_status_callback)
+        netlink_status_callback(status);
+    //lcd_net_status_update(status);
+}
+
+void *network_task(void *args)
+{
+    static U32 last_status = LINK_DOWN;
+    U32  current_status;
+    U32  ret;
+    
+    while(1)
+    {
+        ret = dnq_net_get_link_status(ETH_NAME);
+        if(ret == 1)
+        {
+            current_status = LINK_UP;
+            ret = dnq_net_get_ipaddr(ETH_NAME);
+            if(ret != 0)
+            {
+                /* have ip */
+                current_status = IP_BOUND;
+                ret = dnq_server_link_isgood(0);
+                if(ret == 0)
+                {
+                    /* server link is good */
+                    current_status = HOST_ONLINE;
+                }
+                else
+                {
+                    /* server link is bad */
+                    current_status = HOST_OFFLINE;
+                }
+                
+            }
+            else
+            {
+                /* have no ip */
+                current_status = IP_REQUEST;
+            }
+        }
+        else if(ret == 0) 
+        {
+            /* link down */
+            current_status = LINK_DOWN;
+        }
+    
+        if(current_status != last_status)
+        {
+            net_status_change(current_status);
+            last_status = current_status;
+        }
+
+        dnq_sleep(5);
+    }
 }
 
 S32 dnq_network_getinfo()
@@ -1131,19 +1224,17 @@ S32 dnq_network_check()
         ipaddr = dnq_net_get_ipaddr(ETH_NAME);
         
         link_status = dnq_net_get_link_status(ETH_NAME);
-        if(link_status == LINK_OFF)
+        if(link_status == LINK_DOWN)
         {
             
         }
 
-        if(link_status == LINK_ON)
+        if(link_status == LINK_UP)
         {
             
         }
 
         dnq_dhcp_start(ETH_NAME);
-        
-        
     }
 }
 
@@ -1153,7 +1244,7 @@ S32 dnq_netinfo_init()
     host_net_info_t *netinfo = &g_host_netinfo;
     
     strcpy(netinfo->if_name, ETH_NAME);
-    dnq_net_get_macaddr(netinfo->mac, ETH_NAME);
+    dnq_net_get_macaddr(ETH_NAME, netinfo->mac);
     netinfo->ipaddr = dnq_net_get_ipaddr(ETH_NAME);
     netinfo->mask = dnq_net_get_mask(ETH_NAME);
     netinfo->gateway = dnq_net_get_gw_addr(ETH_NAME);

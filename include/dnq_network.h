@@ -8,11 +8,14 @@
 
 typedef enum _net_status
 {
-    LINK_OFF,
-    LINK_ON,
+    
+    LINK_DOWN = 0x01,
+    LINK_UP,
     IP_REQUEST,
     IP_BOUND,
     IP_LOST,
+    HOST_ONLINE,
+    HOST_OFFLINE
 }net_status_e;
 
 typedef struct _host_net_info
@@ -31,8 +34,8 @@ typedef struct _host_net_info
     U32 link_status;
 }host_net_info_t;
 
-typedef void (*netlink_callback)(net_status_e status);
-void netlink_callback_enable(netlink_callback callback);
+typedef S32 (*netlink_callback)(net_status_e status);
+void netlink_callback_register(netlink_callback callback);
 
 S32 dnq_net_ifup(U8 *if_name);
 S32 dnq_net_ifdown(U8 *if_name);
@@ -53,6 +56,7 @@ S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr);
 S32 dnq_net_get_link_status(U8 *if_name);
 U32 dnq_net_get_host_by_name(U8 *cname);
 S32 dnq_net_link_isgood();
+S32 dnq_server_link_isgood();
 S32 dnq_network_getinfo();
 S32 dnq_network_check();
 S32 dnq_network_init();
