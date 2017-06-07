@@ -97,7 +97,6 @@ typedef enum lcd_item_id
     ITEM_ID_HELP_INFO, //102
 }lcd_item_id_e;
 
-
 typedef enum room_item_id
 {
     ROOM_ITEM_ID,
@@ -184,6 +183,18 @@ typedef struct _lcd_status
     U32   current_room;
     U32   current_foucs;
 }lcd_status_t;
+
+typedef enum net_msg_type
+{
+    NET_MSG_TYPE_NET_STATUS_CHANGE = 0x10,
+    NET_MSG_TYPE_MAC_INFO_UPDATE
+}net_msg_type_e;
+
+typedef enum rabbitmq_msg_type
+{
+    MQ_MSG_TYPE_SET_TEMP_UPDATE = 0x10,
+
+}rabbitmq_msg_type_e;
 
 extern room_item_t g_rooms[DNQ_ROOM_MAX+1];
 

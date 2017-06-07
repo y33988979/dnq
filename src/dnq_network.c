@@ -1136,6 +1136,7 @@ void *network_task(void *args)
     
     while(1)
     {
+        
         ret = dnq_net_get_link_status(ETH_NAME);
         if(ret == 1)
         {
@@ -1146,7 +1147,7 @@ void *network_task(void *args)
                 /* have ip */
                 current_status = IP_BOUND;
                 ret = dnq_server_link_isgood(0);
-                if(ret == 0)
+                if(ret == 1)
                 {
                     /* server link is good */
                     current_status = HOST_ONLINE;
@@ -1176,7 +1177,8 @@ void *network_task(void *args)
             last_status = current_status;
         }
 
-        dnq_sleep(5);
+        printf("current_status=%d, last_status=%d\n", current_status, last_status);
+        dnq_sleep(3);
     }
 }
 
@@ -1238,6 +1240,21 @@ S32 dnq_network_check()
     }
 }
 
+void dnq_get_mac_addr(U8 *mac_addr)
+{
+    strncpy(mac_addr, g_host_netinfo.mac, 16);
+}
+
+U8 *dnq_get_mac_string()
+{
+    return g_host_netinfo.mac_str;
+}
+
+host_net_info_t *dnq_get_netinfo()
+{
+    return &g_host_netinfo;
+}
+
 S32 dnq_netinfo_init()
 {
     S32 ret;
@@ -1245,6 +1262,9 @@ S32 dnq_netinfo_init()
     
     strcpy(netinfo->if_name, ETH_NAME);
     dnq_net_get_macaddr(ETH_NAME, netinfo->mac);
+    sprintf(netinfo->mac_str, "%02x%02x%02x%02x%02x%02x", \
+        netinfo->mac[0], netinfo->mac[1], netinfo->mac[2],
+        netinfo->mac[3], netinfo->mac[4], netinfo->mac[5]);
     netinfo->ipaddr = dnq_net_get_ipaddr(ETH_NAME);
     netinfo->mask = dnq_net_get_mask(ETH_NAME);
     netinfo->gateway = dnq_net_get_gw_addr(ETH_NAME);

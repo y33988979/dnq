@@ -37,21 +37,21 @@ static dnq_appinfo_t  *lcd_appinfo = NULL;
 room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
 {
     {0, "三年二班", 2210,3200, STOP_STATUS,WORK_STATUS,-2},
-    {1, "门卫室", 2420,2600,   0,1,-2},
-    {2, "走廊蓄热12", 1120,500,1,1,-2},
-    {3, "走廊蓄热2", 1120,500, 1,0,-2},
-    {4, "科学实验室", 1120,2300,1,0,-2},
+    {1, "门卫室", 2420,2600,   0,0,-2},
+    {2, "走廊蓄热12", 1120,500,0,0,-2},
+    {3, "走廊蓄热2", 1120,500, 0,0,-2},
+    {4, "科学实验室", 1120,2300,0,0,-2},
     {5, "一年级教研室", 1020,2300,0,0,-2},
-    {6, "三年一班", 2210,1900,1,0,-2},
-    {7, "水房", 1910,0,0,1,-2},
-    {8, "闲置房间1-2", 1810,500,1,1,-2},
-    {9, "会议室南", 590, 500,0,1,-1},
-    {10, "会议室北",520,500,1,1,-1},
-    {11, "楼梯间2-3", 1320,1500,1,1,-3},
-    {12, "楼梯间4-5", 1320,1500,1,0,-3},
+    {6, "三年一班", 2210,1900,0,0,-2},
+    {7, "水房", 1910,0,0,0,-2},
+    {8, "闲置房间1-2", 1810,500,0,0,-2},
+    {9, "会议室南", 590, 500,0,0,-1},
+    {10, "会议室北",520,500,0,0,-1},
+    {11, "楼梯间2-3", 1320,1500,0,0,-3},
+    {12, "楼梯间4-5", 1320,1500,0,0,-3},
     {13, "楼梯间6-7", 1320,1500,0,0,-4},
-    {14, "楼梯间8-9", 1320,1500,1,1,-4},
-    {15, "大会议室", 1320,1500,1,0,-5},
+    {14, "楼梯间8-9", 1320,1500,0,0,-4},
+    {15, "大会议室", 1320,1500,0,0,-5},
     {0,0,0,0,0,0,0},
    
 };
@@ -594,7 +594,7 @@ static S32 lcd_room_work_status_update(U32 room_id, U32 status, U32 color)
     U8  status_str[16] = STATUS_STR_STOP;
     
     //memset(g_rooms[room_id].status, 0, 8);
-    g_rooms[room_id].sn_status = status;
+    g_rooms[room_id].work_status = status;
     if(status == WORK_STATUS)
     {
         color = FOUCS_COLOR;
@@ -605,6 +605,9 @@ static S32 lcd_room_work_status_update(U32 room_id, U32 status, U32 color)
         color = DEFAULT_COLOR;
         strncpy(status_str, STATUS_STR_STOP, 8);
     }
+
+    if(room_id/ROOM_CNT_PER_PAGE != lcd_get_current_page())
+        return -1;
     
     room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_WORK_STATUS, status_str, color);
@@ -755,6 +758,7 @@ static S32 lcd_net_info_update(U8 *string)
 static S32 lcd_mac_info_update(U8 *string)
 {
     S32 ret = 0;
+    
     ret = lcd_item_update(ITEM_ID_MAC_INFO, string, DEFAULT_COLOR);
     return ret;
 }
@@ -841,6 +845,8 @@ static S32 lcd_update_all()
 {
     int i,j;
     U32 ret = 0;
+    U8 mac_addr[16] = {0};
+    U8 mac_info[64] = {0};
 
     ret = lcd_title_update(TITLE_STR);
     //ret = lcd_date_update("2017-07-00 00:00:00");
@@ -862,7 +868,11 @@ static S32 lcd_update_all()
     }
     //ret = lcd_room_select_flag_update(3, SELECT_FLAG);
     
-    ret = lcd_mac_info_update(MAC_INFO_STR);
+    dnq_get_mac_addr(mac_addr);
+    sprintf(mac_info, "MAC地址: %02X-%02X-%02X-%02X-%02X-%02X", \
+        mac_addr[0], mac_addr[1], mac_addr[2], \
+        mac_addr[3], mac_addr[4], mac_addr[5] );
+    ret = lcd_mac_info_update(mac_info);
     ret = lcd_net_info_update(NET_INFO_STR);
     ret = lcd_cmd_info_update(CMD_INFO_STR);
     ret = lcd_sys_info_update(SYS_INFO_STR);
@@ -1210,6 +1220,15 @@ static S32 lcd_key_msg_process(U32 key_code, U32 key_status)
 static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
 {
     S32 ret;
+
+    switch(msg->code)
+        {
+        case MQ_MSG_TYPE_SET_TEMP_UPDATE:
+            ret = lcd_room_setting_temp_update(msg->lenght, (void *)msg->payload, DEFAULT_COLOR);
+            break;
+        default:
+            break;
+    }
     
     return ret;
 }
@@ -1218,10 +1237,14 @@ static S32 lcd_manage_msg_process(dnq_msg_t *msg)
 {
     S32 ret = 0;
 
-    /* update init info! */
-    if(msg->code == 0)
-    {
-        ret = lcd_rooms_update_by_page(lcd_get_current_page());
+    switch(msg->code)
+        {
+        case 0x100: /* update init info! */
+            ret = lcd_rooms_update_by_page(lcd_get_current_page());
+            break;
+        default:
+            ret = lcd_room_work_status_update(msg->code, (U32)msg->payload, DEFAULT_COLOR);
+            break;
     }
     
     return ret;
@@ -1231,9 +1254,20 @@ static S32 lcd_net_msg_process(dnq_msg_t *msg)
 {
     U32 net_status;
 
-    net_status = msg->code;
+    switch(msg->code)
+    {
+        case NET_MSG_TYPE_NET_STATUS_CHANGE:
+            net_status = (U32)msg->payload;
+            lcd_net_status_update(net_status);
+            break;
+        case NET_MSG_TYPE_MAC_INFO_UPDATE:
+            //lcd_mac_info_update(U8 * string);
+            break;
+        default:
+            break;
+    }
 
-    return lcd_net_status_update(net_status);
+    return 0;
 }
 
 static S32 lcd_datetime_update()
@@ -1276,7 +1310,8 @@ S32 lcd_netinfo_update(net_status_e status)
     dnq_msg_t msg = {0};
 
     msg.Class = MSG_CLASS_NETWORK;
-    msg.code = status;
+    msg.code = NET_MSG_TYPE_NET_STATUS_CHANGE;
+    msg.payload = (void *)status;
     
     return send_msg_to_lcd(&msg);
 }
@@ -1365,6 +1400,7 @@ void *lcd_task(void *args)
             break;
             
         }
+        dnq_msleep(200);
     }
 
     dnq_app_task_delete(lcd_appinfo);
@@ -1374,7 +1410,6 @@ S32 dnq_lcd_init()
 {
     dnq_appinfo_t **appinfo = &lcd_appinfo;
 
-    
     lcd_items_init();
     lcd_clear_all();
     lcd_update_all();
@@ -1382,7 +1417,7 @@ S32 dnq_lcd_init()
     netlink_callback_register(lcd_netinfo_update);
     
     *appinfo = dnq_app_task_create("lcd_task", 2048*64,\
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, lcd_task, NULL);
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX+5, lcd_task, NULL);
     if(!*appinfo)
     {
         DNQ_ERROR(DNQ_MOD_LCD, "lcd_task create error!");

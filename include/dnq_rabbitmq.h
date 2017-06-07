@@ -13,9 +13,6 @@
 #define SERVER_IPADDR   "112.74.43.136"
 #define SERVER_PORT     5672
 
-#define MAC_ADDR   "70b3d5cf4924"
-
-
 typedef struct channel{
 	int chid;
 	char qname[32];

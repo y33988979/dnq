@@ -22,6 +22,7 @@ typedef struct _host_net_info
 {
     U8  if_name[6];
     U8  mac[6];
+    U8  mac_str[16];
     U32 ipaddr;
     U32 mask;
     U32 gateway;
@@ -57,6 +58,9 @@ S32 dnq_net_get_link_status(U8 *if_name);
 U32 dnq_net_get_host_by_name(U8 *cname);
 S32 dnq_net_link_isgood();
 S32 dnq_server_link_isgood();
+host_net_info_t *dnq_get_netinfo();
+void dnq_get_mac_addr(U8 *mac_addr);
+U8 *dnq_get_mac_string();
 S32 dnq_network_getinfo();
 S32 dnq_network_check();
 S32 dnq_network_init();

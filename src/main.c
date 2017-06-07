@@ -65,7 +65,7 @@ void *send_test(void *args)
         dnq_msleep(100);
         n += 10;
         if(cnt++ % 7 == 0)
-            sleep(3);
+            sleep(300);
     }
 }
 
@@ -127,13 +127,14 @@ int main()
     queue = dnq_queue_create(QUEUE_SIZE_MAX);
     if(queue == NULL)
         goto exit;
-
-    printf("test_queue=0x%08x!\n",queue );
-    dnq_task_create("send", 32*2048, send_test, (void*)queue);
-
+    
     sem1 = queue->sem;
     dump_sem(&sem1);
     printf("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-\n");
+    
+    printf("test_queue=0x%08x!\n",queue );
+    dnq_task_create("send", 32*2048, send_test, (void*)queue);
+
 
     while(1)
     {
@@ -141,7 +142,7 @@ int main()
         //event_proc();
         //sleep(11);
         if(memcmp(&sem1, &queue->sem, sizeof(sem_t)) != 0 )
-            dump_sem(&sem1);
+            dump_sem(&queue->sem);
         if(dnq_msg_recv_timeout(queue, &recv_msg, 300) < 0)
             continue;
         

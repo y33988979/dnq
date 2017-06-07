@@ -139,7 +139,7 @@ static S32 dnq_get_room_temperature(U32 room_id)
     }
 
     temperature = recvbuf[7]<<8|recvbuf[8];
-    DNQ_DEBUG(DNQ_MOD_MCU, "room %d temperature is %d.%d'C!",\
+    DNQ_INFO(DNQ_MOD_MCU, "room %d temperature is %d.%d'C!",\
         room_id, temperature/100, (temperature%100)/10);
 
     return temperature;
@@ -189,6 +189,8 @@ void *sensor_task(void *args)
         /* get room temperature from sensor */
         for(i=0; i<DNQ_ROOM_CNT; i++)
         {
+            if(i >= 2)
+                continue;
             temperature = dnq_get_room_temperature(i);
             if(temperature < 0)
             {

@@ -335,7 +335,7 @@ S32 dnq_heater_open(U32 id)
     if(room->work_status == STOP_STATUS)
     {
         ret = dnq_heater_ctrl_single(id, HEATER_MODE_SWITCH, HEATER_OPEN);
-        room->work_status = WORK_STATUS;
+        //room->work_status = WORK_STATUS;
         DNQ_INFO(DNQ_MOD_MCU, "open heart! id=%d", id);
     }
 
@@ -349,7 +349,7 @@ S32 dnq_heater_close(U32 id)
     if(room->work_status == WORK_STATUS)
     {
         ret = dnq_heater_ctrl_single(id, HEATER_MODE_SWITCH, HEATER_CLOSE);
-        room->work_status = STOP_STATUS;
+        //room->work_status = STOP_STATUS;
         DNQ_INFO(DNQ_MOD_MCU, "close heart! id=%d", id);
     }
     
