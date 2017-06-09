@@ -231,6 +231,7 @@ static S32 dnq_uart_write(U32 fd, U8 *buffer, U32 len)
 {
     int i = 0;
     int wlen;
+    
     if(fd < 0)
     {
         DNQ_ERROR(DNQ_MOD_UART, "uart fd is not opened!");
@@ -270,6 +271,7 @@ S32 dnq_lcd_uart_write(U8 *buffer, U32 len)
 {
     S32 i = 0;
     S32 ret;
+
     ret = dnq_uart_write(lcd_uart_fd, buffer, len);
     if(ret > 0)
     {

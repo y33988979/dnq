@@ -56,7 +56,7 @@
 #define STATUS_STR_WORK       "工作"
 #define STATUS_STR_STOP       "停止"
 
-#define SN_STATUS_STR_WORK    "工作"
+#define SN_STATUS_STR_WORK    "正常"
 #define SN_STATUS_STR_STOP    "异常"
 
 /* lcd status */
@@ -70,7 +70,7 @@
 #define DATE_STR "2017年5月15日 18:33:33"
      
 #define MAC_INFO_STR "MAC：20-21-3E-43-FE-47-29 "
-#define NET_INFO_STR "网络状态：    正常 "
+#define NET_INFO_STR "网络状态：   初始化.. "
 #define CMD_INFO_STR "当前执行命令：加热 "
 #define SYS_INFO_STR "火娃电采暖智能控制器 "
 #define HELP_INFO_STR "↑:上一页  ↓:下一页  OK:设置  EXIT:返回"
@@ -193,6 +193,7 @@ typedef enum net_msg_type
 typedef enum rabbitmq_msg_type
 {
     MQ_MSG_TYPE_SET_TEMP_UPDATE = 0x10,
+    MQ_MSG_TYPE_TEMP_CORRECT_UPDATE,
 
 }rabbitmq_msg_type_e;
 

@@ -8,8 +8,8 @@
 
 typedef enum _net_status
 {
-    
-    LINK_DOWN = 0x01,
+    NET_INIT,
+    LINK_DOWN,
     LINK_UP,
     IP_REQUEST,
     IP_BOUND,

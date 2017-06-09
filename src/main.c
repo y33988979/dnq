@@ -87,7 +87,7 @@ int main()
     U8 buffer[1024];
     dnq_queue_t *queue = NULL;
     dnq_msg_t recv_msg;
-    dnq_debug_setlever(1,5); 
+    //dnq_debug_setlever(1,5); 
 
         sem_t sem1 = {0};
         int *p;
@@ -104,12 +104,14 @@ int main()
 
     sem_destroy(&sem1);
 
-    
+
+    extern S32 dnq_config_init();    
 
     MAIN_CHECK( dnq_init() );
+    MAIN_CHECK( dnq_config_init() );  
     MAIN_CHECK( dnq_debug_init() );
-    MAIN_CHECK( dnq_network_init() );
     MAIN_CHECK( dnq_uart_init() );
+    MAIN_CHECK( dnq_network_init() );
     MAIN_CHECK( dnq_lcd_init() );
     MAIN_CHECK( dnq_mcu_init() );
     MAIN_CHECK( dnq_sensor_init() );

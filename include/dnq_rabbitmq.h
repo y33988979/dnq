@@ -304,7 +304,7 @@ typedef struct room_info
     U16       error;
     U16       max;
     U16       min;
-    U16       correct;
+    S16       correct;
     U16       room_id;
     U8        room_name[SIZE_16];
     U16       room_order;

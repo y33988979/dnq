@@ -337,7 +337,7 @@ S32 dnq_file_read(char *filepath, char *buffer, int len)
     return ret; 
 }
 
-S32 dnq_file_write(char *filepath, char *buffer, int len)
+S32 dnq_file_write(U8 *filepath, U8 *buffer, S32 len)
 {
     S32    ret = 0;
     FILE  *fp = NULL;
@@ -376,33 +376,33 @@ void dnq_config_print()
 
     dnq_config_t *config = &g_dnq_config;
 
-    printf("=================================\n");
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "=================================");
     
-    DNQ_PRINT(DNQ_MOD_ALL, "====authorization config===\n");
-    DNQ_PRINT(DNQ_MOD_ALL, "type=\t%s\n", config->authorization.type);
-    DNQ_PRINT(DNQ_MOD_ALL, "time=\t%s\n", config->authorization.time);
-    DNQ_PRINT(DNQ_MOD_ALL, "authorization=\t%s\n", config->authorization.authorization);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "====authorization config===");
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "type=\t%s", config->authorization.type);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "time=\t%s", config->authorization.time);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "authorization=\t%s", config->authorization.authorization);
 
-    DNQ_PRINT(DNQ_MOD_ALL, "====temp_policy config===\n");
-    DNQ_PRINT(DNQ_MOD_ALL, "type=\t%s\n", config->temp_policy.type);
-    DNQ_PRINT(DNQ_MOD_ALL, "time=\t%s\n", config->temp_policy.time);
-    DNQ_PRINT(DNQ_MOD_ALL, "ctrl_id=\t%s\n", config->temp_policy.ctrl_id);
-    DNQ_PRINT(DNQ_MOD_ALL, "mode=\t%d\n", config->temp_policy.mode);
-    DNQ_PRINT(DNQ_MOD_ALL, "rooms_cnt=\t%d\n", config->temp_policy.rooms_cnt);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "====temp_policy config===");
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "type=\t%s", config->temp_policy.type);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "time=\t%s", config->temp_policy.time);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "ctrl_id=\t%s", config->temp_policy.ctrl_id);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "mode=\t%d", config->temp_policy.mode);
+    DNQ_DEBUG(DNQ_MOD_RABBITMQ, "rooms_cnt=\t%d", config->temp_policy.rooms_cnt);
     
     for(i=0; i<config->temp_policy.rooms_cnt; i++)
     {
-        DNQ_PRINT(DNQ_MOD_ALL, "id=\t%d\n", config->temp_policy.rooms[i].room_id);
-        DNQ_PRINT(DNQ_MOD_ALL, "dpid=\t%d\n", config->temp_policy.rooms[i].dpid);
-        DNQ_PRINT(DNQ_MOD_ALL, "setting_cnt=\t%d\n", config->temp_policy.rooms[i].time_setting_cnt);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "id=\t%d", config->temp_policy.rooms[i].room_id);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "dpid=\t%d", config->temp_policy.rooms[i].dpid);
+        DNQ_DEBUG(DNQ_MOD_RABBITMQ, "setting_cnt=\t%d", config->temp_policy.rooms[i].time_setting_cnt);
 
         for(j=0; j<config->temp_policy.rooms[i].time_setting_cnt; j++)
         {
-            DNQ_PRINT(DNQ_MOD_ALL, "start=\t%d\n", config->temp_policy.rooms[i].time_setting[j].start);
-            DNQ_PRINT(DNQ_MOD_ALL, "starttime=\t%s\n", config->temp_policy.rooms[i].time_setting[j].starttime);
-            DNQ_PRINT(DNQ_MOD_ALL, "end=\t%d\n", config->temp_policy.rooms[i].time_setting[j].end);
-            DNQ_PRINT(DNQ_MOD_ALL, "endtime=\t%s\n", config->temp_policy.rooms[i].time_setting[j].endtime);
-            DNQ_PRINT(DNQ_MOD_ALL, "degrees=\t%d\n", config->temp_policy.rooms[i].time_setting[j].degrees);
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "start=\t%d", config->temp_policy.rooms[i].time_setting[j].start);
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "starttime=\t%s", config->temp_policy.rooms[i].time_setting[j].starttime);
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "end=\t%d", config->temp_policy.rooms[i].time_setting[j].end);
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "endtime=\t%s", config->temp_policy.rooms[i].time_setting[j].endtime);
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "degrees=\t%d", config->temp_policy.rooms[i].time_setting[j].degrees);
         }
     }
 #if 0
@@ -460,15 +460,16 @@ S32 dnq_config_load()
     server_temp_error_t  *temp_error;
     S32  setting_temp;
     
-    ret = dnq_file_read(DNQ_DATA_FILE, &g_dnq_config, sizeof(dnq_config_t));
+    ret = dnq_file_read(DNQ_DATA_FILE, (U8*)&g_dnq_config, sizeof(dnq_config_t));
     if(ret < 0)
         return -1;
 
     init_config = &g_dnq_config.init;
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
-        rooms[i].id = init_config->rooms[i].room_id;
+        rooms[i].id = init_config->rooms[i].room_order;
         u2g(init_config->rooms[i].room_name, 16, gb2312_out,sizeof(gb2312_out));   
+        strncpy(rooms[i].name, gb2312_out, 16);
         rooms[i].correct = init_config->rooms[i].correct;
     }
     
@@ -482,7 +483,7 @@ S32 dnq_config_load()
             setting_temp = 0;
         }
         rooms[i].set_temp = setting_temp*100;
-        printf("rooms[%d].set_temp=%d\n", i, setting_temp);
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "rooms[%d].set_temp=%d\n", i, setting_temp);
     }
   
     return ret;
@@ -492,7 +493,7 @@ S32 dnq_data_file_create()
 {
     S32 ret = 0;
     dnq_config_t *all_config = &g_dnq_config;
-    ret |= dnq_file_write(DNQ_DATA_FILE, &g_dnq_config, sizeof(dnq_config_t));
+    ret |= dnq_file_write(DNQ_DATA_FILE, (U8*)&g_dnq_config, sizeof(dnq_config_t));
     
 #if 0
     ret |= dnq_config_save_file(JSON_FILE_AUTHORRIZATION, \
@@ -524,7 +525,7 @@ S32 dnq_data_file_create()
 
 S32 dnq_data_file_save()
 {
-    return dnq_file_write(DNQ_DATA_FILE, &g_dnq_config, sizeof(dnq_config_t));
+    return dnq_file_write(DNQ_DATA_FILE, (U8*)&g_dnq_config, sizeof(dnq_config_t));
 }
 
 S32 dnq_config_load1()
@@ -590,6 +591,7 @@ S32 dnq_config_init()
         dnq_config_load();
     }
 
+    dnq_config_print();
     printf("$$$$$ret=%d, config size=%d\n", ret, sizeof(dnq_config_t));
     
     return 0;
@@ -669,10 +671,14 @@ S32 dnq_config_update_authorization(void *cjson_struct)
 
 S32 dnq_config_update_temp_policy(void *cjson_struct)
 {
+    U32 i, room_id;
+    U32 current_second = 0;
+    S32 setting_temp = 0;
     server_temp_policy_t *temp_policy, curr_policy;
     temp_policy = (server_temp_policy_t *)cjson_struct;
-    U32 i, room_id;
+    room_item_t *rooms = dnq_get_rooms();
 
+    current_second = dnq_get_current_second();
     dnq_get_temp_policy_config(&curr_policy);
     /* single */
     if(temp_policy->mode == 1)
@@ -681,6 +687,10 @@ S32 dnq_config_update_temp_policy(void *cjson_struct)
         memcpy(&curr_policy.rooms[room_id],\
             &temp_policy->rooms[0], sizeof(room_temp_policy_t));
         
+        setting_temp = dnq_get_room_setting_temp_by_time(room_id, current_second);
+        if(setting_temp != 0xFF)
+            rooms[room_id].set_temp = setting_temp;
+        
     }
     else if(temp_policy->mode == 0) /* whole all config */
     {
@@ -688,6 +698,9 @@ S32 dnq_config_update_temp_policy(void *cjson_struct)
         {
             memcpy(&curr_policy.rooms[i], \
                 &temp_policy->rooms[0], sizeof(room_temp_policy_t));
+            setting_temp = dnq_get_room_setting_temp_by_time(i, current_second);
+            if(setting_temp != 0xFF)
+                rooms[i].set_temp = setting_temp;
         }
     }
 
@@ -803,9 +816,12 @@ S32 dnq_config_sync_to_lcd(json_type_e json_type, void *cjson_struct)
 {
     U32 i;
     S32 ret;
-    U32 current_second, setting_temp;
+    U32 current_second;
+    S32 setting_temp;
     dnq_msg_t msg = {0};
     server_temp_policy_t *temp_policy = (server_temp_policy_t *)cjson_struct;
+    server_temp_error_t *temp_error = (server_temp_error_t *)cjson_struct;
+    server_temp_correct_t *temp_correct = (server_temp_correct_t *)cjson_struct;
     msg.Class = MSG_CLASS_RABBITMQ;
     
     switch(json_type)
@@ -839,6 +855,16 @@ S32 dnq_config_sync_to_lcd(json_type_e json_type, void *cjson_struct)
         case JSON_TYPE_RESPONSE:         
             break;
         case JSON_TYPE_CORRECT:
+            temp_correct = (server_temp_correct_t *)cjson_struct;
+            for(i=0; i<temp_correct->rooms_cnt; i++)
+            {
+                {
+                    msg.code = MQ_MSG_TYPE_TEMP_CORRECT_UPDATE;
+                    msg.lenght = temp_correct->rooms[i].room_id-1;
+                    msg.payload = (void*)(S32)temp_correct->rooms[i].correct;
+                    send_msg_to_lcd(&msg);
+                }
+            }
             break;
         case JSON_TYPE_INIT:
             break;
@@ -934,7 +960,17 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             ret = dnq_config_update(JSON_TYPE_CORRECT, cjson_struct);
             if(!ret)
             {
-                memcpy(&g_dnq_config.temp_correct, cjson_struct, sizeof(server_temp_correct_t));
+                server_temp_correct_t *temp_correct = (server_temp_correct_t *)cjson_struct;
+
+                for(i=0; i<temp_correct->rooms_cnt; i++)
+                {
+                    room_id = temp_correct->rooms[i].room_id - 1;
+                    if(room_id >= 0 && room_id <= DNQ_ROOM_MAX)
+                    {
+                        g_dnq_config.temp_correct.rooms[room_id].correct = temp_correct->rooms[i].correct;
+                    }
+                }
+                //memcpy(&g_dnq_config.temp_correct, cjson_struct, sizeof(server_temp_correct_t));
                 dnq_json_save_file(JSON_FILE_CORRECT, json_data, len);
             }
         break;
@@ -2478,7 +2514,7 @@ void *rabbitmq_send_test()
     char    buffer[1024];
     client_status_t   status = {TEST_MAC_ADDR, 2, {{1, 23, 45}, {2, 45, 67}}};
     client_loss_t     loss = {TEST_MAC_ADDR, 1, {0, 55}};
-    client_response_t response = {{TEST_MAC_ADDR}, NULL};
+    client_response_t response = {"response", TEST_MAC_ADDR, "true"};
     client_config_t   config = {TEST_MAC_ADDR, 1, {1, 2, 3, 4, 5, 6, 7}};
     client_warn_t     warn = {TEST_MAC_ADDR, 3, {{1,7}, {2,8}, {3,9}}};
     int time = 3;
@@ -2542,16 +2578,15 @@ void *rabbitmq_send_test()
 S32 dnq_rabbitmq_init()
 {
     S32 ret;
+    dnq_task_t *task;
 
     /* register cjson hooks! */
     cJSON_Hooks hooks = {dnq_malloc, dnq_free};
     cJSON_InitHooks(&hooks);
 
-    ret = dnq_config_init();
-    dnq_config_print();
     //sleep(10);
-    ret = dnq_task_create("rabbitmq_task", 512*1024, rabbitmq_task, NULL);
-    if(!ret) 
+    task = dnq_task_create("rabbitmq_task", 512*1024, rabbitmq_task, NULL);
+    if(!task) 
         return -1;
     
     return 0;

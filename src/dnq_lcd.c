@@ -36,22 +36,22 @@ static dnq_appinfo_t  *lcd_appinfo = NULL;
  
 room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
 {
-    {0, "三年二班", 2210,3200, STOP_STATUS,WORK_STATUS,-2},
-    {1, "门卫室", 2420,2600,   0,0,-2},
-    {2, "走廊蓄热12", 1120,500,0,0,-2},
-    {3, "走廊蓄热2", 1120,500, 0,0,-2},
-    {4, "科学实验室", 1120,2300,0,0,-2},
-    {5, "一年级教研室", 1020,2300,0,0,-2},
-    {6, "三年一班", 2210,1900,0,0,-2},
-    {7, "水房", 1910,0,0,0,-2},
-    {8, "闲置房间1-2", 1810,500,0,0,-2},
+    {0, "三年二班", 2210,3200, STOP_STATUS,WORK_STATUS,0},
+    {1, "门卫室", 2420,2600,   0,0,0},
+    {2, "走廊蓄热12", 1120,500,0,0,1},
+    {3, "走廊蓄热2", 1120,500, 0,0,0},
+    {4, "科学实验室", 1120,2300,0,0,2},
+    {5, "一年级教研室", 1020,2300,0,0,2},
+    {6, "三年一班", 2210,1900,0,0,1},
+    {7, "水房", 1910,0,0,0,0},
+    {8, "闲置房间1-2", 1810,500,0,0,0},
     {9, "会议室南", 590, 500,0,0,-1},
     {10, "会议室北",520,500,0,0,-1},
-    {11, "楼梯间2-3", 1320,1500,0,0,-3},
-    {12, "楼梯间4-5", 1320,1500,0,0,-3},
-    {13, "楼梯间6-7", 1320,1500,0,0,-4},
-    {14, "楼梯间8-9", 1320,1500,0,0,-4},
-    {15, "大会议室", 1320,1500,0,0,-5},
+    {11, "楼梯间2-3", 1320,1500,0,0,2},
+    {12, "楼梯间4-5", 1320,1500,0,0,0},
+    {13, "楼梯间6-7", 1320,1500,0,0,0},
+    {14, "楼梯间8-9", 1320,1500,0,0,1},
+    {15, "大会议室", 1320,1500,0,0,2},
     {0,0,0,0,0,0,0},
    
 };
@@ -395,7 +395,7 @@ static S32 lcd_uart_cmd_prepare(U32 item_id, char *content, U32 color)
 
 static U32 room_in_current_page(U32 room_id)
 {
-    if((room_id/ROOM_CNT_PER_PAGE) == lcd_current_page)
+    if((room_id/ROOM_CNT_PER_PAGE) == lcd_get_current_page())
         return 1;
     return 0;
 }
@@ -478,6 +478,8 @@ static S32 lcd_room_item_update(U32 room_id, U32 idx, U8 *content, U32 color)
         DNQ_ERROR(DNQ_MOD_LCD, "room's index[%d] error! it must less then %d",\
         idx, ONE_ROOM_ITEM_CNT);
 
+    room_id %= ROOM_CNT_PER_PAGE;
+
     item_id = LCD_ID_ROOM_ITEM_START+room_id*ONE_ROOM_ITEM_CNT + idx;
     ret |= lcd_item_clear(item_id);
     
@@ -501,7 +503,7 @@ static S32 lcd_room_id_update(U32 room_id, U32 id, U32 color)
 
     g_rooms[room_id].id = id;
     sprintf(buf, "%02d", id);
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_ID, buf, color);
     return ret;
 }
@@ -512,7 +514,7 @@ static S32 lcd_room_name_update(U32 room_id, U8 *room_name, U32 color)
 
     //memset(g_rooms[room_id].name, 0, 16);
     strncpy(g_rooms[room_id].name, room_name, 16);
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_NAME, room_name, color);
     return ret;
 }
@@ -522,9 +524,10 @@ static S32 lcd_room_current_temp_update(U32 room_id, S32 degree, U32 color)
     S32 ret = 0;
     char buf[16] = {0};
 
+    degree += (g_rooms[room_id].correct*100); //temp correct
     g_rooms[room_id].curr_temp = degree;
     sprintf(buf, "%02d.%1d", degree/100, (degree%100)/10);
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_CURRENT_TEMP, buf, color);
     return ret;
 }
@@ -536,7 +539,7 @@ static S32 lcd_room_setting_temp_update(U32 room_id, S32 degree, U32 color)
 
     g_rooms[room_id].set_temp= degree;
     sprintf(buf, "%02d.%1d", degree/100, (degree%100)/10);
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_SET_TEMP, buf, color);
     return ret;
 }
@@ -583,7 +586,7 @@ static S32 lcd_room_setting_temp_update_adjust(U32 room_id, S32 value, U32 color
     room_item->set_temp += value;
     //sprintf(buf, "%2.1f", g_rooms[room_id].set_temp);
     sprintf(buf, "%02d.%1d", room_item->set_temp/100, (room_item->set_temp%100)/10);
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_SET_TEMP, buf, color);
     return ret;
 }
@@ -605,11 +608,8 @@ static S32 lcd_room_work_status_update(U32 room_id, U32 status, U32 color)
         color = DEFAULT_COLOR;
         strncpy(status_str, STATUS_STR_STOP, 8);
     }
-
-    if(room_id/ROOM_CNT_PER_PAGE != lcd_get_current_page())
-        return -1;
     
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_WORK_STATUS, status_str, color);
     return ret;
 }
@@ -623,7 +623,7 @@ static S32 lcd_room_sn_status_update(U32 room_id, U32 status, U32 color)
     g_rooms[room_id].sn_status = status;
     if(status == WORK_STATUS)
     {
-        color = FOUCS_COLOR;
+        color = DEFAULT_COLOR;
         strncpy(status_str, SN_STATUS_STR_WORK, 8);
     }
     else
@@ -632,7 +632,7 @@ static S32 lcd_room_sn_status_update(U32 room_id, U32 status, U32 color)
         strncpy(status_str, SN_STATUS_STR_STOP, 8);
     }
         
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_SN_STATUS, status_str, color);
     return ret;
 }
@@ -644,7 +644,7 @@ static S32 lcd_room_temp_correct_update(U32 room_id, S32 correct, U32 color)
 
     g_rooms[room_id].correct = correct;
     sprintf(buf, "%d", correct);
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_TEMP_CORRECT, buf, color);
     return ret;
 }
@@ -659,7 +659,7 @@ static S32 lcd_room_temp_correct_update_adjust(U32 room_id, S32 value, U32 color
     sprintf(buf, "%d", g_rooms[room_id].correct);
     printf("value========%d, buf=\"%s\"\n", \
         g_rooms[room_id].correct, buf);
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_TEMP_CORRECT, buf, color);
     return ret;
 }
@@ -667,7 +667,7 @@ static S32 lcd_room_temp_correct_update_adjust(U32 room_id, S32 value, U32 color
 static S32 lcd_room_select_flag_update(U32 room_id, U8 *select_flag)
 {
     S32 ret = 0;
-    room_id %= ROOM_CNT_PER_PAGE;
+    //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_SELECT_FLAG, select_flag, DEFAULT_COLOR);
     return ret;
 }
@@ -729,6 +729,7 @@ static S32 lcd_net_status_update(net_status_e status)
 {
     S32 ret = 0;
     U8  buf[32];
+    printf("statusstatus---%d-----------\n", status);
     if(status == LINK_UP)
         sprintf(buf, "网络状态: %s", "网线已连接");
     else if(status == LINK_DOWN)
@@ -822,6 +823,7 @@ static S32 lcd_clear_all()
 {
     U32 i = 0, j = 0;
     U32 ret = 0;
+
     ret = lcd_item_clear(ITEM_ID_TITLE);
     ret = lcd_item_clear(ITEM_ID_DATE);
     ret = lcd_item_clear(ITEM_ID_HEADER);
@@ -1107,7 +1109,7 @@ static S32 lcd_setting_key_process(U32 key_code, U32 key_status)
     U32 next_room;
     U32 next_foucs;
     
-    room_item_t *room_item = &g_rooms[current_room];
+    room_item_t *current_room_item = &g_rooms[current_room];
     switch (key_code)
     {
         case DNQ_KEY_UP:
@@ -1138,12 +1140,22 @@ static S32 lcd_setting_key_process(U32 key_code, U32 key_status)
             else if(current_foucs == ROOM_ITEM_TEMP_CORRECT)
             {
                 /* adjust correct value */
-                if(key_code == DNQ_KEY_UP) 
+                if(key_code == DNQ_KEY_UP)
+                {
+                    /* increase */
                     lcd_room_temp_correct_update_adjust(\
-                    current_room, DNQ_CORRECT_ADJUST_STEP, FOUCS_COLOR);/* increase */
+                    current_room, DNQ_CORRECT_ADJUST_STEP, FOUCS_COLOR);
+                    lcd_room_current_temp_update(\
+                        current_room, current_room_item->curr_temp + DNQ_CORRECT_ADJUST_STEP, DEFAULT_COLOR);
+                }
                 else
+                {
+                    /* decrease */
                     lcd_room_temp_correct_update_adjust(\
-                    current_room, -DNQ_CORRECT_ADJUST_STEP, FOUCS_COLOR);/* decrease */
+                    current_room, -DNQ_CORRECT_ADJUST_STEP, FOUCS_COLOR);
+                    lcd_room_current_temp_update(\
+                        current_room, current_room_item->curr_temp - DNQ_CORRECT_ADJUST_STEP, DEFAULT_COLOR);
+                }
             }
             else
                 DNQ_ERROR(DNQ_MOD_LCD, "unkown foucs item_id=%d!", current_foucs);
@@ -1220,11 +1232,24 @@ static S32 lcd_key_msg_process(U32 key_code, U32 key_status)
 static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
 {
     S32 ret;
+    U32 room_id;
+    S32 curr_temp;
+    S32 temp_correct;
+    room_item_t *rooms = dnq_get_rooms();
 
     switch(msg->code)
-        {
+    {
         case MQ_MSG_TYPE_SET_TEMP_UPDATE:
-            ret = lcd_room_setting_temp_update(msg->lenght, (void *)msg->payload, DEFAULT_COLOR);
+            room_id = msg->lenght;
+            ret = lcd_room_setting_temp_update(room_id, (S32)msg->payload, DEFAULT_COLOR);
+            break;
+        case MQ_MSG_TYPE_TEMP_CORRECT_UPDATE:
+            room_id = msg->lenght;
+            temp_correct = (S32)msg->payload;
+            curr_temp = rooms[room_id].curr_temp;
+            ret = lcd_room_temp_correct_update(room_id, (S32)temp_correct, DEFAULT_COLOR);
+            printf("curr_temp===%d...temp_correct======%d\n", curr_temp,temp_correct);
+            ret = lcd_room_current_temp_update(room_id, (S32)curr_temp, DEFAULT_COLOR);
             break;
         default:
             break;
@@ -1312,6 +1337,7 @@ S32 lcd_netinfo_update(net_status_e status)
     msg.Class = MSG_CLASS_NETWORK;
     msg.code = NET_MSG_TYPE_NET_STATUS_CHANGE;
     msg.payload = (void *)status;
+    printf("send_msg_to_lcd----%d\n",status);
     
     return send_msg_to_lcd(&msg);
 }
@@ -1360,7 +1386,7 @@ void *lcd_task(void *args)
                 {
                     case ROOM_ITEM_CURRENT_TEMP:
                         lcd_room_current_temp_update(\
-                            pRecvMsg->code, (U32)pRecvMsg->payload, DEFAULT_COLOR);
+                            pRecvMsg->code, (S32)pRecvMsg->payload, DEFAULT_COLOR);
                         break;
                     case ROOM_ITEM_SN_STATUS:
                         lcd_room_sn_status_update(\
@@ -1410,12 +1436,12 @@ S32 dnq_lcd_init()
 {
     dnq_appinfo_t **appinfo = &lcd_appinfo;
 
-    lcd_items_init();
-    lcd_clear_all();
-    lcd_update_all();
-
     netlink_callback_register(lcd_netinfo_update);
     
+    lcd_items_init();
+    lcd_clear_all(); 
+    lcd_update_all(); 
+
     *appinfo = dnq_app_task_create("lcd_task", 2048*64,\
         QUEUE_MSG_SIZE, QUEUE_SIZE_MAX+5, lcd_task, NULL);
     if(!*appinfo)

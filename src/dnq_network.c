@@ -1123,6 +1123,8 @@ static void net_status_change(net_status_e status)
             DNQ_ERROR(DNQ_MOD_NETWORK, "link unknown status!");
         break;
     }
+
+    printf("netlink_status_callback=0x%08x\n", netlink_status_callback);
     if(netlink_status_callback)
         netlink_status_callback(status);
     //lcd_net_status_update(status);
@@ -1130,10 +1132,11 @@ static void net_status_change(net_status_e status)
 
 void *network_task(void *args)
 {
-    static U32 last_status = LINK_DOWN;
+    static U32 last_status = NET_INIT;
     U32  current_status;
-    U32  ret;
-    
+    S32  ret;
+
+    sleep(1);
     while(1)
     {
         
@@ -1157,7 +1160,6 @@ void *network_task(void *args)
                     /* server link is bad */
                     current_status = HOST_OFFLINE;
                 }
-                
             }
             else
             {
@@ -1165,20 +1167,21 @@ void *network_task(void *args)
                 current_status = IP_REQUEST;
             }
         }
-        else if(ret == 0) 
+        else if(ret == 0)
         {
             /* link down */
             current_status = LINK_DOWN;
         }
-    
+
+        printf("[NET]:current_status=%d, last_status=%d\n", current_status, last_status);
+
         if(current_status != last_status)
         {
             net_status_change(current_status);
             last_status = current_status;
         }
 
-        printf("current_status=%d, last_status=%d\n", current_status, last_status);
-        dnq_sleep(3);
+        dnq_sleep(2);
     }
 }
 

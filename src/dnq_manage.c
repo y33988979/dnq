@@ -80,7 +80,7 @@ timesetting_t* dnq_get_room_setting_by_time(U32 room_id, U32 current_time)
     
     for(i=0; i<room_policy->time_setting_cnt; i++)
     {
-        printf("current_time=%d, start=%d, end=%d\n", \
+        DNQ_DEBUG(DNQ_MOD_MANAGE, "current_time=%d, start=%d, end=%d\n", \
             current_time, room_time_setting[i].start, room_time_setting[i].end);
         if(current_time >= room_time_setting[i].start
         && current_time <= room_time_setting[i].end)
@@ -160,6 +160,7 @@ S32 dnq_proc()
         }
 
         setting_temp = current_setting->degrees*100;
+        setting_temp = rooms[room_id].set_temp;
         printf("found temp policy!! id=%d, current=%d'C, set=%d'C, error=%d\n",
             room_id, current_temp, setting_temp, temp_error);
 
@@ -201,7 +202,6 @@ S32 dnq_proc()
                 * check until current time is within the configuration range
                 * 检查当前时刻是否在用户配置范围内
                 */
-                
                 /* 需要开启heater */
                 if(setting_temp >= current_temp)
                 {
