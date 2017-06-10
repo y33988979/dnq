@@ -214,7 +214,7 @@ S32 dnq_proc()
             default:
             break;
         }
-        dnq_msleep(100);
+        //dnq_msleep(100);
     }
 }
 

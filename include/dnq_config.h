@@ -11,7 +11,14 @@
 #define DNQ_CORRECT_ADJUST_STEP    1
 
 #define DNQ_SERVER_URL   "iot.wiseheater.com"
+#define DNQ_SERVER_PORT     5672
 
+
+#define ETH_NAME  "eth0"
+
+#define ROOT_PATH           "/root/dnq"
+#define MAIN_PROGRAM_NAME   "dnq_manage"
+#define UPGRD_PROGRAM_NAME  "dnq_upgrade"
 
 /*
 *1 初始获取ip，初始获取mac

@@ -8,19 +8,38 @@
  * Note :
  */
 
-
-#include "dnq_common.h"
-#include "dnq_os.h"
-#include "dnq_log.h"
+#include "common.h"
+#include "dnq_config.h"
 #include "dnq_upgrade.h"
 #include "dnq_checksum.h"
-#include "ngx_palloc.h"
 
-#include <fcntl.h>
-#include <stdarg.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/time.h>
+#include <sys/ipc.h>
+
+#include <linux/route.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+#include <linux/tcp.h>
+#include <linux/ethtool.h>
+#include <linux/if.h>
+#include <linux/sockios.h>
+#include <arpa/inet.h>
+#include <net/if_arp.h>
+#include <netinet/ether.h>
+#include <netinet/in.h>
+#include <netdb.h>
+
+#include <asm/types.h>
+#include <sys/ioctl.h>
+#include <ctype.h>
+
+#include <fcntl.h>
+#include <stdarg.h>
+
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -41,8 +60,8 @@
 #define UPGRD_CHNL_TX_ID    10
 #define UPGRD_CHNL_RX_ID    11
 
-static U8   serverip[] = "118.190.114.219";
-static U32  serverport = 5672;
+static U8   upgrd_server_ip[16] = "118.190.114.219";
+static U32  upgrd_server_port = DNQ_SERVER_PORT;
 static U8   mac_addr[] =  "70b3d5cf4924";
 static U8   username[] =  "host001";
 static U8   password[] =    "123456";
@@ -216,6 +235,267 @@ static S32 system_call(U8 *command)
 
     return 0;
 }
+
+#define UDEV_MONITOR_KERNEL 1
+static int init_hotplug_sock(void)
+{
+    struct sockaddr_nl snl;
+    const int buffersize = 16 * 1024 * 1024;
+    int retval;
+
+    memset(&snl, 0x00, sizeof(struct sockaddr_nl));
+    snl.nl_family = AF_NETLINK;
+    snl.nl_pid = getpid();
+    snl.nl_groups = UDEV_MONITOR_KERNEL;
+
+    int hotplug_sock = socket(PF_NETLINK, SOCK_DGRAM, 15);
+    if (hotplug_sock == -1)
+    {
+        printf("error getting socket: %s", strerror(errno));
+        return -1;
+    }
+
+    /* set receive buffersize */
+
+    setsockopt(hotplug_sock, SOL_SOCKET, 32, &buffersize, sizeof(buffersize));
+    retval = bind(hotplug_sock, (struct sockaddr *) &snl, sizeof(struct sockaddr_nl));
+    if (retval < 0) 
+    {
+        printf("bind failed: %s", strerror(errno));
+        close(hotplug_sock);
+        hotplug_sock = -1;
+        return -1;
+    }
+
+    return hotplug_sock;
+
+}
+
+void usb_upgrd_init()
+{
+    
+}
+
+S32 usb_get_mount_path(U8 *path)
+{
+    if(!access("/mnt/sda1", F_OK))
+    {
+        strcpy(path, "/mnt/sda1");
+        return 0;
+    }
+    else if(!access("/mnt/sdb1", F_OK))
+    {
+        strcpy(path, "/mnt/sdb1");
+        return 0;
+    }
+    else if(!access("/mnt/sdc1", F_OK))
+    {
+        strcpy(path, "/mnt/sdc1");
+        return 0;
+    }
+
+    UPGRD_ERROR("usb is umount!\n");
+    return -1;
+}
+
+S32 usb_file_check_and_upgrd(U8 *mount_path)
+{
+    U8 upgrd_file[64] = {0};
+    U8 target_file[64] = {0};
+    U8 command[64] = {0};
+    struct stat st = {0};
+    S32 ret;
+    
+    sprintf(upgrd_file, "%s/%s", mount_path, MAIN_PROGRAM_NAME);
+    sprintf(target_file, "%s/%s", ROOT_PATH, MAIN_PROGRAM_NAME);
+    if(!access(upgrd_file, F_OK))
+    {
+        ret = stat(upgrd_file, &st);
+        if(ret < 0)
+        {
+            UPGRD_INFO("stat error! filepath:\"%s\", errno=%d:%s", \
+                upgrd_file, errno,strerror(errno));
+            return -1;
+        }
+        UPGRD_INFO("found upgrade file! name=%s, size=%u(%dK)", \
+            MAIN_PROGRAM_NAME, st.st_size, st.st_size/1024);
+        
+        sprintf(command, "dd if=%s of=%s", upgrd_file, target_file);
+        ret = system_call(command);
+        UPGRD_INFO("system call--> %s", command);
+        if(ret == 0)
+            UPGRD_INFO("file %s upgrade success!", target_file);
+        else
+            UPGRD_ERROR("file %s upgrade failed! ret=%d", target_file, ret);
+        return ret;
+    }
+    else
+    {
+        UPGRD_ERROR("can't find upgrade file! %s or %s.",\
+            MAIN_PROGRAM_NAME, UPGRD_PROGRAM_NAME);
+        return -1;
+    }
+}
+
+S32 usb_upgrd_process()
+{
+    S32 ret;
+    U8  mount_path[64] = {0};
+    
+    ret = usb_get_mount_path(mount_path);
+    if(ret < 0)
+        return -1;
+    
+    UPGRD_INFO("waiting usb upgrade...");
+    
+    ret = usb_file_check_and_upgrd(mount_path);
+    if(ret < 0)
+        return -1;
+    
+    return 0;
+}
+
+void *usbhotplug()
+{
+    S32 hotplug_sock;
+    S32 len;
+    U8  buffer[2048];
+    U8 *ptr = NULL;
+    
+    hotplug_sock = init_hotplug_sock();
+    if(hotplug_sock < 0)
+    {
+        UPGRD_ERROR("create socket hotplug error! errno=%d:%s", \
+            errno, strerror(errno));
+        return ;
+    }
+    while(1)
+    {   
+        memset(buffer, 0, sizeof(buffer));
+        len = recv(hotplug_sock, buffer, sizeof(buffer), 0);
+        if(len < 0)
+        {
+            printf("recv error! errno=%d:%s\n", errno, strerror(errno));
+            usleep(200*1000);
+            continue;
+        }
+        //printf("read event! buffer:%s\n", buffer);
+        if(strstr(buffer, "remove"))
+            continue;
+        if(strstr(buffer, "sda1")|| \
+            strstr(buffer, "sdb1"))
+            usb_upgrd_process();
+        usleep(100*1000);
+    }
+    
+}
+
+U32 upgrd_get_host_ipaddr(U8 *if_name)
+{
+    U32 ip_addr;
+    int sockfd;
+    int ret;
+    struct ifreq ifr;
+    struct sockaddr_in   *sin;
+    struct in_addr addr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(sockfd < 0)
+    {
+        UPGRD_ERROR("socket error! errno=%d:%s", errno, strerror(errno));
+        return 0;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    //strcpy(ifr.ifr_ifrn.ifrn_name, if_name);
+    strcpy(ifr.ifr_name, if_name);
+
+    ret = ioctl(sockfd, SIOCGIFADDR, &ifr);
+    if(ret < 0)
+    {
+        UPGRD_ERROR("ioctl error!, errno=%d:%s", errno, strerror(errno));
+        close(sockfd);
+        return 0;
+    }
+
+    //ip_addr = ipcfg_htonl(ifr.ifr_ifru.ifru_addr.sin_addr);
+    //sin = (struct sockaddr_in *)$ifr.ifr_addr;
+    sin = (struct sockaddr_in   *)&ifr.ifr_ifru.ifru_addr;
+    ip_addr = (sin->sin_addr.s_addr);
+    close(sockfd);
+    addr.s_addr = ip_addr;
+    //DNQ_INFO(DNQ_MOD_NETWORK, "get ipaddr success: %s\n", inet_ntoa(addr));
+
+    return ip_addr;
+}
+
+U32 upgrd_get_server_ipaddr(U8 *ipaddr)
+{
+    if(ipaddr)
+    {
+        strcpy(ipaddr, upgrd_server_ip);
+    }
+    return 0;
+}
+
+U32 upgrd_get_server_port()
+{
+    return upgrd_server_port;
+}
+
+U32 upgrd_get_host_by_name(U8 *cname)
+{
+    struct hostent *p_hostent;
+    char **pptr;
+    struct in_addr ipaddr;
+    struct sockaddr *sa;    /* input */
+    socklen_t len;         /* input */
+    U8  hbuf[1024], sbuf[12];
+
+    p_hostent = gethostbyname(cname);
+    //if (getnameinfo(sa, len, hbuf, sizeof(hbuf), sbuf,\
+    //    sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV) == 0)
+    //    printf("host=%s, serv=%s\n", hbuf, sbuf);
+    
+    if(p_hostent == NULL)
+    {
+        UPGRD_DEBUG("gethost error! cname=%s, errno=%d:%s\n",\
+            cname, errno, strerror(errno));
+        return 0;
+    }
+    else
+    {
+        pptr = p_hostent->h_addr_list;
+        ipaddr = *(struct in_addr *)*pptr;
+        return (ipaddr.s_addr);
+    }
+    return 0;
+}
+
+S32 upgrd_server_link_isgood(U32 isSaveIp)
+{
+    U32 server_ip;
+    struct in_addr addr;
+    
+    server_ip = upgrd_get_host_ipaddr(ETH_NAME);
+    if(server_ip == 0)
+        return 0;
+
+    server_ip = upgrd_get_host_by_name(DNQ_SERVER_URL);
+    if(server_ip != 0)
+    {
+        /* save server ipaddr */
+        if(isSaveIp)
+        {
+            addr.s_addr = server_ip;
+            strcpy(upgrd_server_ip, inet_ntoa(addr));
+        }  
+        return 1;/* got ip */
+    }
+    
+    return 0;
+}
+
 
 static S32 upgrd_data_decompress(U8 *filename)
 {
@@ -668,15 +948,15 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
     conn = amqp_new_connection();
     *pconn = conn;
     if(!conn)
-        dnq_error(-1, "amqp_new_connection error!");
+        upgrd_error(-1, "amqp_new_connection error!");
 
     socket = amqp_tcp_socket_new(conn);
     if(!socket)
-        dnq_error(-1, "amqp_tcp_socket_new error!");
+        upgrd_error(-1, "amqp_tcp_socket_new error!");
 
     status = amqp_socket_open(socket, serverip, port);
     if(status < 0)
-        dnq_error(status, "amqp_socket_open error!");
+        upgrd_error(status, "amqp_socket_open error!");
 
     UPGRD_INFO("create new connecting! socket=%d, ip=%s, port=%d", \
         status, serverip, port);
@@ -774,17 +1054,20 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
 
 S32 rabbitmq_task()
 {
+    U8 server_ip[16] = {0};
+    U32 server_port = DNQ_SERVER_PORT;
     while(1)
     {
-
-        if(!dnq_net_link_isgood(0))
+        if(!upgrd_server_link_isgood(1))
         {
             sleep(3);
             continue;
         }
+        upgrd_get_server_ipaddr(server_ip);
+        server_port = upgrd_get_server_port();
         UPGRD_INFO("msg_thread start!");
-        upgrd_rabbitmq_init(serverip, serverport, &g_conn);
-        sleep(15);
+        upgrd_rabbitmq_init(server_ip, server_port, &g_conn);
+        sleep(10);
     }
 }
 
@@ -989,28 +1272,9 @@ S32 create_task(U8 *name, U32 stack_size, void *func, void *param)
     return 0;
 }
 
-S32 net_status_check()
-{
-    S32 ret;
-
-    return ret;
-}
-
-static ngx_pool_t *mem_pool = NULL;
-
 S32 dnq_upgrd_init()
 {
     S32  ret;
-
-    /* 如果不用内存池可以去掉。 */
-    #if 0
-    if(!mem_pool)
-    {
-        mem_pool = dnq_mempool_init(1024*1024);
-        if(!mem_pool)
-            return -1;
-    }
-    #endif
 
     if (sem_init(&upgrd_sem, 0, 0) == -1)
     {
@@ -1018,10 +1282,8 @@ S32 dnq_upgrd_init()
         return -1;
     }
 
-    net_status_check();
-
-    dnq_task_create("rabbitmq_task", 4*1024*1024, rabbitmq_task, NULL);
-    dnq_task_create("upgrade_task",  4*1024*1024, upgrade_task, NULL);
+    create_task("rabbitmq_task", 1024*1024, rabbitmq_task, NULL);
+    create_task("upgrade_task",  1024*1024, upgrade_task, NULL);
 
     return 0;
 }
@@ -1034,11 +1296,13 @@ S32 dnq_upgrd_deinit()
 S32 upgrade_main()
 {
     dnq_checksum_init();
-    dnq_debug_setlever(1, 3);
-    dnq_upgrd_init();
+
+    usbhotplug();
+    
+    //dnq_upgrd_init();
 
     //umask(0);
-    while(1)  sleep(3);
+    while(1)  sleep(10);
 }
 
 S32 main(int argc, char **argv)
@@ -1047,16 +1311,16 @@ S32 main(int argc, char **argv)
     U32 is_daemon = 1;
 
     /* foreground */
-    if(argc == 2 && strcmp("-F", argv[1])==0)
+    if(argc == 2 && strcmp("-f", argv[1])==0)
     {
-        printf("Running in foreground!\n");
+        printf("dnq_upgrade Running in foreground!\n");
         is_daemon = 0;
         upgrade_main();
         return 0;
     }
     else /* Background  */
     {
-        printf("Forking into background!\n");
+        printf("dnq_upgrade Forking into background!\n");
         pid = fork();
         switch(pid)
         {

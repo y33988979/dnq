@@ -7,7 +7,6 @@
 
 #define UPGRD_INFO_LEN      20
 
-#define ROOT_PATH     "/root/"
 #define UPGRD_FILE    "upgrade_file"
 #define UPGRD_TAG     0x47
 
@@ -32,11 +31,18 @@
 #define DBG_INFO      4
 #define DBG_ALL       5
 
+
+#define upgrd_error_en(en, msg) \
+    do { errno = en; perror(msg); return (en); } while (0)
+
+#define upgrd_error(ret, msg) \
+    do { perror(msg); return (ret); } while (0)
+
 S32 upgrd_debug(U32 lever, const char *fmt, ...);
-#define UPGRD_ERROR( msg,...)  upgrd_debug(DBG_ERROR, "[ERROR]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-#define UPGRD_WARN( msg,...)   upgrd_debug(DBG_WARN, "[WARN]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-#define UPGRD_DEBUG( msg,...)  upgrd_debug(DBG_DEBUG, "[DEBUG]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-#define UPGRD_INFO( msg,...)   upgrd_debug(DBG_DEBUG, "[INFO]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define UPGRD_ERROR( msg,...)  upgrd_debug(DBG_ERROR, "[@UPGRD_ERROR]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define UPGRD_WARN( msg,...)   upgrd_debug(DBG_WARN, "[@UPGRD_WARN]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define UPGRD_DEBUG( msg,...)  upgrd_debug(DBG_DEBUG, "[@UPGRD_DEBUG]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define UPGRD_INFO( msg,...)   upgrd_debug(DBG_DEBUG, "[@UPGRD_INFO]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
 #define UPGRD_PRINT( msg,...)  upgrd_debug(DBG_ALL, msg)
 
 

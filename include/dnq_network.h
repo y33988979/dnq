@@ -4,8 +4,6 @@
 #include "common.h"
 
 
-#define ETH_NAME  "eth0"
-
 typedef enum _net_status
 {
     NET_INIT,

@@ -11,7 +11,6 @@
 #define CTRL_SINGLE_ROOM   1
 
 #define SERVER_IPADDR   "112.74.43.136"
-#define SERVER_PORT     5672
 
 typedef struct channel{
 	int chid;

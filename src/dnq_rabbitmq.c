@@ -1127,7 +1127,7 @@ S32 json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
         for(j=0; j<pdst->rooms[i].time_setting_cnt; j++)
         {
             //item from array
-            timesettings_obj = cJSON_GetArrayItem(timesettings, i);
+            timesettings_obj = cJSON_GetArrayItem(timesettings, j);
 
             //start time
             copy_json_item_to_struct_item(\
@@ -1365,7 +1365,7 @@ S32 json_parse_power_config(cJSON *pjson, server_power_config_t *pdst)
         for(j=0; j<pdst->rooms[i].config_cnt; j++)
         {
             //item from array
-            config_obj = cJSON_GetArrayItem(configs, i);
+            config_obj = cJSON_GetArrayItem(configs, j);
 
             //power
             copy_json_item_to_struct_item(\
@@ -2482,7 +2482,7 @@ S32 rabbitmq_start_notify()
 S32 rabbitmq_task()
 {
     U8 server_ip[16] = {0};
-    U32 server_port;
+    U32 server_port = DNQ_SERVER_PORT;
 
     while(1)
     {

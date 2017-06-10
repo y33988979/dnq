@@ -71,7 +71,7 @@ void *send_test(void *args)
 
 void dump_sem(sem_t* sem)
 {
-    int i,*p = sem;
+    S32 i,*p = (S32*)sem;
     printf("semval:");
     for(i=0;i<sizeof(sem_t);i+=4)
     {
@@ -87,23 +87,8 @@ int main()
     U8 buffer[1024];
     dnq_queue_t *queue = NULL;
     dnq_msg_t recv_msg;
+    sem_t sem1 = {0};
     //dnq_debug_setlever(1,5); 
-
-        sem_t sem1 = {0};
-        int *p;
-    printf("sizeof===========%d\n", sizeof(sem_t));
-
-    sem_init(&sem1,0,0);
-    dump_sem(&sem1);
-
-    sem_post(&sem1);
-    dump_sem(&sem1);
-
-    sem_wait(&sem1);
-    dump_sem(&sem1);
-
-    sem_destroy(&sem1);
-
 
     extern S32 dnq_config_init();    
 
@@ -116,13 +101,6 @@ int main()
     MAIN_CHECK( dnq_mcu_init() );
     MAIN_CHECK( dnq_sensor_init() );
     MAIN_CHECK( dnq_keypad_init() );
-    dnq_network_getinfo();
-    
-    //rs485_test();
-    //sleep(1000);
-
-    //rabbitmq_test();
-    
     MAIN_CHECK( dnq_manage_init() );
     MAIN_CHECK( dnq_rabbitmq_init());
 
@@ -140,9 +118,6 @@ int main()
 
     while(1)
     {
-        //event_input();
-        //event_proc();
-        //sleep(11);
         if(memcmp(&sem1, &queue->sem, sizeof(sem_t)) != 0 )
             dump_sem(&queue->sem);
         if(dnq_msg_recv_timeout(queue, &recv_msg, 300) < 0)
@@ -151,7 +126,6 @@ int main()
         DNQ_PRINT(DNQ_MOD_ALL, "recv mgs:");
         DNQ_PRINT(DNQ_MOD_ALL,"type=%d, code=%d, len=%d, data=%s\n",\
             recv_msg.Class, recv_msg.code, recv_msg.lenght, recv_msg.data);
-
     }
     
 exit:

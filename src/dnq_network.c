@@ -43,7 +43,7 @@ extern S32 dnq_ping_test(U32 ip, U32 sec);
 
 static host_net_info_t g_host_netinfo;
 static U8 g_server_ip[16] = {0};
-static U32 g_server_port = 5672;
+static U32 g_server_port = DNQ_SERVER_PORT;
 
 U16 ipcfg_htons(U16 n)
 {
@@ -1136,7 +1136,7 @@ void *network_task(void *args)
     U32  current_status;
     S32  ret;
 
-    sleep(1);
+    sleep(3);
     while(1)
     {
         
@@ -1279,6 +1279,7 @@ S32 dnq_netinfo_init()
 S32 dnq_network_init()
 {
     dnq_netinfo_init();
+    dnq_network_getinfo();
     dnq_task_create("network", 32*2048, network_task, NULL);
     
     return 0;
