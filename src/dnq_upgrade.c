@@ -380,8 +380,8 @@ void *usbhotplug()
             continue;
         }
         //printf("read event! buffer:%s\n", buffer);
-        if(strstr(buffer, "remove"))
-            continue;
+        //if(strstr(buffer, "remove"))
+        //    continue;
         if(strstr(buffer, "sda1")|| \
             strstr(buffer, "sdb1"))
             usb_upgrd_process();
@@ -1282,6 +1282,7 @@ S32 dnq_upgrd_init()
         return -1;
     }
 
+    create_task("usbhotplug_task", 1024*1024, usbhotplug, NULL);
     create_task("rabbitmq_task", 1024*1024, rabbitmq_task, NULL);
     create_task("upgrade_task",  1024*1024, upgrade_task, NULL);
 
@@ -1297,9 +1298,7 @@ S32 upgrade_main()
 {
     dnq_checksum_init();
 
-    usbhotplug();
-    
-    //dnq_upgrd_init();
+    dnq_upgrd_init();
 
     //umask(0);
     while(1)  sleep(10);
