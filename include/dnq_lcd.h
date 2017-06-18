@@ -149,7 +149,7 @@ typedef struct lcd_desc
 typedef struct room_item
 {
     U32      id;
-    U8       name[16];
+    U8       name[SIZE_16];
     S32      curr_temp;
     S32      set_temp;
     U16      work_status;

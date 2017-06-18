@@ -9,7 +9,6 @@
  */
 
 #include "common.h"
-#include "dnq_config.h"
 #include "dnq_upgrade.h"
 #include "dnq_checksum.h"
 

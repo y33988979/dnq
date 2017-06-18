@@ -10,6 +10,7 @@
 
 
 #include "dnq_common.h"
+#include "dnq_config.h"
 #include "ngx_palloc.h"
 #include "dnq_manage.h"
 #include "dnq_rabbitmq.h"
@@ -27,6 +28,53 @@ typedef enum heater_status
 }heater_status_e;
 
 dnq_appinfo_t *manage_appinfo = NULL;
+
+
+#define OUTLEN 255 
+ 
+//代码转换:从一种编码转为另一种编码 
+int code_convert(char *from_charset,char *to_charset,char *inbuf,int inlen,char *outbuf,int outlen) 
+{ 
+    iconv_t cd; 
+    int rc; 
+    char **pin = &inbuf; 
+    char **pout = &outbuf; 
+ 
+    cd = iconv_open(to_charset, from_charset); 
+    if (cd==0) return -1; 
+    memset(outbuf, 0, outlen); 
+    if (iconv(cd, pin, &inlen, pout, &outlen)==-1) return -1; 
+    iconv_close(cd); 
+    return 0; 
+} 
+ 
+//UNICODE码转为GB2312码 
+int u2g(char *inbuf,int inlen,char *outbuf,int outlen) 
+{ 
+    return code_convert("utf-8", "gb2312", inbuf, inlen, outbuf, outlen); 
+} 
+ 
+//GB2312码转为UNICODE码 
+int g2u(char *inbuf,size_t inlen,char *outbuf,size_t outlen) 
+{ 
+    return code_convert("gb2312", "utf-8", inbuf, inlen, outbuf, outlen); 
+} 
+ 
+S32 iconv_test() 
+{ 
+    char *in_utf8 = "中文, 汉字"; 
+    char in_gb2312[64] = {0x43, 0x43, 0x54, 0x56, 0x2d, 0x31, 0x20, 0xd7, 0xdb, 0xba, 0xcf}; // CCTV-1 综合
+    char out[OUTLEN]; 
+    int rc;
+ 
+    //unicode码转为gb2312码 
+    rc = u2g(in_utf8, strlen(in_utf8),out,OUTLEN); 
+    printf("unicode-->gb2312 out=%s\n",out); 
+    //gb2312码转为unicode码 
+    rc = g2u(in_gb2312, strlen(in_gb2312),out,OUTLEN); 
+    printf("gb2312-->unicode out=%s\n",out); 
+    return 0;
+} 
 
 S32 send_msg_to_manage(dnq_msg_t *msg)
 {
@@ -55,7 +103,7 @@ S32 dnq_get_room_setting_temp_by_time(U32 room_id, U32 current_time)
     
     for(i=0; i<room_policy->time_setting_cnt; i++)
     {
-        printf("current_time=%d, start=%d, end=%d\n", \
+        DNQ_DEBUG(DNQ_MOD_MANAGE, "current_time=%d, start=%d, end=%d\n", \
             current_time, room_time_setting[i].start, room_time_setting[i].end);
         if(current_time >= room_time_setting[i].start
         && current_time <= room_time_setting[i].end)
@@ -151,7 +199,7 @@ S32 dnq_proc()
         */
         if(current_setting == NULL)
         {
-            printf("no temp policy!\n");
+            //printf("no temp policy!\n");
             dnq_heater_close(room_id);
             if(rooms[room_id].work_status == WORK_STATUS)
                 heater_work_status_update(room_id, STOP_STATUS);
@@ -161,7 +209,7 @@ S32 dnq_proc()
 
         setting_temp = current_setting->degrees*100;
         setting_temp = rooms[room_id].set_temp;
-        printf("found temp policy!! id=%d, current=%d'C, set=%d'C, error=%d\n",
+        DNQ_DEBUG(DNQ_MOD_MANAGE, "found temp policy!! id=%d, current=%d'C, set=%d'C, error=%d\n",
             room_id, current_temp, setting_temp, temp_error);
 
         switch(status[room_id])
@@ -218,89 +266,32 @@ S32 dnq_proc()
     }
 }
 
-
-#define OUTLEN 255 
- 
-//代码转换:从一种编码转为另一种编码 
-int code_convert(char *from_charset,char *to_charset,char *inbuf,int inlen,char *outbuf,int outlen) 
-{ 
-    iconv_t cd; 
-    int rc; 
-    char **pin = &inbuf; 
-    char **pout = &outbuf; 
- 
-    cd = iconv_open(to_charset, from_charset); 
-    if (cd==0) return -1; 
-    memset(outbuf, 0, outlen); 
-    if (iconv(cd, pin, &inlen, pout, &outlen)==-1) return -1; 
-    iconv_close(cd); 
-    return 0; 
-} 
- 
-//UNICODE码转为GB2312码 
-int u2g(char *inbuf,int inlen,char *outbuf,int outlen) 
-{ 
-    return code_convert("utf-8", "gb2312", inbuf, inlen, outbuf, outlen); 
-} 
- 
-//GB2312码转为UNICODE码 
-int g2u(char *inbuf,size_t inlen,char *outbuf,size_t outlen) 
-{ 
-    return code_convert("gb2312", "utf-8", inbuf, inlen, outbuf, outlen); 
-} 
- 
-S32 iconv_test() 
-{ 
-    char *in_utf8 = "中文, 汉字"; 
-    char in_gb2312[64] = {0x43, 0x43, 0x54, 0x56, 0x2d, 0x31, 0x20, 0xd7, 0xdb, 0xba, 0xcf}; // CCTV-1 综合
-    char out[OUTLEN]; 
-    int rc;
- 
-    //unicode码转为gb2312码 
-    rc = u2g(in_utf8, strlen(in_utf8),out,OUTLEN); 
-    printf("unicode-->gb2312 out=%s\n",out); 
-    //gb2312码转为unicode码 
-    rc = g2u(in_gb2312, strlen(in_gb2312),out,OUTLEN); 
-    printf("gb2312-->unicode out=%s\n",out); 
-    return 0;
-} 
-
-S32 dnq_init_info_load()
-{
-    
-}
-
 S32 dnq_lcd_init_info_sync()
 {
-    U32 i = 0;
+    S32 i = 0;
+    S32 j;
     U32 room_id = 0;
     U8  gb2312_out[32] = {0};
     dnq_msg_t msg = {0};
     server_init_info_t *init_config;
     room_item_t *rooms = dnq_get_rooms();
-    int j;
+
     init_config = dnq_get_init_config(NULL);
     for(i=0; i<init_config->rooms_cnt; i++)
     {
         room_id = init_config->rooms[i].room_order;
         
         rooms[i].id = init_config->rooms[i].room_order;
-        printf("[%d]:room_id=%d,room_name='%s'\n", \
-            i,room_id, init_config->rooms[i].room_name);
         
-        for(j=0;j<16;j++)
-            printf("0x%02x ", init_config->rooms[i].room_name[j]);
-        printf("\n");
 
-        strncpy(rooms[i].name, init_config->rooms[i].room_name, 16);
+        strncpy(rooms[i].name, init_config->rooms[i].room_name, SIZE_16);
 
         #if 1 //utf8 -> gb2312
-        u2g(init_config->rooms[i].room_name, 16, gb2312_out,sizeof(gb2312_out));   
-        strncpy(rooms[i].name, gb2312_out, 16);
+        u2g(init_config->rooms[i].room_name, SIZE_16, gb2312_out,sizeof(gb2312_out));   
+        strncpy(rooms[i].name, gb2312_out, SIZE_16);
 
-        for(j=0;j<16;j++)
-            printf("0x%02x ", rooms[i].name[j]);
-        printf("\n");
+        DNQ_INFO(DNQ_MOD_MANAGE, "[%d]:room_id=%d,room_name='%s'\n", \
+            i,room_id, init_config->rooms[i].room_name);
         #endif
         
         //rooms[i].set_temp = init_config->rooms[i].set_temp;
@@ -314,61 +305,30 @@ S32 dnq_lcd_init_info_sync()
     
 }
 
-S32 dnq_rtc_datetime_sync(datetime_t *new_datetime)
-{
-    U32 need_update = 0;
-    datetime_t current_datetime;
-    
-    dnq_get_current_datetime(&current_datetime);
-
-    /* rtc时间已经不准，要更新 */
-    if(new_datetime->year != current_datetime.year
-        || new_datetime->month != current_datetime.month
-        || new_datetime->day != current_datetime.day
-        || new_datetime->hour != current_datetime.hour
-        || new_datetime->minute != current_datetime.minute)
-    {
-        need_update = 1;
-    }
-    
-    if(need_update)
-    {
-        dnq_rtc_set_datetime(new_datetime);
-        dnq_datetime_print(new_datetime);
-    }
-    
-    return 0;
-}
-
-S32 dnq_init_info_check()
+/* 每次开机要和rabbitmq服务器通信，索要主机初始化的信息，如:
+各房间名称，主机位置，当前时间等，主要用来初始化lcd屏幕，展示信息 */
+/* rabbitmq 通路检查，查看是否已和服务器建立通信连接 */
+S32 dnq_init_info_update()
 { 
     S32 ret;
     U32 timeout = 4;
     U8 *ptr = NULL;
-    U8  time_buffer[32] = {0};
+    U8  time_string[32] = {0};
     datetime_t datetime;
     server_init_info_t *init_info;
     
     init_info = dnq_get_init_config(NULL);
-    /* 每次开机要和rabbitmq服务器通信，索要主机初始化的信息，如:
-    各房间名称，主机位置，当前时间等，主要用来初始化lcd屏幕，展示信息 */
-    /* rabbitmq 通路检查，查看是否已和服务器建立通信连接 */
-    while(!dnq_rabbitmq_link_is_ok() && timeout--)
-    {
-        dnq_msleep(500);
-    }
     
     /* 向服务器发送初始化请求 */
     ret = send_init_request_to_server();
     
     /* 等待服务器回传完成 */
-    timeout = 5;
+    timeout = 3;
     while(!init_info_is_ok() && timeout--)
     {
         DNQ_INFO(DNQ_MOD_MANAGE, "waiting server reply...");
         dnq_msleep(500);
     }
-
     
     printf("g_init.inited2=%d\n", init_info->inited);
     
@@ -378,25 +338,17 @@ S32 dnq_init_info_check()
         DNQ_ERROR(DNQ_MOD_MANAGE, "can't get host init_info! use local config.");
     }
 
-    /* "2017-06-04 18:14:18" */    
-    init_info = dnq_get_init_config(NULL);
-    memcpy(time_buffer, init_info->time, sizeof(time_buffer));
-    time_buffer[4] = '\0';
-    time_buffer[7] = '\0';
-    time_buffer[10] = '\0';
-    time_buffer[13] = '\0';
-    time_buffer[16] = '\0';
-    time_buffer[19] = '\0';
-    datetime.year = atoi(&time_buffer[2]);
-    datetime.month = atoi(&time_buffer[5]);
-    datetime.day = atoi(&time_buffer[8]);
-    datetime.hour = atoi(&time_buffer[11]);
-    datetime.minute = atoi(&time_buffer[14]);
-    datetime.second = atoi(&time_buffer[17]);
-
-    printf("init_info->time===========\"%s\"\n", init_info->time);
     
+    /* 云端回传的时间为字符串格式  "2017-06-04 18:14:18" */    
+    init_info = dnq_get_init_config(NULL);
+    memcpy(time_string, init_info->time, sizeof(time_string));
+
+    /* 时间字符串转换成datetime结构 */
+    dnq_timestr_to_datetime(time_string, &datetime);
+    printf("init_info->time===========\"%s\"\n", init_info->time);
+    /* 同步网络时间到rtc芯片 */
     dnq_rtc_datetime_sync(&datetime);
+    /* 通知lcd模块，初始化屏幕信息 */
     dnq_lcd_init_info_sync();
 }
 
@@ -425,7 +377,7 @@ void *manage_task(void *args)
             second++;
             if(second%300 == 0) /* five minutes */
             {
-                send_room_status_to_server(NULL);
+                send_room_status_to_server();
             }
             continue;
         }
@@ -437,8 +389,7 @@ void *manage_task(void *args)
                 break;
             case MSG_CLASS_RABBITMQ:
                 DNQ_INFO(DNQ_MOD_MANAGE, "recv rabbitmq msg!");
-                sleep(1);
-                dnq_init_info_check();
+                dnq_init_info_update();
             default:
             break;
         }
@@ -452,7 +403,7 @@ S32 dnq_manage_init()
 {
     dnq_appinfo_t **appinfo = &manage_appinfo;
 
-    dnq_debug_setlever(DNQ_MOD_RABBITMQ,5);
+    dnq_debug_setlever(DNQ_MOD_RABBITMQ, 5);
 
     *appinfo = dnq_app_task_create("dnq_manage", 64*2048,\
         QUEUE_MSG_SIZE, QUEUE_SIZE_MAX, manage_task, NULL);
@@ -461,9 +412,7 @@ S32 dnq_manage_init()
         DNQ_ERROR(DNQ_MOD_MANAGE, "manage_task create error!");
         return -1;
     }
-    
-    //dnq_init_info_check();
-    
+        
     DNQ_INFO(DNQ_MOD_MANAGE, "dnq_manage_init ok!");
     return 0;
 }

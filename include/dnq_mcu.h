@@ -68,6 +68,7 @@ void dnq_set_current_second(U32 second);
 void dnq_get_current_datetime(datetime_t *datetime);
 S32 dnq_datetime_check(datetime_t *datetime);
 void dnq_datetime_print(datetime_t *datetime);
+S32 dnq_rtc_datetime_sync(datetime_t *new_datetime);
 
 #endif /* _DNQ_MCU_H_ */
 

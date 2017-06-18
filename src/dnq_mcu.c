@@ -374,6 +374,22 @@ S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array)
     return ret;
 }
 
+U32 dnq_get_current_second()
+{
+    //second = g_datetime.hour*3600+g_datetime.minute*60+g_datetime.second;
+    return g_curr_second;
+}
+
+void dnq_set_current_second(U32 second)
+{
+    g_curr_second = second;
+}
+
+void dnq_get_current_datetime(datetime_t *datetime)
+{
+    memcpy(datetime, &g_datetime, sizeof(datetime_t));
+}
+
 S32 dnq_datetime_check(datetime_t *datetime)
 {
     S32 ret = 0;
@@ -384,7 +400,9 @@ S32 dnq_datetime_check(datetime_t *datetime)
         || datetime->minute > 60 || datetime->minute < 0
         || datetime->second > 60 || datetime->second < 0)
     {
-        DNQ_ERROR(DNQ_MOD_ALL, "datetime is error!");
+        DNQ_ERROR(DNQ_MOD_ALL, "datetime is error! str=%04d-%02d-%02d %02d:%02d:%02d.",
+            2000+datetime->year,datetime->month,datetime->day,\
+            datetime->hour,datetime->minute,datetime->second);
         return -1;
     }
 
@@ -403,6 +421,9 @@ S32 dnq_rtc_set_datetime(datetime_t *datetime)
     S32 ret;
     U8  recvbuf[64] = {0};
 
+    if(dnq_datetime_check(datetime) < 0)
+        return -1;
+
     ret = cmdbuf_update_time(CMD_ID_SET_TIME, datetime);
     ret = cmdbuf_update_crc(CMD_ID_SET_TIME);
     mcu_lock();
@@ -415,7 +436,7 @@ S32 dnq_rtc_set_datetime(datetime_t *datetime)
         return -1;
     }
     
-    printf("set_datetime: ret=%d\n", ret);
+    DNQ_INFO(DNQ_MOD_MCU, "set_datetime: ret=%d\n", ret);
     return ret;
 }
 
@@ -451,6 +472,9 @@ S32 dnq_rtc_get_datetime(datetime_t *datetime)
     datetime->minute = str[4];
     datetime->second = str[5];
 
+    if(dnq_datetime_check(datetime) < 0)
+        return -1;
+    
     memcpy(&g_datetime, datetime, sizeof(datetime_t));
 
     second = g_datetime.hour*3600+g_datetime.minute*60+g_datetime.second;
@@ -462,20 +486,57 @@ S32 dnq_rtc_get_datetime(datetime_t *datetime)
     return ret;
 }
 
-U32 dnq_get_current_second()
+S32 dnq_rtc_datetime_sync(datetime_t *new_datetime)
 {
-    //second = g_datetime.hour*3600+g_datetime.minute*60+g_datetime.second;
-    return g_curr_second;
+    U32 need_update = 0;
+    datetime_t current_datetime = {0};
+
+    if(dnq_datetime_check(new_datetime) < 0)
+        return -1;
+    
+    dnq_get_current_datetime(&current_datetime);
+
+    /* rtc时间已经不准，要更新 */
+    if(new_datetime->year != current_datetime.year
+        || new_datetime->month != current_datetime.month
+        || new_datetime->day != current_datetime.day
+        || new_datetime->hour != current_datetime.hour
+        || new_datetime->minute != current_datetime.minute)
+    {
+        need_update = 1;
+    }
+    
+    if(need_update)
+    {
+        dnq_rtc_set_datetime(new_datetime);
+        dnq_datetime_print(new_datetime);
+    }
+    
+    return 0;
 }
 
-void dnq_set_current_second(U32 second)
+S32 dnq_timestr_to_datetime(U8 *time_str, datetime_t *datetime)
 {
-    g_curr_second = second;
-}
+    if(!time_str || !datetime)
+    {
+        DNQ_ERROR(DNQ_MOD_MCU, "invalid param! time_str=0x%08x, datetime=0x%08x\n",
+        time_str, datetime);
+        return -1;
+    }
 
-void dnq_get_current_datetime(datetime_t *datetime)
-{
-    memcpy(datetime, &g_datetime, sizeof(datetime_t));
+    time_str[4] = '\0';
+    time_str[7] = '\0';
+    time_str[10] = '\0';
+    time_str[13] = '\0';
+    time_str[16] = '\0';
+    time_str[19] = '\0';
+    datetime->year = atoi(&time_str[2]);
+    datetime->month = atoi(&time_str[5]);
+    datetime->day = atoi(&time_str[8]);
+    datetime->hour = atoi(&time_str[11]);
+    datetime->minute = atoi(&time_str[14]);
+    datetime->second = atoi(&time_str[17]);
+    return 0;
 }
 
 S32 dnq_mcu_heartbeat_check()

@@ -11,7 +11,11 @@
 
 #include <typedef.h>
 
-#include "dnq_config.h"
+#include "config.h"
+
+#define SIZE_8       8
+#define SIZE_16      16
+#define SIZE_32      32
 
 #define swap16(n) \
    ((n & 0xff) << 8) |\
