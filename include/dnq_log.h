@@ -16,6 +16,7 @@ typedef enum dnq_debug_module
     DNQ_MOD_RABBITMQ,
     DNQ_MOD_OS,
     DNQ_MOD_RTC,
+    DNQ_MOD_CONFIG,
     DNQ_MOD_NETWORK,
     DNQ_MOD_MANAGE,
     DNQ_MOD_GPIO,
@@ -26,11 +27,12 @@ typedef enum dnq_debug_module
 
 typedef enum dnq_debug_lever
 {
-    DNQ_DBG_NONE,
-    DNQ_DBG_ERROR,
-    DNQ_DBG_WARN,
-    DNQ_DBG_INFO,
-    DNQ_DBG_DEBUG,
+    DNQ_DBG_NONE    = 0x0,
+    DNQ_DBG_ERROR   = 0x1,
+    DNQ_DBG_WARN    = 0x2,
+    DNQ_DBG_INFO    = 0x3,
+    DNQ_DBG_DEBUG   = 0x4,
+    DNQ_DBG_VERBOSE = 0x5,
     DNQ_DBG_ALL
 
 }dnq_dbg_lever_e;
@@ -50,8 +52,8 @@ typedef enum dnq_debug_lever
 
 #define DNQ_ERROR(mod, msg,...)    dnq_debug(mod, DNQ_DBG_ERROR, "[ERROR]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
 #define DNQ_WARN(mod, msg,...)   dnq_debug(mod, DNQ_DBG_WARN, "[WARN]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
-#define DNQ_DEBUG(mod, msg,...)   dnq_debug(mod, DNQ_DBG_DEBUG, "[DEBUG]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
 #define DNQ_INFO(mod, msg,...)    dnq_debug(mod, DNQ_DBG_INFO, "[INFO]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
+#define DNQ_DEBUG(mod, msg,...)   dnq_debug(mod, DNQ_DBG_DEBUG, "[DEBUG]%s:%d: " msg "\n",__func__,__LINE__, ## __VA_ARGS__)
 
 //#define Dbc_Print_Err(format,...)  Dbc_Print(DBC_PRINT,"[DBC ERROR:][%d][%s][%d][%s]:" format "\n",(int)DRV_OS_TimeNow_MS(),__FILE__,__LINE__,__func__,## __VA_ARGS__)
 //#define Dbc_Print_level(level,format,...)  Dbc_Print(level,"[DBC INFO:][%d][%s][%d][%s]:" format "\n",(int)DRV_OS_TimeNow_MS(),__FILE__,__LINE__,__func__,## __VA_ARGS__)

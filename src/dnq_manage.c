@@ -87,62 +87,11 @@ S32 send_msg_to_manage(dnq_msg_t *msg)
     return ret;
 }
 
-S32 dnq_get_room_setting_temp_by_time(U32 room_id, U32 current_time)
-{
-    S32 ret;
-    U32 i;
-    U32 start_time, end_time;
-    room_temp_policy_t *room_policy;
-    server_temp_policy_t *temp_policy;
-    timesetting_t  *room_time_setting;
-
-    temp_policy = dnq_get_temp_policy_config(NULL);
-    room_policy = &temp_policy->rooms[room_id];
-    room_time_setting = room_policy->time_setting;
-
-    
-    for(i=0; i<room_policy->time_setting_cnt; i++)
-    {
-        DNQ_DEBUG(DNQ_MOD_MANAGE, "current_time=%d, start=%d, end=%d\n", \
-            current_time, room_time_setting[i].start, room_time_setting[i].end);
-        if(current_time >= room_time_setting[i].start
-        && current_time <= room_time_setting[i].end)
-            return room_time_setting[i].degrees;
-    }
-    
-    return 0xFF;
-}
-
-timesetting_t* dnq_get_room_setting_by_time(U32 room_id, U32 current_time)
-{
-    S32 ret;
-    U32 i;
-    U32 start_time, end_time;
-    room_temp_policy_t *room_policy;
-    server_temp_policy_t *temp_policy;
-    timesetting_t  *room_time_setting;
-
-    temp_policy = dnq_get_temp_policy_config(NULL);
-    room_policy = &temp_policy->rooms[room_id];
-    room_time_setting = room_policy->time_setting;
-    
-    for(i=0; i<room_policy->time_setting_cnt; i++)
-    {
-        DNQ_DEBUG(DNQ_MOD_MANAGE, "current_time=%d, start=%d, end=%d\n", \
-            current_time, room_time_setting[i].start, room_time_setting[i].end);
-        if(current_time >= room_time_setting[i].start
-        && current_time <= room_time_setting[i].end)
-            return &room_time_setting[i];
-    }
-    
-    return NULL;
-}
-
 U16 dnq_get_room_temp_error(U32 room_id)
 {
     S32 ret;
     U16 temp_error;
-    server_temp_error_t *temp_error_config;
+    error_config_t *temp_error_config;
 
     temp_error_config = dnq_get_temp_error_config(NULL);
     temp_error = temp_error_config->rooms[room_id].error;
@@ -159,7 +108,7 @@ static S32 heater_work_status_update(U32 room_id, U32 status)
     msg.lenght = ROOM_ITEM_WORK_STATUS; /* room's item id */
     msg.payload = (void*)status;     /* work status */
 
-    printf("work_status_update```id=%d,status=%d````!\n", room_id, status);
+    DNQ_DEBUG(DNQ_MOD_MANAGE, "room_id=%d, work_status=%d!\n", room_id, status);
     /* update room's current temperature */
     return send_msg_to_lcd(&msg);
 }
@@ -173,23 +122,26 @@ S32 dnq_proc()
     S32 current_temp;
     S32 setting_temp;
     S16 temp_error;
-    server_temp_policy_t *temp_policy_config;
+    error_config_t  *error_config;
+    policy_config_t *policy_config;
     room_temp_policy_t   *rooms_policy;
     timesetting_t     *current_setting;
     room_item_t *rooms = dnq_get_rooms();
     static U32 status[DNQ_ROOM_MAX] = {0};
 
-    temp_policy_config = dnq_get_temp_policy_config(NULL);
-    rooms_policy = temp_policy_config->rooms;
+    error_config = dnq_get_temp_error_config(NULL);
+    policy_config = dnq_get_temp_policy_config(NULL);
+    rooms_policy = policy_config->rooms;
 
+    /* 获取当前时间，单位是秒 */
     current_second = dnq_get_current_second();
     //current_second = datetime.hour*3600+datetime.minute*60+datetime.second;
 
     /* Traversal all rooms */
     for(room_id=0; room_id<DNQ_ROOM_CNT; room_id++)
     {
-        temp_error = dnq_get_room_temp_error(room_id)*100;
-        current_temp = rooms[room_id].curr_temp;
+        temp_error = error_config->rooms[room_id].error*100;
+        current_temp = rooms[room_id].curr_temp + rooms[room_id].correct*100;
         //printf("room_id=%d, current_temp====%d\n",room_id, current_temp);
         current_setting = dnq_get_room_setting_by_time(room_id, current_second);
 
@@ -199,7 +151,8 @@ S32 dnq_proc()
         */
         if(current_setting == NULL)
         {
-            //printf("no temp policy!\n");
+            DNQ_DEBUG(DNQ_MOD_MANAGE, \
+                "room[%d] found not temp policy! close the hearter", room_id);
             dnq_heater_close(room_id);
             if(rooms[room_id].work_status == WORK_STATUS)
                 heater_work_status_update(room_id, STOP_STATUS);
@@ -209,7 +162,7 @@ S32 dnq_proc()
 
         setting_temp = current_setting->degrees*100;
         setting_temp = rooms[room_id].set_temp;
-        DNQ_DEBUG(DNQ_MOD_MANAGE, "found temp policy!! id=%d, current=%d'C, set=%d'C, error=%d\n",
+        DNQ_DEBUG(DNQ_MOD_MANAGE, "found temp policy!! id=%d, current=%d'C, set=%d'C, error=%d",
             room_id, current_temp, setting_temp, temp_error);
 
         switch(status[room_id])
@@ -219,12 +172,19 @@ S32 dnq_proc()
                 * check until the temprature falls limit 
                 * 等待温度下降到设定的温度回差处
                 */
-                if(current_temp <= setting_temp - temp_error)
+                if(current_temp <= setting_temp - temp_error \
+                    || current_temp <= DNQ_TEMP_MIN)
                 {
-                    //dnq_heater_ctrl_single(room_id, HEATER_MODE_SWITCH, HEATER_OPEN);
-                    dnq_heater_open(room_id);
+                    if(current_temp <= DNQ_TEMP_MIN)
+                        DNQ_WARN(DNQ_MOD_MANAGE, \
+                        "room[%d]'s temprature is too low, the lowest is %d. force open heater!", \
+                        room_id, DNQ_TEMP_MIN);
+                    
                     if(rooms[room_id].work_status == STOP_STATUS)
+                    {
                         heater_work_status_update(room_id, WORK_STATUS);
+                        dnq_heater_open(room_id);
+                    }
                     status[room_id] = WAIT_HIGH_LIMIT;
                 }
                 
@@ -234,9 +194,14 @@ S32 dnq_proc()
                 * check until the temprature rise limit 
                 * 等待温度上升到设定的温度
                 */
-                if(current_temp >= setting_temp)
+                if(current_temp >= setting_temp \
+                    || current_temp >= DNQ_TEMP_MAX)
                 {
-                    //dnq_heater_ctrl_single(room_id, HEATER_MODE_SWITCH, HEATER_CLOSE);
+                    if(current_temp <= DNQ_TEMP_MIN)
+                        DNQ_WARN(DNQ_MOD_MANAGE, \
+                        "room[%d]'s temprature is too high, the highest is %d. force close heater!", \
+                        room_id, DNQ_TEMP_MAX);
+                    
                     dnq_heater_close(room_id);
                     if(rooms[room_id].work_status == WORK_STATUS)
                         heater_work_status_update(room_id, STOP_STATUS);
@@ -273,7 +238,7 @@ S32 dnq_lcd_init_info_sync()
     U32 room_id = 0;
     U8  gb2312_out[32] = {0};
     dnq_msg_t msg = {0};
-    server_init_info_t *init_config;
+    init_info_t *init_config;
     room_item_t *rooms = dnq_get_rooms();
 
     init_config = dnq_get_init_config(NULL);
@@ -290,7 +255,7 @@ S32 dnq_lcd_init_info_sync()
         u2g(init_config->rooms[i].room_name, SIZE_16, gb2312_out,sizeof(gb2312_out));   
         strncpy(rooms[i].name, gb2312_out, SIZE_16);
 
-        DNQ_INFO(DNQ_MOD_MANAGE, "[%d]:room_id=%d,room_name='%s'\n", \
+        DNQ_INFO(DNQ_MOD_MANAGE, "[%d]:room_id=%d,room_name='%s'", \
             i,room_id, init_config->rooms[i].room_name);
         #endif
         
@@ -315,7 +280,7 @@ S32 dnq_init_info_update()
     U8 *ptr = NULL;
     U8  time_string[32] = {0};
     datetime_t datetime;
-    server_init_info_t *init_info;
+    init_info_t *init_info;
     
     init_info = dnq_get_init_config(NULL);
     
@@ -362,7 +327,7 @@ void *manage_task(void *args)
     dnq_msg_t  recvMsg;
     dnq_msg_t *pSendMsg = &sendMsg;
     dnq_msg_t *pRecvMsg = &recvMsg;
-    server_temp_policy_t *temp_policy;
+    policy_config_t *policy_config;
     dnq_appinfo_t *appinfo;
     
     appinfo = (dnq_appinfo_t*)args;
@@ -391,6 +356,7 @@ void *manage_task(void *args)
                 DNQ_INFO(DNQ_MOD_MANAGE, "recv rabbitmq msg!");
                 dnq_init_info_update();
             default:
+                DNQ_ERROR(DNQ_MOD_MANAGE, "unknow msg type=%d!", pRecvMsg->Class);
             break;
         }
 

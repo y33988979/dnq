@@ -26,7 +26,7 @@ typedef struct dnq_msg
     U32          code;       /* msg type, user-defined */
     U32          lenght;     /* data lenght */
     U8          *payload;    /* dynamic ptr, user-defined */
-    U8           data[64];   /* static buffer inside the msg, buffer'size=64 */
+    U8           data[32];   /* static buffer inside the msg, buffer'size=32 */
 
     /* 
     * 如果需要动态指定每个message的数据buffer大小，需要将data设置成指针类型

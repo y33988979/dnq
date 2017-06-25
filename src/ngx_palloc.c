@@ -16,15 +16,19 @@ ngx_uint_t  ngx_pagesize_shift;
 ngx_uint_t  ngx_cacheline_size;
 static ngx_pool_t *os_mem_pool = NULL;
 static ngx_pool_t *app_mem_pool = NULL;
+static U32 malloc_sem = 0;
 
 
 static void *ngx_palloc_block(ngx_pool_t *pool, size_t size);
 static void *ngx_palloc_large(ngx_pool_t *pool, size_t size);
+static size_t ngx_pool_free_size(ngx_pool_t *pool);
+void dnq_pool_check(ngx_pool_t *pool);
 
 S32 dnq_mempool_init()
 {
     ngx_pool_t *pool = NULL;
-    
+
+    malloc_sem = 0;
     if(os_mem_pool || app_mem_pool)
     {
         DNQ_ERROR(DNQ_MOD_ALL, "mempool already exist! os_mempool=0x%0x8, app_mempool=0x%08x\n",\
@@ -68,6 +72,7 @@ void dnq_mempool_deinit()
         ngx_destroy_pool(os_mem_pool);
     app_mem_pool = NULL;
     os_mem_pool = NULL;
+    malloc_sem = 0;
     DNQ_INFO(DNQ_MOD_ALL, "destroy all mempool success!");
 }
 
@@ -108,6 +113,8 @@ void *dnq_malloc(size_t size)
         ngx_destroy_pool(app_mem_pool);
         exit(1);
     }
+    malloc_sem++;
+    printf("malloc size=%d, freesize=%d\n", size, ngx_pool_free_size(app_mem_pool));
     //printf(" dnq_malloc: ptr=0x%08x, len=%d\n", p, size);
     return p;
 }
@@ -119,8 +126,39 @@ void dnq_free(void *ptr)
     {
         ngx_pfree(app_mem_pool, ptr);
         ptr = NULL;
+        malloc_sem--;
+        /* memory check maybe reset*/
+        dnq_pool_check(app_mem_pool);
     }
     return ;
+}
+
+void dnq_pool_check(ngx_pool_t *pool)
+{
+    if(malloc_sem == 0){
+        if(ngx_pool_free_size(pool) < 1024) {
+            ngx_reset_pool(pool);
+            DNQ_INFO(DNQ_MOD_ALL, "mempool almost run out, reset pool!!!");
+        }
+    }
+}
+static size_t ngx_pool_free_size(ngx_pool_t *pool)
+{
+    U32 cnt = 0;
+    ngx_pool_t *p;
+
+    cnt = 0;
+    for (p = pool; p; p = p->d.next) {
+        cnt++;
+        if(p == pool->current)
+            break;
+    }
+    if(cnt > 1){
+        DNQ_ERROR(DNQ_MOD_ALL, "mempool is too many! pool count=%d", cnt);
+    }
+
+    p = pool->current;
+    return (size_t)(p->d.end - p->d.last);
 }
     
 void *

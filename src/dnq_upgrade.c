@@ -239,7 +239,7 @@ static S32 system_call(U8 *command)
 static int init_hotplug_sock(void)
 {
     struct sockaddr_nl snl;
-    const int buffersize = 16 * 1024 * 1024;
+    const int buffersize = 16 * 1024;
     int retval;
 
     memset(&snl, 0x00, sizeof(struct sockaddr_nl));
@@ -795,6 +795,7 @@ static U32 upgrd_msg_process(amqp_envelope_t *penve, amqp_connection_state_t con
             UPGRD_ERROR("soft is updating... message discard! len=%d.", msg_len);
             break;
         default:
+            UPGRD_ERROR("[UPGRD] Unknow status type=%d", upgrd_status);
         break;
     }
 

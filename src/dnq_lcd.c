@@ -13,6 +13,7 @@
 #include "dnq_log.h"
 #include "dnq_uart.h"
 #include "dnq_os.h"
+#include "dnq_config.h"
 #include "dnq_keypad.h"
 #include "dnq_network.h"
 
@@ -36,6 +37,7 @@ static dnq_appinfo_t  *lcd_appinfo = NULL;
  
 room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
 {
+ /* id, name ,curr_temp, set_temp, work_status, sn_status, correct*/
     {0, "三年二班", 2210,3200, STOP_STATUS,WORK_STATUS,0},
     {1, "门卫室", 2420,2600,   0,0,0},
     {2, "走廊蓄热12", 1120,500,0,0,1},
@@ -595,7 +597,7 @@ static S32 lcd_room_setting_temp_update_adjust(U32 room_id, S32 value, U32 color
     }
     
     room_item->set_temp += value;
-    degree = abs(value);
+    degree = abs(room_item->set_temp);
     if(degree < 0)
         is_negative = 1;
     sprintf(buf, "%s%02d.%1d", (is_negative)?"-":" ", degree/100, (degree%100)/10);
@@ -670,8 +672,6 @@ static S32 lcd_room_temp_correct_update_adjust(U32 room_id, S32 value, U32 color
     g_rooms[room_id].correct += value;
     
     sprintf(buf, "%d", g_rooms[room_id].correct);
-    printf("value========%d, buf=\"%s\"\n", \
-        g_rooms[room_id].correct, buf);
     //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_TEMP_CORRECT, buf, color);
     return ret;
@@ -818,7 +818,7 @@ static S32 lcd_rooms_update_by_page(U32 page_num)
         color = g_lcd_items[i].color;
         ret = lcd_item_update_color(i, color);
         #else
-        printf("id==%d,,,,,name-----%s\n", room_id,g_rooms[room_id].name);
+        DNQ_DEBUG(DNQ_MOD_LCD, "room_id==%d, name=%s\n", room_id,g_rooms[room_id].name);
         room_id = room_offset+i;
         ret = lcd_room_id_update(room_id, g_rooms[room_id].id, DEFAULT_COLOR);
         ret = lcd_room_name_update(room_id, g_rooms[room_id].name, DEFAULT_COLOR);
@@ -1247,27 +1247,71 @@ static S32 lcd_key_msg_process(U32 key_code, U32 key_status)
 
 static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
 {
-    S32 ret;
+    S32 i, ret;
     U32 room_id;
     S32 curr_temp;
+    S32 set_temp;
     S32 temp_correct;
+    U32 current_second = dnq_get_current_second();
     room_item_t *rooms = dnq_get_rooms();
+    policy_config_t *policy_config = dnq_get_temp_policy_config(NULL);
+    correct_config_t *correct_config = dnq_get_temp_correct_config(NULL);
 
     switch(msg->code)
     {
         case MQ_MSG_TYPE_SET_TEMP_UPDATE:
             room_id = msg->lenght;
-            ret = lcd_room_setting_temp_update(room_id, (S32)msg->payload, DEFAULT_COLOR);
+            /* update all room */
+            if(room_id == DNQ_ROOM_MAX)
+            {
+                for(i=0; i<DNQ_ROOM_MAX; i++)
+                {
+                    set_temp = dnq_get_room_setting_temp_by_time(i, current_second);
+                    if(set_temp != DEGREES_NULL)
+                    {
+                        ret = lcd_room_setting_temp_update(i, (S32)set_temp, DEFAULT_COLOR);
+                        DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, set_temp==%d", \
+                            room_id, curr_temp, set_temp);
+                    }
+                }
+            }
+            else /* update single room */
+            {
+                set_temp = (S32)msg->payload;
+                ret = lcd_room_setting_temp_update(room_id, (S32)set_temp, DEFAULT_COLOR);
+                DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, set_temp==%d", \
+                    room_id, curr_temp, set_temp);
+            }
             break;
         case MQ_MSG_TYPE_TEMP_CORRECT_UPDATE:
+
             room_id = msg->lenght;
-            temp_correct = (S32)msg->payload;
-            curr_temp = rooms[room_id].curr_temp;
-            ret = lcd_room_temp_correct_update(room_id, (S32)temp_correct, DEFAULT_COLOR);
-            printf("curr_temp===%d...temp_correct======%d\n", curr_temp,temp_correct);
-            ret = lcd_room_current_temp_update(room_id, (S32)curr_temp, DEFAULT_COLOR);
+            /* update all room */
+            if(room_id == DNQ_ROOM_MAX)
+            {
+                for(i=0; i<DNQ_ROOM_MAX; i++)
+                {
+                    temp_correct = correct_config->rooms[i].correct;
+                    curr_temp = rooms[i].curr_temp;
+                    ret = lcd_room_temp_correct_update(i, (S32)temp_correct, DEFAULT_COLOR);
+                    ret = lcd_room_current_temp_update(i, (S32)curr_temp, DEFAULT_COLOR);
+                    DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, curr_temp==%d, temp_correct==%d", \
+                        room_id, curr_temp, temp_correct);
+                }
+            }
+            else/* update single room */
+            {
+                temp_correct = (S32)msg->payload;
+                curr_temp = rooms[room_id].curr_temp;
+                ret = lcd_room_temp_correct_update(room_id, (S32)temp_correct, DEFAULT_COLOR);
+                ret = lcd_room_current_temp_update(room_id, (S32)curr_temp, DEFAULT_COLOR);
+                DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, curr_temp==%d, temp_correct==%d", \
+                    room_id, curr_temp, temp_correct);
+            }
+            
             break;
         default:
+            DNQ_ERROR(DNQ_MOD_LCD, "unknow msg type=%d", msg->code);
             break;
     }
     
@@ -1459,7 +1503,7 @@ S32 dnq_lcd_init()
     lcd_update_all(); 
 
     *appinfo = dnq_app_task_create("lcd_task", 2048*64,\
-        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX+5, lcd_task, NULL);
+        QUEUE_MSG_SIZE, QUEUE_SIZE_MAX*2, lcd_task, NULL);
     if(!*appinfo)
     {
         DNQ_ERROR(DNQ_MOD_LCD, "lcd_task create error!");

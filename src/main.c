@@ -90,6 +90,9 @@ int main()
     sem_t sem1 = {0};
     //dnq_debug_setlever(1,5); 
 
+    dnq_debug_setlever(DNQ_MOD_RABBITMQ, 5);
+    
+
     extern S32 dnq_config_init();    
 
     MAIN_CHECK( dnq_init() );

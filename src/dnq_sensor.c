@@ -94,7 +94,7 @@ static S32 recv_cmd_from_sensor(U8 *cmdbuf, U32 len)
 
     if(time < 0)
     {
-        DNQ_ERROR(DNQ_MOD_MCU, "recv timeout! received %d bytes!", total_len);
+        DNQ_DEBUG(DNQ_MOD_MCU, "recv timeout! received %d bytes!", total_len);
         return -1;
     }
     if(total_len != len)
@@ -139,7 +139,7 @@ static S32 dnq_get_room_temperature(U32 room_id)
     }
 
     temperature = recvbuf[7]<<8|recvbuf[8];
-    DNQ_INFO(DNQ_MOD_MCU, "room %d temperature is %d.%d'C!",\
+    DNQ_DEBUG(DNQ_MOD_MCU, "room %d temperature is %d.%d'C!",\
         room_id, temperature/100, (temperature%100)/10);
 
     return temperature;
@@ -204,7 +204,7 @@ void *sensor_task(void *args)
                 update_sn_status(i, 1);
             update_temperature(i, temperature);
             
-            dnq_sleep(1);
+            dnq_sleep(DNQ_SENSOR_SCAN_INTERVAL);
         }
     }
 }

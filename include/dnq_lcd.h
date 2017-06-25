@@ -71,7 +71,7 @@
      
 #define MAC_INFO_STR "MAC：20-21-3E-43-FE-47-29 "
 #define NET_INFO_STR "网络状态：   初始化.. "
-#define CMD_INFO_STR "当前执行命令：加热 "
+#define CMD_INFO_STR "当前执行命令：  加热 "
 #define SYS_INFO_STR "火娃电采暖智能控制器 "
 #define HELP_INFO_STR "↑:上一页  ↓:下一页  OK:设置  EXIT:返回"
 

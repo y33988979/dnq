@@ -1173,8 +1173,6 @@ void *network_task(void *args)
             current_status = LINK_DOWN;
         }
 
-        printf("[NET]:current_status=%d, last_status=%d\n", current_status, last_status);
-
         if(current_status != last_status)
         {
             net_status_change(current_status);

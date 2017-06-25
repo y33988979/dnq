@@ -55,9 +55,9 @@ static pthread_mutex_t rabbitmaq_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define rabbitmaq_lock()   pthread_mutex_lock(&rabbitmaq_mutex)
 #define rabbitmaq_unlock() pthread_mutex_unlock(&rabbitmaq_mutex)
 
-server_authorization_t g_authorization = {0};
+authorization_t g_authorization = {0};
 
-server_temp_policy_t   g_temp_policy = 
+policy_config_t   g_policy_config = 
 {
     .rooms_cnt = DNQ_ROOM_MAX,
     .rooms = 
@@ -81,7 +81,7 @@ server_temp_policy_t   g_temp_policy =
         {15, 0, 1, {0, 60*60*24-1, 30}}  
     },
 };
-server_temp_limit_t    g_temp_limit =
+limit_config_t    g_limit_config =
 {
     .rooms_cnt = DNQ_ROOM_MAX,
     .rooms = 
@@ -106,7 +106,7 @@ server_temp_limit_t    g_temp_limit =
     }
 };
 
-server_temp_error_t    g_temp_error =
+error_config_t    g_error_config =
 {
     .rooms_cnt = DNQ_ROOM_MAX,
     .rooms = 
@@ -131,9 +131,9 @@ server_temp_error_t    g_temp_error =
     }
 };
 
-server_power_config_t  g_power_config;
-server_response_t      g_response;
-server_temp_correct_t  g_temp_correct = 
+power_config_t  g_power_config;
+response_t      g_response;
+correct_config_t  g_correct_config = 
 {
     .rooms_cnt = DNQ_ROOM_MAX,
     .rooms = 
@@ -157,7 +157,7 @@ server_temp_correct_t  g_temp_correct =
         {15, -2}
     }
 };
-server_init_info_t     g_init;
+init_info_t     g_init;
 
 
 #if 1
@@ -223,7 +223,7 @@ static char *password = "123456";
 *
 */
 
-S32 json_parse_authorization_manage(cJSON *pjson, server_authorization_t *pdst)
+S32 json_parse_authorization_manage(cJSON *pjson, authorization_t *pdst)
 {
     cJSON  *obj = NULL;
 
@@ -265,7 +265,7 @@ S32 timestring_to_second(U8 *timestring)
     return second;
 }
 
-S32 json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
+S32 json_parse_temp_policy(cJSON *pjson, policy_config_t *pdst)
 {
 	int     i = 0;
     int     j = 0;
@@ -375,7 +375,7 @@ S32 json_parse_temp_policy(cJSON *pjson, server_temp_policy_t *pdst)
 *  解析一个 "高低温限制" 消息结构(json)
 *
 */
-S32 json_parse_temp_limit(cJSON *pjson, server_temp_limit_t *pdst)
+S32 json_parse_temp_limit(cJSON *pjson, limit_config_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -443,7 +443,7 @@ S32 json_parse_temp_limit(cJSON *pjson, server_temp_limit_t *pdst)
 *  解析一个 "温度回差" 消息结构(json)
 *
 */
-S32 json_parse_degree_error(cJSON * pjson, server_temp_error_t *pdst)
+S32 json_parse_degree_error(cJSON * pjson, error_config_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -507,7 +507,7 @@ S32 json_parse_degree_error(cJSON * pjson, server_temp_error_t *pdst)
 *  解析一个 "功率配置" 消息结构(json)
 *
 */
-S32 json_parse_power_config(cJSON *pjson, server_power_config_t *pdst)
+S32 json_parse_power_config(cJSON *pjson, power_config_t *pdst)
 {
     int     i = 0;
     int     j = 0;
@@ -599,7 +599,7 @@ S32 json_parse_power_config(cJSON *pjson, server_power_config_t *pdst)
 *  解析一个 "应答" 消息结构(json)
 *
 */
-S32 json_parse_response(cJSON *pjson, server_response_t *pdst)
+S32 json_parse_response(cJSON *pjson, response_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -626,7 +626,7 @@ S32 json_parse_response(cJSON *pjson, server_response_t *pdst)
 *  解析一个 "rectify" 消息结构(json)
 *
 */
-S32 json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
+S32 json_parse_correct(cJSON *pjson, correct_config_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -690,7 +690,7 @@ S32 json_parse_correct(cJSON *pjson, server_temp_correct_t *pdst)
 *  解析一个 "init" 消息结构(json)
 *
 */
-S32 json_parse_init(cJSON *pjson, server_init_info_t *pdst)
+S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
 {
     int     i = 0;
     cJSON  *obj = NULL;
@@ -1379,16 +1379,18 @@ cJSON *json_data_prepare_warn(char *data)
     cJSON_Delete(pjson);
 }
 
-S32 dnq_config_sync_to_lcd(json_type_e json_type, void *cjson_struct)
+S32 dnq_config_sync_to_lcd(
+    json_type_e json_type, void *cjson_struct, U32 room_id)
 {
     U32 i;
     S32 ret;
     U32 current_second;
-    S32 setting_temp;
+    S32 set_temp;
+    S16 value;
     dnq_msg_t msg = {0};
-    server_temp_policy_t *temp_policy = (server_temp_policy_t *)cjson_struct;
-    server_temp_error_t *temp_error = (server_temp_error_t *)cjson_struct;
-    server_temp_correct_t *temp_correct = (server_temp_correct_t *)cjson_struct;
+    policy_config_t *temp_policy = (policy_config_t *)cjson_struct;
+    error_config_t *temp_error = (error_config_t *)cjson_struct;
+    correct_config_t *temp_correct = (correct_config_t *)cjson_struct;
     msg.Class = MSG_CLASS_RABBITMQ;
     
     switch(json_type)
@@ -1398,21 +1400,31 @@ S32 dnq_config_sync_to_lcd(json_type_e json_type, void *cjson_struct)
         case JSON_TYPE_TEMP_POLICY:
             temp_policy = dnq_get_temp_policy_config(NULL);
             current_second = dnq_get_current_second();
-            for(i=0; i<temp_policy->rooms_cnt; i++)
-            {
-                setting_temp = dnq_get_room_setting_temp_by_time(temp_policy->rooms[i].room_id-1, current_second);
 
-                if(setting_temp != DEGREES_NULL)
-                {
+            if(room_id == DNQ_ROOM_MAX)
+            {
+                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update all room's set_temp=%d!", value);
+                msg.code = MQ_MSG_TYPE_SET_TEMP_UPDATE;
+                msg.lenght = DNQ_ROOM_MAX;
+                msg.payload = NULL;
+                send_msg_to_lcd(&msg);
+            }
+            else
+            {
+                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update single room[%d] set_temp=%d!", room_id, value);
+                set_temp = dnq_get_room_setting_temp_by_time(room_id, current_second);
+                if(set_temp != DEGREES_NULL)
+                { 
+                    msg.lenght = room_id;
                     msg.code = MQ_MSG_TYPE_SET_TEMP_UPDATE;
-                    msg.lenght = temp_policy->rooms[i].room_id-1;
-                    msg.payload = (void*)(setting_temp*100);
+                    msg.payload = (void*)(set_temp);
                     send_msg_to_lcd(&msg);
                 }
             }
 
             datetime_t datetime = {0};
             /* 同步网络时间到rtc */
+            printf("11111111temp_policy->time=%s\n", temp_policy->time);
             dnq_timestr_to_datetime(temp_policy->time, &datetime);
             dnq_rtc_datetime_sync(&datetime);
             
@@ -1428,13 +1440,27 @@ S32 dnq_config_sync_to_lcd(json_type_e json_type, void *cjson_struct)
             break;
         case JSON_TYPE_CORRECT:
             temp_correct = dnq_get_temp_correct_config(NULL);
-            for(i=0; i<temp_correct->rooms_cnt; i++)
+            
+            if(room_id == DNQ_ROOM_MAX)
             {
+                value = temp_correct->rooms[0].correct;
+                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update all room's temp_correct=%d!", value);
                 msg.code = MQ_MSG_TYPE_TEMP_CORRECT_UPDATE;
-                msg.lenght = temp_correct->rooms[i].room_id-1;
-                msg.payload = (void*)(S32)temp_correct->rooms[i].correct;
+                msg.lenght = DNQ_ROOM_MAX;
+                msg.payload = (void*)NULL;
+                send_msg_to_lcd(&msg);
+
+            }
+            else
+            {
+                value = temp_correct->rooms[room_id].correct;
+                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update single room[%d] temp_correct=%d!", room_id, value);
+                msg.code = MQ_MSG_TYPE_TEMP_CORRECT_UPDATE;
+                msg.lenght = room_id;
+                msg.payload = (void*)(S32)value;
                 send_msg_to_lcd(&msg);
             }
+        
             break;
         case JSON_TYPE_INIT:
             break;
@@ -1476,8 +1502,6 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "config data check error!");
         return -1;
     }
-
-    ret = dnq_config_sync_to_lcd(json_type, cjson_struct);
 
     /* send response to server */
     ret = send_response_to_server(conn, pchnl, json_type);

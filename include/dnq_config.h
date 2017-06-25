@@ -28,12 +28,12 @@
 * cjson数据的C结构体，云端向控制器 发送授权控制
 *
 */
-typedef struct server_authorization
+typedef struct authorization
 {
     U8      type[SIZE_32];
     U8      time[SIZE_32];
     U8      authorization[SIZE_32];
-}server_authorization_t;
+}authorization_t;
 
 /*
 * cjson convert to struct, temperature policy
@@ -58,7 +58,7 @@ typedef struct room_temp_policy
     timesetting_t  time_setting[4];
 }room_temp_policy_t;
 
-typedef struct server_temp_policy
+typedef struct policy_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -66,7 +66,7 @@ typedef struct server_temp_policy
     U16       mode;
     U16       rooms_cnt;
     room_temp_policy_t    rooms[DNQ_ROOM_MAX];
-}server_temp_policy_t;
+}policy_config_t;
 
 /*
 * cjson convert to struct, temperature limit
@@ -82,7 +82,7 @@ typedef struct room_temp_limit
     
 }room_temp_limit_t;
 
-typedef struct server_temp_limit
+typedef struct limit_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -90,7 +90,7 @@ typedef struct server_temp_limit
     U16       mode;
     U16       rooms_cnt;
     room_temp_limit_t      rooms[DNQ_ROOM_MAX];
-}server_temp_limit_t;
+}limit_config_t;
 
 /*
 * cjson convert to struct, temperature error
@@ -105,7 +105,7 @@ typedef struct room_temp_error
     U16       error;
 }room_temp_error_t;
 
-typedef struct server_temp_error
+typedef struct error_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -113,7 +113,7 @@ typedef struct server_temp_error
     U16       mode;
     U16       rooms_cnt;
     room_temp_error_t      rooms[DNQ_ROOM_MAX];
-}server_temp_error_t;
+}error_config_t;
 
 /*
 * cjson convert to struct, power config
@@ -130,7 +130,7 @@ typedef struct room_power_config
     U16       num[6];     /* need fixed?  */
 }room_power_config_t;
 
-typedef struct server_power_config
+typedef struct power_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -138,7 +138,7 @@ typedef struct server_power_config
     U16       mode;
     U16       rooms_cnt;
     room_power_config_t      rooms[DNQ_ROOM_MAX];
-}server_power_config_t;
+}power_config_t;
 
 /*
 * cjson convert to struct, a response from server to controller
@@ -146,12 +146,12 @@ typedef struct server_power_config
 * cjson数据的C结构体，云端向控制器 发送应答消息
 *
 */
-typedef struct server_response
+typedef struct response
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
     U8        status[SIZE_32];
-}server_response_t;
+}response_t;
 
 
 /*
@@ -167,7 +167,7 @@ typedef struct room_temp_correct
     S16       correct;
 }room_temp_correct_t;
 
-typedef struct server_temp_correct
+typedef struct correct_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -175,7 +175,7 @@ typedef struct server_temp_correct
     U16       mode;
     U16       rooms_cnt;
     room_temp_correct_t  rooms[DNQ_ROOM_MAX];
-}server_temp_correct_t;
+}correct_config_t;
 
 /*
 * cjson convert to struct, initialize device install info 
@@ -206,7 +206,7 @@ typedef struct room_info
     U8        position[SIZE_16];
 }room_info_t;
 
-typedef struct server_init_info
+typedef struct init_info
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -221,7 +221,7 @@ typedef struct server_init_info
     room_info_t    rooms[DNQ_ROOM_MAX];
     U32       inited;
     
-}server_init_info_t;
+}init_info_t;
 
 /*
 * cjson convert to struct, All config info 
@@ -232,14 +232,14 @@ typedef struct server_init_info
 typedef struct _dnq_config
 {
     U32  inited;
-    server_authorization_t authorization;
-    server_temp_policy_t   temp_policy;
-    server_temp_limit_t    temp_limit;
-    server_temp_error_t    temp_error;
-    server_power_config_t  power_config;
-    server_response_t      response;
-    server_temp_correct_t  temp_correct;
-    server_init_info_t     init;
+    authorization_t  authorization;
+    policy_config_t  policy_config;
+    limit_config_t   limit_config;
+    error_config_t   error_config;
+    power_config_t   power_config;
+    response_t       response;
+    correct_config_t correct_config;
+    init_info_t      init;
     U32                    reserved;
 }dnq_config_t;
 
@@ -326,28 +326,31 @@ void dnq_config_print();
 S32 dnq_config_load();
 S32 dnq_data_file_save();
 S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, void *cjson_struct);
-S32 dnq_config_sync_to_lcd(json_type_e json_type, void *cjson_struct);
+S32 dnq_config_sync_to_lcd(json_type_e json_type, void *cjson_struct, U32 room_id);
 
 extern dnq_config_t g_dnq_config;
 
 #define init_info_is_ok()  (g_dnq_config.init.inited)
 
-server_authorization_t*
-    dnq_get_authorization_config(server_authorization_t *config);
-server_temp_policy_t*
-    dnq_get_temp_policy_config(server_temp_policy_t *config);
-server_temp_limit_t*
-    dnq_get_temp_limit_config(server_temp_limit_t *config);
-server_temp_error_t*
-    dnq_get_temp_error_config(server_temp_error_t *config);
-server_power_config_t*
-    dnq_get_power_config_config(server_power_config_t *config);
-server_response_t*
-    dnq_get_response_config(server_response_t *config);
-server_temp_correct_t*
-    dnq_get_temp_correct_config(server_temp_correct_t *config);
-server_init_info_t*
-    dnq_get_init_config(server_init_info_t *config);
+authorization_t*
+    dnq_get_authorization_config(authorization_t *config);
+policy_config_t*
+    dnq_get_temp_policy_config(policy_config_t *config);
+limit_config_t*
+    dnq_get_temp_limit_config(limit_config_t *config);
+error_config_t*
+    dnq_get_temp_error_config(error_config_t *config);
+power_config_t*
+    dnq_get_power_config_config(power_config_t *config);
+response_t*
+    dnq_get_response_config(response_t *config);
+correct_config_t*
+    dnq_get_temp_correct_config(correct_config_t *config);
+init_info_t*
+    dnq_get_init_config(init_info_t *config);
+
+timesetting_t* dnq_get_room_setting_by_time(U32 room_id, U32 current_time);
+S32 dnq_get_room_setting_temp_by_time(U32 room_id, U32 current_time);
 
 #endif /* _DNQ_CONFIG_H_ */
 

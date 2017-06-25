@@ -517,6 +517,7 @@ S32 dnq_rtc_datetime_sync(datetime_t *new_datetime)
 
 S32 dnq_timestr_to_datetime(U8 *time_str, datetime_t *datetime)
 {
+    U8 time_buffer[32] = {0};
     if(!time_str || !datetime)
     {
         DNQ_ERROR(DNQ_MOD_MCU, "invalid param! time_str=0x%08x, datetime=0x%08x\n",
@@ -524,18 +525,20 @@ S32 dnq_timestr_to_datetime(U8 *time_str, datetime_t *datetime)
         return -1;
     }
 
-    time_str[4] = '\0';
-    time_str[7] = '\0';
-    time_str[10] = '\0';
-    time_str[13] = '\0';
-    time_str[16] = '\0';
-    time_str[19] = '\0';
-    datetime->year = atoi(&time_str[2]);
-    datetime->month = atoi(&time_str[5]);
-    datetime->day = atoi(&time_str[8]);
-    datetime->hour = atoi(&time_str[11]);
-    datetime->minute = atoi(&time_str[14]);
-    datetime->second = atoi(&time_str[17]);
+    strcpy(time_buffer, time_str);
+    
+    time_buffer[4] = '\0';
+    time_buffer[7] = '\0';
+    time_buffer[10] = '\0';
+    time_buffer[13] = '\0';
+    time_buffer[16] = '\0';
+    time_buffer[19] = '\0';
+    datetime->year = atoi(&time_buffer[2]);
+    datetime->month = atoi(&time_buffer[5]);
+    datetime->day = atoi(&time_buffer[8]);
+    datetime->hour = atoi(&time_buffer[11]);
+    datetime->minute = atoi(&time_buffer[14]);
+    datetime->second = atoi(&time_buffer[17]);
     return 0;
 }
 
