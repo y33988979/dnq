@@ -58,7 +58,7 @@ typedef struct room_temp_policy
     timesetting_t  time_setting[4];
 }room_temp_policy_t;
 
-typedef struct policy_config
+typedef struct _policy_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -82,7 +82,7 @@ typedef struct room_temp_limit
     
 }room_temp_limit_t;
 
-typedef struct limit_config
+typedef struct _limit_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -105,7 +105,7 @@ typedef struct room_temp_error
     U16       error;
 }room_temp_error_t;
 
-typedef struct error_config
+typedef struct _error_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -130,7 +130,7 @@ typedef struct room_power_config
     U16       num[6];     /* need fixed?  */
 }room_power_config_t;
 
-typedef struct power_config
+typedef struct _power_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -146,7 +146,7 @@ typedef struct power_config
 * cjson数据的C结构体，云端向控制器 发送应答消息
 *
 */
-typedef struct response
+typedef struct _response
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -167,7 +167,7 @@ typedef struct room_temp_correct
     S16       correct;
 }room_temp_correct_t;
 
-typedef struct correct_config
+typedef struct _correct_config
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];
@@ -206,7 +206,7 @@ typedef struct room_info
     U8        position[SIZE_16];
 }room_info_t;
 
-typedef struct init_info
+typedef struct _init_info
 {
     U8        type[SIZE_32];
     U8        time[SIZE_32];

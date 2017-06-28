@@ -122,15 +122,18 @@ S32 dnq_proc()
     S32 current_temp;
     S32 setting_temp;
     S16 temp_error;
+    S32 reach_temp_limit = 0;
     error_config_t  *error_config;
     policy_config_t *policy_config;
     room_temp_policy_t   *rooms_policy;
+    limit_config_t    *limit_config;
     timesetting_t     *current_setting;
     room_item_t *rooms = dnq_get_rooms();
     static U32 status[DNQ_ROOM_MAX] = {0};
 
     error_config = dnq_get_temp_error_config(NULL);
     policy_config = dnq_get_temp_policy_config(NULL);
+    limit_config = dnq_get_temp_limit_config(NULL);
     rooms_policy = policy_config->rooms;
 
     /* 获取当前时间，单位是秒 */
@@ -168,40 +171,67 @@ S32 dnq_proc()
         switch(status[room_id])
         {
             case WAIT_LOW_LIMIT:
+                
                 /* 
-                * check until the temprature falls limit 
+                * check if the temprature falls limit 
+                * 检查温度是否已经下降到设定的低温极限
+                */
+                reach_temp_limit = 0;
+                if(current_temp <= DNQ_TEMP_MIN \
+                    || current_temp <= limit_config->rooms[room_id].min)
+                {
+                    reach_temp_limit = 1;
+                    DNQ_WARN(DNQ_MOD_MANAGE, \
+                    "room[%d]'s temprature is too low, the lowest is [%d,%d]. force open heater!", \
+                    room_id, limit_config->rooms[room_id].min, DNQ_TEMP_MIN);
+                }
+                /* 
+                * check until the temprature falls error 
                 * 等待温度下降到设定的温度回差处
                 */
-                if(current_temp <= setting_temp - temp_error \
-                    || current_temp <= DNQ_TEMP_MIN)
+                else if(current_temp <= setting_temp - temp_error)
+                {   
+                    reach_temp_limit = 1;
+                }
+
+                /* 到达了温度临界点，需要改变电暖气工作状态 */
+                if(reach_temp_limit)
                 {
-                    if(current_temp <= DNQ_TEMP_MIN)
-                        DNQ_WARN(DNQ_MOD_MANAGE, \
-                        "room[%d]'s temprature is too low, the lowest is %d. force open heater!", \
-                        room_id, DNQ_TEMP_MIN);
-                    
+                    dnq_heater_open(room_id);
                     if(rooms[room_id].work_status == STOP_STATUS)
-                    {
                         heater_work_status_update(room_id, WORK_STATUS);
-                        dnq_heater_open(room_id);
-                    }
                     status[room_id] = WAIT_HIGH_LIMIT;
                 }
                 
                 break;
             case WAIT_HIGH_LIMIT:
+                
+                /* 
+                * check if the temprature falls limit 
+                * 检查温度是否已经下降到设定的低温极限
+                */
+                reach_temp_limit = 0;
+                if(current_temp >= DNQ_TEMP_MAX \
+                    || current_temp >= limit_config->rooms[room_id].max)
+                {
+                    reach_temp_limit = 1;
+                    DNQ_WARN(DNQ_MOD_MANAGE, \
+                    "room[%d]'s temprature is too high, the highest is [%d,%d]. force open heater!", \
+                    room_id, limit_config->rooms[room_id].max, DNQ_TEMP_MAX);
+                }
                 /* 
                 * check until the temprature rise limit 
                 * 等待温度上升到设定的温度
                 */
-                if(current_temp >= setting_temp \
+                else if(current_temp >= setting_temp \
                     || current_temp >= DNQ_TEMP_MAX)
                 {
-                    if(current_temp <= DNQ_TEMP_MIN)
-                        DNQ_WARN(DNQ_MOD_MANAGE, \
-                        "room[%d]'s temprature is too high, the highest is %d. force close heater!", \
-                        room_id, DNQ_TEMP_MAX);
-                    
+                    reach_temp_limit = 1;  
+                }
+
+                /* 到达了温度临界点，需要改变电暖气工作状态 */
+                if(reach_temp_limit)
+                {
                     dnq_heater_close(room_id);
                     if(rooms[room_id].work_status == WORK_STATUS)
                         heater_work_status_update(room_id, STOP_STATUS);

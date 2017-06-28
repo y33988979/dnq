@@ -51,21 +51,21 @@ dnq_config_t g_dnq_config =
         .rooms = 
         {
             /* room_id, max, min */
-            {0, 20, 28},
-            {1, 20, 28},
+            {0, 20, 30},
+            {1, 20, 30},
             {2, 20, 28},
-            {3, 20, 28},
-            {4, 20, 28},
+            {3, 20, 30},
+            {4, 20, 30},
             {5, 20, 28},
-            {6, 20, 28},
-            {7, 20, 28},
+            {6, 20, 30},
+            {7, 20, 30},
             {8, 20, 28},
-            {9, 20, 28},
+            {9, 20, 30},
             {10, 20, 28},
-            {11, 20, 28},
-            {12, 20, 28},
+            {11, 20, 30},
+            {12, 20, 30},
             {13, 20, 28},
-            {14, 20, 28},
+            {14, 20, 30},
             {15, 20, 28},
         }
     },
@@ -577,11 +577,34 @@ S32 dnq_config_update_temp_policy(policy_config_t *policy_config)
     return room_id;
 }
 
-S32 dnq_config_update_temp_limit(void *cjson_struct)
+S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
 {
-    limit_config_t *limit_config;
-    limit_config = (limit_config_t *)cjson_struct;
-    
+    U32 room_id, i;
+    limit_config_t *curr_limit_config;
+
+    curr_limit_config = dnq_get_temp_limit_config(NULL);
+    curr_limit_config->mode = limit_config->mode;
+
+    /* single mode */
+    if(limit_config->mode == 1)
+    {
+        room_id = limit_config->rooms[0].room_id - 1;
+        memcpy(&curr_limit_config->rooms[room_id],\
+            &limit_config->rooms[0], sizeof(room_temp_limit_t));
+    }
+    else if(limit_config->mode == 0) /* whole all config */
+    {
+        for(i=0; i<DNQ_ROOM_CNT; i++)
+        {
+            memcpy(&curr_limit_config->rooms[i], \
+                &limit_config->rooms[0], sizeof(room_temp_limit_t));
+        }
+        room_id = DNQ_ROOM_MAX;
+    }
+    else
+        DNQ_ERROR(DNQ_MOD_CONFIG, "error mode=%d! value must be 0 or 1!", limit_config->mode);
+
+    DNQ_INFO(DNQ_MOD_CONFIG, "update limit config!");
     return 0;
 }
 
@@ -671,7 +694,7 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             dnq_json_save_file(JSON_FILE_POLICY, json_data, len);
         break;
         case JSON_TYPE_TEMP_LIMIT:
-            ret = dnq_config_update_temp_limit(cjson_struct);
+            ret = dnq_config_update_temp_limit((limit_config_t *)cjson_struct);
             if(!ret)
             {
                 memcpy(&g_dnq_config.limit_config, cjson_struct, sizeof(limit_config_t));
