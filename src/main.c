@@ -90,18 +90,16 @@ int main()
     sem_t sem1 = {0};
     //dnq_debug_setlever(1,5); 
 
-    dnq_debug_setlever(DNQ_MOD_RABBITMQ, 5);
-    
-
-    extern S32 dnq_config_init();    
+    dnq_debug_setlever(DNQ_MOD_RABBITMQ, 5);   
+    //dnq_debug_setlever(DNQ_MOD_CONFIG, 5); 
 
     MAIN_CHECK( dnq_init() );
-    MAIN_CHECK( dnq_config_init() );  
     MAIN_CHECK( dnq_debug_init() );
     MAIN_CHECK( dnq_uart_init() );
+    MAIN_CHECK( dnq_mcu_init() );
+    MAIN_CHECK( dnq_config_init() );  
     MAIN_CHECK( dnq_network_init() );
     MAIN_CHECK( dnq_lcd_init() );
-    MAIN_CHECK( dnq_mcu_init() );
     MAIN_CHECK( dnq_sensor_init() );
     MAIN_CHECK( dnq_keypad_init() );
     MAIN_CHECK( dnq_manage_init() );

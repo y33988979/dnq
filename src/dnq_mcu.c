@@ -450,6 +450,7 @@ S32 dnq_rtc_get_datetime_str(U8 *datetime)
     mcu_unlock();
     if(ret < 0)
         return -1;
+
     memcpy(datetime, &recvbuf[7], 6);
     datetime[7] = '\0';
     return ret;
@@ -464,7 +465,7 @@ S32 dnq_rtc_get_datetime(datetime_t *datetime)
     ret = dnq_rtc_get_datetime_str(str);
     if(ret < 0)
         return -1;
-
+    
     datetime->year = str[0];
     datetime->month = str[1];
     datetime->day = str[2];
@@ -612,10 +613,9 @@ void *mcu_task(void *args)
     datetime_t datetime = {17,6,4,17,40,12};
 
     //dnq_rtc_set_datetime(&datetime);
-    count = 0;
+    count = 1;
     while(1)
     {
-
         if(count%60 == 0)
         {
             /* get datetime from rtc */
@@ -659,9 +659,10 @@ S32 dnq_mcu_init()
 {
     S32 ret;
     dnq_task_t *task;
+    datetime_t datetime = {0};
    
     dnq_heater_ctrl_test();
-
+    ret = dnq_rtc_get_datetime(&datetime);
     task = dnq_task_create("mcu_task", 64*2048, mcu_task, NULL);
     if(task == NULL)
         return -1;

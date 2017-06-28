@@ -9,12 +9,13 @@
 #define DNQ_ROOM_CNT               16
 #define DNQ_ROOM_MAX               16
 
-/* LCD设定温度时，调节的步长 */
+/* LCD设定温度时，调节的步长，单位是50，=0.5度 */
 #define DNQ_TEMP_ADJUST_STEP       50
+/* LCD设定温度校准时，调节的步长 单位是1，=1度 */
 #define DNQ_CORRECT_ADJUST_STEP    1
 
 /* 电暖气工作的高低温极限值，实际温度值要除以100 */
-#define DNQ_TEMP_MAX    3000
+#define DNQ_TEMP_MAX    3100
 #define DNQ_TEMP_MIN    0
 
 /* 云服务器参数 */

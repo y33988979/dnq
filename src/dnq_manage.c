@@ -141,7 +141,7 @@ S32 dnq_proc()
     //current_second = datetime.hour*3600+datetime.minute*60+datetime.second;
 
     /* Traversal all rooms */
-    for(room_id=0; room_id<DNQ_ROOM_CNT; room_id++)
+    for(room_id=0; room_id<1; room_id++)
     {
         temp_error = error_config->rooms[room_id].error*100;
         current_temp = rooms[room_id].curr_temp + rooms[room_id].correct*100;
@@ -178,12 +178,12 @@ S32 dnq_proc()
                 */
                 reach_temp_limit = 0;
                 if(current_temp <= DNQ_TEMP_MIN \
-                    || current_temp <= limit_config->rooms[room_id].min)
+                    || current_temp <= limit_config->rooms[room_id].min*100)
                 {
                     reach_temp_limit = 1;
                     DNQ_WARN(DNQ_MOD_MANAGE, \
-                    "room[%d]'s temprature is too low, the lowest is [%d,%d]. force open heater!", \
-                    room_id, limit_config->rooms[room_id].min, DNQ_TEMP_MIN);
+                    "room[%d]'s temprature[%d] is too low, lowest is %d|%d. force open heater!", \
+                    room_id, current_temp, limit_config->rooms[room_id].min*100, DNQ_TEMP_MIN);
                 }
                 /* 
                 * check until the temprature falls error 
@@ -192,6 +192,10 @@ S32 dnq_proc()
                 else if(current_temp <= setting_temp - temp_error)
                 {   
                     reach_temp_limit = 1;
+                    
+                    DNQ_DEBUG(DNQ_MOD_MANAGE, \
+                    "low_limit check:room[%d]'s temprature[%d] setting_temp=%d, temp_error=%d", \
+                    room_id, current_temp, setting_temp, temp_error);
                 }
 
                 /* 到达了温度临界点，需要改变电暖气工作状态 */
@@ -212,12 +216,13 @@ S32 dnq_proc()
                 */
                 reach_temp_limit = 0;
                 if(current_temp >= DNQ_TEMP_MAX \
-                    || current_temp >= limit_config->rooms[room_id].max)
+                    || current_temp >= limit_config->rooms[room_id].max*100)
                 {
                     reach_temp_limit = 1;
+                    
                     DNQ_WARN(DNQ_MOD_MANAGE, \
-                    "room[%d]'s temprature is too high, the highest is [%d,%d]. force open heater!", \
-                    room_id, limit_config->rooms[room_id].max, DNQ_TEMP_MAX);
+                    "room[%d]'s temprature[%d] is too high, highest is %d|%d. force close heater!", \
+                    room_id, current_temp, limit_config->rooms[room_id].max*100, DNQ_TEMP_MAX);
                 }
                 /* 
                 * check until the temprature rise limit 
@@ -227,6 +232,10 @@ S32 dnq_proc()
                     || current_temp >= DNQ_TEMP_MAX)
                 {
                     reach_temp_limit = 1;  
+                    
+                    DNQ_DEBUG(DNQ_MOD_MANAGE, \
+                    "high_limit check:room[%d]'s temprature[%d] setting_temp=%d, temp_error=%d", \
+                    room_id, current_temp, setting_temp, temp_error);
                 }
 
                 /* 到达了温度临界点，需要改变电暖气工作状态 */
@@ -237,7 +246,7 @@ S32 dnq_proc()
                         heater_work_status_update(room_id, STOP_STATUS);
                     status[room_id] = WAIT_LOW_LIMIT;
                 }
-
+                
                 break;
             case CLOSE_STATUS:
 
@@ -274,24 +283,17 @@ S32 dnq_lcd_init_info_sync()
     init_config = dnq_get_init_config(NULL);
     for(i=0; i<init_config->rooms_cnt; i++)
     {
-        room_id = init_config->rooms[i].room_order;
-        
-        rooms[i].id = init_config->rooms[i].room_order;
-        
-
+        room_id = init_config->rooms[i].room_order;        
+        rooms[i].id = init_config->rooms[i].room_order;   
         strncpy(rooms[i].name, init_config->rooms[i].room_name, SIZE_16);
-
-        #if 1 //utf8 -> gb2312
+        
+        //utf8 -> gb2312
         u2g(init_config->rooms[i].room_name, SIZE_16, gb2312_out,sizeof(gb2312_out));   
         strncpy(rooms[i].name, gb2312_out, SIZE_16);
-
         DNQ_INFO(DNQ_MOD_MANAGE, "[%d]:room_id=%d,room_name='%s'", \
             i,room_id, init_config->rooms[i].room_name);
-        #endif
-        
-        //rooms[i].set_temp = init_config->rooms[i].set_temp;
-        rooms[i].correct = init_config->rooms[i].correct;
-        
+
+        //rooms[i].correct = init_config->rooms[i].correct;
     }
 
     msg.Class = MSG_CLASS_MANAGE;
@@ -324,23 +326,18 @@ S32 dnq_init_info_update()
         DNQ_INFO(DNQ_MOD_MANAGE, "waiting server reply...");
         dnq_msleep(500);
     }
-    
-    printf("g_init.inited2=%d\n", init_info->inited);
-    
+        
     /* 未能获取到初始化信息，先使用之前本地存储的信息 */
     if(!init_info_is_ok())
     {
         DNQ_ERROR(DNQ_MOD_MANAGE, "can't get host init_info! use local config.");
     }
 
-    
     /* 云端回传的时间为字符串格式  "2017-06-04 18:14:18" */    
-    init_info = dnq_get_init_config(NULL);
     memcpy(time_string, init_info->time, sizeof(time_string));
 
     /* 时间字符串转换成datetime结构 */
     dnq_timestr_to_datetime(time_string, &datetime);
-    printf("init_info->time===========\"%s\"\n", init_info->time);
     /* 同步网络时间到rtc芯片 */
     dnq_rtc_datetime_sync(&datetime);
     /* 通知lcd模块，初始化屏幕信息 */
@@ -385,6 +382,7 @@ void *manage_task(void *args)
             case MSG_CLASS_RABBITMQ:
                 DNQ_INFO(DNQ_MOD_MANAGE, "recv rabbitmq msg!");
                 dnq_init_info_update();
+                break;
             default:
                 DNQ_ERROR(DNQ_MOD_MANAGE, "unknow msg type=%d!", pRecvMsg->Class);
             break;

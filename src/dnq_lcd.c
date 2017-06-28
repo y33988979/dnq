@@ -40,11 +40,11 @@ room_item_t g_rooms[DNQ_ROOM_MAX+1] =
  /* id, name ,curr_temp, set_temp, work_status, sn_status, correct*/
     {0, "三年二班", 2210,3200, STOP_STATUS,WORK_STATUS,0},
     {1, "门卫室", 2420,2600,   0,0,0},
-    {2, "走廊蓄热12", 1120,500,0,0,1},
-    {3, "走廊蓄热2", 1120,500, 0,0,0},
+    {2, "走廊蓄热12", 3120,500,0,0,-1},
+    {3, "走廊蓄热2", 3220,500, 0,0,0},
     {4, "科学实验室", 1120,2300,0,0,2},
-    {5, "一年级教研室", 1020,2300,0,0,2},
-    {6, "三年一班", 2210,1900,0,0,1},
+    {5, "一年级教研室", 2740,2300,0,0,2},
+    {6, "三年一班", 2720,1900,0,0,1},
     {7, "水房", 1910,0,0,0,0},
     {8, "闲置房间1-2", 1810,500,0,0,0},
     {9, "会议室南", 590, 500,0,0,-1},
@@ -527,7 +527,7 @@ static S32 lcd_room_current_temp_update(U32 room_id, S32 degree, U32 color)
     S32 is_negative = 0;
 
     g_rooms[room_id].curr_temp = degree;
-    degree += (g_rooms[room_id].correct*100); //temp correct
+    degree += g_rooms[room_id].correct*100; //temp correct
     
     if(degree < 0)
         is_negative = 1;
@@ -565,7 +565,7 @@ static S32 lcd_room_setting_temp_update_adjust(U32 room_id, S32 value, U32 color
     room_item_t *room_item = &g_rooms[room_id];
 
     /* 当前设置温度已达到最低温度 */
-    if(value < 0 && (U32)room_item->set_temp <= 1000) 
+    if(value < 0 && room_item->set_temp <= 1000) 
     {
         /* 
         因为硬件rs485ctrl管脚占用了keypad管脚，
@@ -583,7 +583,7 @@ static S32 lcd_room_setting_temp_update_adjust(U32 room_id, S32 value, U32 color
             return 0;
         }
     }
-    else if(value > 0 && (U32)room_item->set_temp >= 3000)
+    else if(value > 0 && room_item->set_temp >= 3000)
     {
         if(around_enable)
         {
@@ -668,10 +668,39 @@ static S32 lcd_room_temp_correct_update_adjust(U32 room_id, S32 value, U32 color
 {
     S32 ret = 0;
     char buf[16] = {0};
+    U32 around_enable = lcd_is_around_enable();
+    room_item_t *room_item = &g_rooms[room_id];
 
-    g_rooms[room_id].correct += value;
-    
-    sprintf(buf, "%d", g_rooms[room_id].correct);
+    room_item->correct += value;
+    if(value < 0 && room_item->correct < -5)
+    {
+        if(around_enable)
+        {
+            tt;
+            printf("room_item->correct=%d\n", room_item->correct);
+            room_item->correct = 5;
+        }
+        else
+        {
+            DNQ_INFO(DNQ_MOD_LCD, "the correct is lowest!");
+            return 0;
+        }
+    }
+    else if(value > 0 && room_item->correct > 5)
+    {
+        if(around_enable)
+        {
+            room_item->correct = -5;
+        }
+        else
+        {
+            DNQ_INFO(DNQ_MOD_LCD, "the correct is highest!");
+            return 0;
+        }
+    }
+    tt;
+
+    sprintf(buf, "%d", room_item->correct);
     //room_id %= ROOM_CNT_PER_PAGE;
     ret = lcd_room_item_update(room_id, ROOM_ITEM_TEMP_CORRECT, buf, color);
     return ret;
@@ -1252,7 +1281,6 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
     S32 curr_temp;
     S32 set_temp;
     S32 temp_correct;
-    U32 current_second = dnq_get_current_second();
     room_item_t *rooms = dnq_get_rooms();
     policy_config_t *policy_config = dnq_get_temp_policy_config(NULL);
     correct_config_t *correct_config = dnq_get_temp_correct_config(NULL);
@@ -1266,7 +1294,7 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
             {
                 for(i=0; i<DNQ_ROOM_MAX; i++)
                 {
-                    set_temp = dnq_get_room_setting_temp_by_time(i, current_second);
+                    set_temp = dnq_get_room_current_setting_temp(i);
                     if(set_temp != DEGREES_NULL)
                     {
                         ret = lcd_room_setting_temp_update(i, (S32)set_temp, DEFAULT_COLOR);
@@ -1360,7 +1388,7 @@ static S32 lcd_datetime_update()
     S32 ret;
     U8  buf[16] = {0};
     datetime_t datetime;
-    static U32 last_enter_time = 0;
+    static U32 last_enter_time = -1;
     U32 current_enter_time = 0;
     U32 second = dnq_get_current_second();
 

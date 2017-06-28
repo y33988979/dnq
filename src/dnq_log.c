@@ -33,12 +33,16 @@ static debug_module_t g_dbg_modules[DNQ_MOD_CNT] =
     DNQ_MOD_UART,    "Uart   Module",
     DNQ_MOD_LCD,     "LCD    Module",
     DNQ_MOD_MCU,     "MCU    Module",
+    DNQ_MOD_SENSOR,  "SENSOR Module",
     DNQ_MOD_RABBITMQ,"RABBITMQ Module",
     DNQ_MOD_OS,      "OS     Module",
     DNQ_MOD_RTC,     "RTC    Module",
+    DNQ_MOD_CONFIG,  "CONFIG Module",
+    DNQ_MOD_NETWORK, "NETWORK Module",
     DNQ_MOD_MANAGE,  "MANAGE Module",
     DNQ_MOD_GPIO,    "GPIO Module",
     DNQ_MOD_UPGRADE, "UPGRADE Module",
+    DNQ_MOD_CNT,     "UNKNOW Module"
     
 };
 
@@ -53,8 +57,11 @@ int dnq_debug(U32 module_id, U32 lever, const char *fmt, ...)
     all_module_lever = g_dnq_dbg_lever[DNQ_MOD_ALL];
     current_module_lever = g_dnq_dbg_lever[module_id];
 
+    if(all_module_lever == 0 && module_id != DNQ_MOD_ALL)
+        return 0;
+
     /* print log message to console, set lever */
-    if((all_module_lever > 0 && all_module_lever >= lever)\
+    if( all_module_lever > lever \
         || (current_module_lever > 0 && current_module_lever >= lever)
         || module_id == DNQ_MOD_ALL \
         || lever == DNQ_DBG_ALL)
@@ -66,7 +73,7 @@ int dnq_debug(U32 module_id, U32 lever, const char *fmt, ...)
         va_end(ap);
     }
 
-    n = printf(g_dbg_buf, n);
+    //n = printf(g_dbg_buf, n);
         
     return n;
 }

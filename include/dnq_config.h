@@ -350,7 +350,7 @@ init_info_t*
     dnq_get_init_config(init_info_t *config);
 
 timesetting_t* dnq_get_room_setting_by_time(U32 room_id, U32 current_time);
-S32 dnq_get_room_setting_temp_by_time(U32 room_id, U32 current_time);
+S32 dnq_get_room_current_setting_temp(U32 room_id);
 
 #endif /* _DNQ_CONFIG_H_ */
 

@@ -114,7 +114,7 @@ void *dnq_malloc(size_t size)
         exit(1);
     }
     malloc_sem++;
-    printf("malloc size=%d, freesize=%d\n", size, ngx_pool_free_size(app_mem_pool));
+    //printf("malloc size=%d, freesize=%d\n", size, ngx_pool_free_size(app_mem_pool));
     //printf(" dnq_malloc: ptr=0x%08x, len=%d\n", p, size);
     return p;
 }

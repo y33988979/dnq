@@ -697,7 +697,8 @@ S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
     cJSON  *rooms = NULL;
     cJSON  *room_obj = NULL;
     cJSON  *partition_obj = NULL;
-
+    init_info_t *init_info = NULL;
+    
     //type
     strcpy(pdst->type, "init");
 
@@ -791,9 +792,10 @@ S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
         obj, room_obj, JSON_ITEM_ROOM_POSITION, pdst->rooms[i].position, cJSON_String);
     }
 
+    
     /* 标识  已经收到初始化信息。 */
-    g_init.inited = 1;
-    printf("!!!!!!!!!!!g_init.inited=%d\n",g_init.inited);
+    init_info = dnq_get_init_config(NULL);
+    init_info->inited = 1;
     
     return 0;
 }
@@ -1398,8 +1400,8 @@ S32 dnq_config_sync_to_lcd(
         case JSON_TYPE_AUTHORRIZATION:
             break;
         case JSON_TYPE_TEMP_POLICY:
+        case JSON_TYPE_TEMP_LIMIT:
             temp_policy = dnq_get_temp_policy_config(NULL);
-            current_second = dnq_get_current_second();
 
             if(room_id == DNQ_ROOM_MAX)
             {
@@ -1412,7 +1414,7 @@ S32 dnq_config_sync_to_lcd(
             else
             {
                 DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update single room[%d] set_temp=%d!", room_id, value);
-                set_temp = dnq_get_room_setting_temp_by_time(room_id, current_second);
+                set_temp = dnq_get_room_current_setting_temp(room_id);
                 if(set_temp != DEGREES_NULL)
                 { 
                     msg.lenght = room_id;
@@ -1428,8 +1430,6 @@ S32 dnq_config_sync_to_lcd(
             dnq_timestr_to_datetime(temp_policy->time, &datetime);
             dnq_rtc_datetime_sync(&datetime);
             
-            break;
-        case JSON_TYPE_TEMP_LIMIT:
             break;
         case JSON_TYPE_TEMP_ERROR:
 
