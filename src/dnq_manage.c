@@ -141,7 +141,7 @@ S32 dnq_proc()
     //current_second = datetime.hour*3600+datetime.minute*60+datetime.second;
 
     /* Traversal all rooms */
-    for(room_id=0; room_id<1; room_id++)
+    for(room_id=0; room_id<DNQ_ROOM_MAX; room_id++)
     {
         temp_error = error_config->rooms[room_id].error*100;
         current_temp = rooms[room_id].curr_temp + rooms[room_id].correct*100;

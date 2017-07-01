@@ -607,9 +607,12 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
         {
             degrees = curr_policy->rooms[room_id].time_setting[i].degrees;
             if(degrees > limit_config->rooms[0].max)
-                curr_policy->rooms[room_id].time_setting[i].degrees = limit_config->rooms[0].max;
+                DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s hight_limit[%d] can't less than the set_temp[%d]!",\
+                room_id, limit_config->rooms[0].max, degrees);
             if(degrees < limit_config->rooms[0].min)
-                curr_policy->rooms[room_id].time_setting[i].degrees = limit_config->rooms[0].min;
+                DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] can't greater than the set_temp[%d]!",\
+                room_id, limit_config->rooms[0].min, degrees);
+                //curr_policy->rooms[room_id].time_setting[i].degrees = limit_config->rooms[0].min;
         }
         set_temp = dnq_get_room_current_setting_temp(room_id);
         if(set_temp != DEGREES_NULL)
@@ -625,9 +628,11 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
             {
                 degrees = curr_policy->rooms[i].time_setting[j].degrees;
                 if(degrees > limit_config->rooms[0].max)
-                    curr_policy->rooms[i].time_setting[j].degrees = limit_config->rooms[0].max;
+                    DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s hight_limit[%d] can't less than the set_temp[%d]!",\
+                    i, limit_config->rooms[0].max, degrees);
                 if(degrees < limit_config->rooms[0].min)
-                    curr_policy->rooms[i].time_setting[j].degrees = limit_config->rooms[0].min;
+                    DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] can't greater than the set_temp[%d]!",\
+                    i, limit_config->rooms[0].min, degrees);
             }
 
             set_temp = dnq_get_room_current_setting_temp(i);

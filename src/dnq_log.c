@@ -14,80 +14,113 @@
 #include "dnq_log.h"
 #include "dnq_os.h"
 
-static U8 g_dnq_dbg_module[DNQ_MOD_CNT] = {0};
 static U8 g_dnq_dbg_lever[DNQ_MOD_CNT] = {0};
 static U8 g_dbg_buf[2048] = {0};
 static U32 debug_inited = 0;
 
 typedef struct debug_module
 {
-    U32  id;
+    U16  id;
     U8   name_desc[32];
 }debug_module_t;
 
+static S8 *debug_level_info[] = 
+{
+    "don't print any info",
+    "print error info",
+    "print warn info",
+    "print info info",
+    "print debug info",
+    "print verbose info"
+};
+
 static debug_module_t g_dbg_modules[DNQ_MOD_CNT] =
 {
-    0,               "none",
+    DNQ_MOD_NONE,    "none",
     DNQ_MOD_ALL,     "All Module",
-    DNQ_MOD_KEYPAD,  "Keypad Module",
+    DNQ_MOD_OS,      "OS     Module",
     DNQ_MOD_UART,    "Uart   Module",
     DNQ_MOD_LCD,     "LCD    Module",
     DNQ_MOD_MCU,     "MCU    Module",
     DNQ_MOD_SENSOR,  "SENSOR Module",
     DNQ_MOD_RABBITMQ,"RABBITMQ Module",
-    DNQ_MOD_OS,      "OS     Module",
-    DNQ_MOD_RTC,     "RTC    Module",
-    DNQ_MOD_CONFIG,  "CONFIG Module",
-    DNQ_MOD_NETWORK, "NETWORK Module",
+    DNQ_MOD_CONFIG,  "CONFIG Module",    
     DNQ_MOD_MANAGE,  "MANAGE Module",
+    DNQ_MOD_KEYPAD,  "Keypad Module",
     DNQ_MOD_GPIO,    "GPIO Module",
+    DNQ_MOD_NETWORK, "NETWORK Module",
     DNQ_MOD_UPGRADE, "UPGRADE Module",
-    DNQ_MOD_CNT,     "UNKNOW Module"
+    //DNQ_MOD_CNT,     "UNKNOW Module"
     
 };
 
 int dnq_debug(U32 module_id, U32 lever, const char *fmt, ...)
 {
-    int n;
-    int size = 1024;
-    int all_module_lever;
-    int current_module_lever;
+    S32 n;
+    U32 size = 2048;
+    U32 current_module_lever;
     va_list ap;
 
-    all_module_lever = g_dnq_dbg_lever[DNQ_MOD_ALL];
+    if(module_id <= 0 || module_id >= DNQ_MOD_CNT \
+        || lever < DNQ_DBG_NONE || lever > DNQ_DBG_ALL)
+    {
+        printf("[ERROR]dnq_debug: invalid param! module_id=%d, lever=%d", module_id, lever);
+        return -1;
+    }
+
     current_module_lever = g_dnq_dbg_lever[module_id];
+    if(lever > current_module_lever && lever != DNQ_DBG_ALL)
+        return -1;
 
-    if(all_module_lever == 0 && module_id != DNQ_MOD_ALL)
-        return 0;
-
-    /* print log message to console, set lever */
-    if( all_module_lever > lever \
-        || (current_module_lever > 0 && current_module_lever >= lever)
-        || module_id == DNQ_MOD_ALL \
-        || lever == DNQ_DBG_ALL)
+    /* print log message to console */
     {
         va_start(ap, fmt);
         //n = vsprintf(fmt, ap);
-        vfprintf(stdout, fmt, ap);
+        n = vfprintf(stdout, fmt, ap);
         //n = vsnprintf(g_dbg_buf, size, fmt, ap);
         va_end(ap);
+        //fflush(stdout);
     }
-
-    //n = printf(g_dbg_buf, n);
-        
+    //n = printf(g_dbg_buf, n); 
     return n;
 }
 
-int dnq_debug_setlever(U32 module_id, U32 lever)
+/*
+* debug lever:
+* 0:NONE 1:ERROR, 2:WARN, 3:INFO, 4:DEBUG 5:ALL
+*/
+U32 dnq_debug_setlever(U32 module_id, U32 lever)
 {
-    /*
-    * 0:NONE 1:ERROR, 2:WARN, 3:INFO, 4:DEBUG 5:ALL
-    */
-    g_dnq_dbg_lever[module_id] = lever;
+    
+    U32 i;
+    if(module_id <= 0 || module_id >= DNQ_MOD_CNT)
+    {
+        printf("[ERROR]%s module id is invalid! id = %d\n", __FUNCTION__, module_id);
+        return -1;
+    }
+    if(lever < DNQ_DBG_NONE || lever > DNQ_DBG_VERBOSE)
+    {
+        printf("[ERROR]%s level id is invalid! level = %d\n", __FUNCTION__, lever);
+        return -1;
+    }
+
+    /* set all modules */
+    if(module_id == DNQ_MOD_ALL)
+    {
+        for(i=0; i<DNQ_MOD_CNT; i++)
+        {
+            g_dnq_dbg_lever[i] = lever;
+        }
+    }
+    else
+    {
+        g_dnq_dbg_lever[module_id] = lever;
+    }
+    
     return lever;
 }
 
-int dnq_debug_test(int lever)
+U32 dnq_debug_test(int lever)
 {
     dnq_debug_setlever(1, lever);
     DNQ_INFO(DNQ_MOD_RABBITMQ, "INFO: test!");
@@ -99,13 +132,20 @@ int dnq_debug_test(int lever)
 void debug_help()
 {
     U32 i;
-    printf("==========debug help:============\n");
+    printf("=====================================================\n");
     printf("usage:   debugset [module_id] [lever]\n");
     printf("lever: 0:none 1:error 2:warn 3:info 4:debug 5:all\n");
-    printf("example: debugset 1 2\n");
+    printf("example: debugset 1 2\n\n");
+    printf("Module No	Descriptions\n");
     for(i=0; i<DNQ_MOD_CNT; i++)
         printf("%d: %s\n", g_dbg_modules[i].id, g_dbg_modules[i].name_desc);
-    printf("=================================\n");
+    printf("=====================================================\n");
+    printf("Print level     Descriptions\n");
+    for(i=0; i<DNQ_DBG_ALL; i++)
+    {
+        printf("%4d		%s\n", i, debug_level_info[i]);
+    }
+    printf("=====================================================\n");
 }
 
 void dnq_debug_control()

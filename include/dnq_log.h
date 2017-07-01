@@ -7,33 +7,33 @@
 
 typedef enum dnq_debug_module
 {
-    DNQ_MOD_ALL = 0x01,
-    DNQ_MOD_KEYPAD,
-    DNQ_MOD_UART,
-    DNQ_MOD_LCD,
-    DNQ_MOD_MCU,
-    DNQ_MOD_SENSOR,
-    DNQ_MOD_RABBITMQ,
-    DNQ_MOD_OS,
-    DNQ_MOD_RTC,
-    DNQ_MOD_CONFIG,
-    DNQ_MOD_NETWORK,
-    DNQ_MOD_MANAGE,
-    DNQ_MOD_GPIO,
-    DNQ_MOD_UPGRADE,
+    DNQ_MOD_NONE = 0,
+    DNQ_MOD_ALL = 1,
+    DNQ_MOD_OS = 2,
+    DNQ_MOD_UART = 3,
+    DNQ_MOD_LCD = 4,
+    DNQ_MOD_MCU = 5,
+    DNQ_MOD_SENSOR = 6,
+    DNQ_MOD_RABBITMQ = 7,
+    DNQ_MOD_CONFIG = 8,
+    DNQ_MOD_MANAGE = 9,
+    DNQ_MOD_KEYPAD = 10,
+    DNQ_MOD_GPIO = 11,
+    DNQ_MOD_NETWORK = 12,
+    DNQ_MOD_UPGRADE = 13,
     DNQ_MOD_CNT
-}dnq_module_e;
+}dnq_module_id_e;
 
 
 typedef enum dnq_debug_lever
 {
-    DNQ_DBG_NONE    = 0x0,
-    DNQ_DBG_ERROR   = 0x1,
-    DNQ_DBG_WARN    = 0x2,
-    DNQ_DBG_INFO    = 0x3,
-    DNQ_DBG_DEBUG   = 0x4,
-    DNQ_DBG_VERBOSE = 0x5,
-    DNQ_DBG_ALL
+    DNQ_DBG_NONE    = 0,
+    DNQ_DBG_ERROR   = 1,
+    DNQ_DBG_WARN    = 2,
+    DNQ_DBG_INFO    = 3,
+    DNQ_DBG_DEBUG   = 4,
+    DNQ_DBG_VERBOSE = 5,
+    DNQ_DBG_ALL = 6
 
 }dnq_dbg_lever_e;
 
@@ -59,6 +59,7 @@ typedef enum dnq_debug_lever
 //#define Dbc_Print_level(level,format,...)  Dbc_Print(level,"[DBC INFO:][%d][%s][%d][%s]:" format "\n",(int)DRV_OS_TimeNow_MS(),__FILE__,__LINE__,__func__,## __VA_ARGS__)
 
 S32 dnq_debug_init();
+U32 dnq_debug_setlever(U32 module_id, U32 lever);
 
 #endif /* _DNQ_LOG_H_ */
 

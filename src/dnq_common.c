@@ -116,10 +116,10 @@ S32 dnq_init()
     if(g_dnq_init)
         return 0;
 
-    DNQ_INFO(DNQ_MOD_ALL, "================dnq_mange info==================");
-    DNQ_INFO(DNQ_MOD_ALL, "software=0x%d, hardware=0x%d", SWVER, HWVER);
-    DNQ_INFO(DNQ_MOD_ALL, "Build Time: %s %s", __DATE__ , __TIME__  );
-    DNQ_INFO(DNQ_MOD_ALL, "================================================");
+    DNQ_PRINT(DNQ_MOD_OS, "================dnq_mange info==================");
+    DNQ_INFO(DNQ_MOD_OS, "software=0x%d, hardware=0x%d", SWVER, HWVER);
+    DNQ_INFO(DNQ_MOD_OS, "Build Time: %s %s", __DATE__ , __TIME__  );
+    DNQ_INFO(DNQ_MOD_OS, "================================================");
     
     dnq_time_init();
     dnq_checksum_init();
