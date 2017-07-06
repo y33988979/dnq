@@ -416,10 +416,22 @@ void dnq_datetime_print(datetime_t *datetime)
             datetime->hour,datetime->minute,datetime->second);
 }
 
+S32 dnq_kernel_date_update(datetime_t *datetime)
+{
+    S32 ret;
+    U8  datetime_string[64] = {0};
+    
+    sprintf(datetime_string, "date -s \"%04d-%02d-%02d %02d:%02d:%02d\"",\
+        datetime->year+2000, datetime->month, datetime->day,\
+        datetime->hour, datetime->minute, datetime->second);
+    ret = dnq_system_call(datetime_string);
+    return ret;
+}
+
 S32 dnq_rtc_set_datetime(datetime_t *datetime)
 {
     S32 ret;
-    U8  recvbuf[64] = {0};
+    U8  recvbuf[64] = {0}; 
 
     if(dnq_datetime_check(datetime) < 0)
         return -1;
@@ -435,6 +447,9 @@ S32 dnq_rtc_set_datetime(datetime_t *datetime)
         DNQ_ERROR(DNQ_MOD_MCU, "set datatime error!");
         return -1;
     }
+
+    /* sync kernel datetime */
+    dnq_kernel_date_update(datetime);
     
     DNQ_INFO(DNQ_MOD_MCU, "set_datetime: ret=%d\n", ret);
     return ret;
@@ -663,6 +678,9 @@ S32 dnq_mcu_init()
    
     dnq_heater_ctrl_test();
     ret = dnq_rtc_get_datetime(&datetime);
+    if(ret != -1)
+        dnq_kernel_date_update(&datetime);
+
     task = dnq_task_create("mcu_task", 64*2048, mcu_task, NULL);
     if(task == NULL)
         return -1;
