@@ -1209,7 +1209,8 @@ S32 upgrade_task()
                 }
 
                 /* upgrade done! */
-                free(g_upgrd_msg.data);
+                if(g_upgrd_msg.data && g_upgrd_msg.data_len > UPGRD_MSG_LEN_MAX)
+                    free(g_upgrd_msg.data);
                 upgrd_status = UPGRD_WAIT;
                 err_code = 0;
 

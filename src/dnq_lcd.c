@@ -919,6 +919,7 @@ static S32 lcd_update_all()
     sprintf(mac_info, "MACµÿ÷∑: %02X-%02X-%02X-%02X-%02X-%02X", \
         mac_addr[0], mac_addr[1], mac_addr[2], \
         mac_addr[3], mac_addr[4], mac_addr[5] );
+
     ret = lcd_mac_info_update(mac_info);
     ret = lcd_net_info_update(NET_INFO_STR);
     ret = lcd_cmd_info_update(CMD_INFO_STR);

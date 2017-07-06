@@ -903,9 +903,11 @@ S32 dnq_net_get_macaddr(U8 *if_name, U8 *mac_addr)
     mac_addr[4] = ifr.ifr_ifru.ifru_hwaddr.sa_data[4];
     mac_addr[5] = ifr.ifr_ifru.ifru_hwaddr.sa_data[5];
 
-    //DNQ_INFO(DNQ_MOD_NETWORK, "set mac_addr success: %02X:%02X:%02X:%02X:%02X:%02X",\
+    /*
+    DNQ_INFO(DNQ_MOD_NETWORK, "set mac_addr success: %02X:%02X:%02X:%02X:%02X:%02X",\
     mac_addr[0], mac_addr[1], mac_addr[2],\
     mac_addr[3], mac_addr[4], mac_addr[5]);
+    */
     close(sockfd);
     
     return 0;
@@ -1243,7 +1245,7 @@ S32 dnq_network_check()
 
 void dnq_get_mac_addr(U8 *mac_addr)
 {
-    strncpy(mac_addr, g_host_netinfo.mac, 16);
+    memcpy(mac_addr, g_host_netinfo.mac, 16);
 }
 
 U8 *dnq_get_mac_string()
@@ -1266,6 +1268,7 @@ S32 dnq_netinfo_init()
     sprintf(netinfo->mac_str, "%02x%02x%02x%02x%02x%02x", \
         netinfo->mac[0], netinfo->mac[1], netinfo->mac[2],
         netinfo->mac[3], netinfo->mac[4], netinfo->mac[5]);
+
     netinfo->ipaddr = dnq_net_get_ipaddr(ETH_NAME);
     netinfo->mask = dnq_net_get_mask(ETH_NAME);
     netinfo->gateway = dnq_net_get_gw_addr(ETH_NAME);

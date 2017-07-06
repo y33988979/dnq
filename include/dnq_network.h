@@ -19,7 +19,7 @@ typedef enum _net_status
 typedef struct _host_net_info
 {
     U8  if_name[6];
-    U8  mac[6];
+    U8  mac[16];
     U8  mac_str[16];
     U32 ipaddr;
     U32 mask;

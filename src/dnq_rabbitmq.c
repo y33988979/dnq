@@ -1426,7 +1426,6 @@ S32 dnq_config_sync_to_lcd(
 
             datetime_t datetime = {0};
             /* 同步网络时间到rtc */
-            printf("11111111temp_policy->time=%s\n", temp_policy->time);
             dnq_timestr_to_datetime(temp_policy->time, &datetime);
             dnq_rtc_datetime_sync(&datetime);
             
