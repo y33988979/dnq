@@ -83,7 +83,7 @@ static S32 recv_cmd_from_sensor(U8 *cmdbuf, U32 len)
         rlen = dnq_sensor_uart_read(cmdbuf+total_len, len-total_len);
         if(rlen < 0)
         {
-            DNQ_ERROR(DNQ_MOD_MCU, "recv error!");
+            DNQ_ERROR(DNQ_MOD_SENSOR, "recv error!");
             return -1;
         }
         total_len += rlen;
@@ -94,12 +94,12 @@ static S32 recv_cmd_from_sensor(U8 *cmdbuf, U32 len)
 
     if(time < 0)
     {
-        DNQ_DEBUG(DNQ_MOD_MCU, "recv timeout! received %d bytes!", total_len);
+        DNQ_DEBUG(DNQ_MOD_SENSOR, "recv timeout! received %d bytes!", total_len);
         return -1;
     }
     if(total_len != len)
     {
-        DNQ_ERROR(DNQ_MOD_MCU, "datalen error! received %d bytes, \
+        DNQ_ERROR(DNQ_MOD_SENSOR, "datalen error! received %d bytes, \
 but %d bytes is expected!", total_len, len);
         return -1;
     }  
@@ -121,16 +121,19 @@ static S32 dnq_get_room_temperature(U32 room_id)
     cmdbuf[7] = crc_value>>8 & 0xFF;
     cmdbuf[8] = crc_value & 0xFF;
 
-
+#ifndef DNQ_RS485_AUTO_TXRX_SUPPORT 
     dnq_rs485_ctrl_high();
+#endif
     
     ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
     if(ret < 0)
         printf("dnq_sensor_uart_write error!\n");
     dnq_sensor_uart_sync();
-    dnq_msleep(100);
+    dnq_msleep(10);
     
+#ifndef DNQ_RS485_AUTO_TXRX_SUPPORT 
     dnq_rs485_ctrl_low(); 
+#endif
 
     ret = recv_cmd_from_sensor(recvbuf, SENSOR_RESPONSE_LEN);
     if(ret < 0)
@@ -139,7 +142,7 @@ static S32 dnq_get_room_temperature(U32 room_id)
     }
 
     temperature = recvbuf[7]<<8|recvbuf[8];
-    DNQ_DEBUG(DNQ_MOD_MCU, "room %d temperature is %d.%d'C!",\
+    DNQ_DEBUG(DNQ_MOD_SENSOR, "room %d temperature is %d.%d'C!",\
         room_id, temperature/100, (temperature%100)/10);
 
     return temperature;
@@ -213,8 +216,10 @@ S32 dnq_sensor_init()
 {
     S32 ret;
     dnq_task_t *task;
-   
+    
+#ifndef DNQ_RS485_AUTO_TXRX_SUPPORT 
     dnq_rs485_ctrl_enable();
+#endif
     
     task = dnq_task_create("sensor_task", 64*2048, sensor_task, NULL);
     if(task == NULL)
@@ -227,7 +232,9 @@ S32 dnq_sensor_init()
 S32 dnq_sensor_deinit()
 {   
     dnq_task_delete(g_sensor_task);
+#ifndef DNQ_RS485_AUTO_TXRX_SUPPORT 
     dnq_rs485_ctrl_disable();
+#endif
     return 0;
 }
 
