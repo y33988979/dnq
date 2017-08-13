@@ -614,9 +614,9 @@ S32 dnq_heater_ctrl_test()
     for(i=0; i<3; i++)
     {
         dnq_open_all_heater();
-        dnq_msleep(100);
+        dnq_msleep(200);
         dnq_close_all_heater();
-        dnq_msleep(100);
+        dnq_msleep(200);
     }
 }
 

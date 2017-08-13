@@ -32,6 +32,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <linux/reboot.h>
+#include <sys/reboot.h>
 #include <asm/types.h>
 #include <sys/ioctl.h>
 #include <ctype.h>
@@ -67,6 +69,8 @@ static U8   password[] =    "123456";
 static U8   g_dbg_lever = DBG_ALL;
 static upgrd_msg_t  g_upgrd_msg = {0};
 static sem_t  upgrd_sem;
+static U32 app_hwver;
+static U32 app_swver;
 
 static U8   upgrd_info_desc[] =
     {0x47, 0x10, 0x00 ,0x02, 0x00, \
@@ -708,10 +712,10 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
     }
 
     /* check hardware version */
-    if(info->hw_ver != HWVER)
+    if(info->hw_ver != app_hwver)
     {
         UPGRD_ERROR("the hw_version is not match!");
-        UPGRD_ERROR("host HWVER=0x%08x, upgrd HWVER=0x%08x", HWVER, info->hw_ver);
+        UPGRD_ERROR("host HWVER=0x%08x, upgrd HWVER=0x%08x", app_hwver, info->hw_ver);
         return ERR_HWVER;
     }
 
@@ -733,20 +737,20 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
     if(upgrd_mode == 1)
     {
         /* 遇到高版本升级 */
-        if(info->sw_ver <= SWVER)
+        if(info->sw_ver <= app_swver)
         {
             UPGRD_ERROR( "upgrd_mode:%d, Not need upgrd! \
-                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, SWVER, info->sw_ver);
+                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, app_swver, info->sw_ver);
             return ERR_SWVER;
         }
     }
     else if(upgrd_mode == 2)
     {
         /* 指定版本号升级 */
-        if(info->need_ver != SWVER)
+        if(info->need_ver != app_swver)
         {
             UPGRD_ERROR( "upgrd_mode:%d, Not need upgrd! \
-                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, SWVER, info->sw_ver);
+                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, app_swver, info->sw_ver);
             return ERR_SWVER;
         }
     }
@@ -760,7 +764,7 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
 
     /* need upgrade */
     UPGRD_INFO("upgrd_mode:%d,upgrade data CRC:0x%08x",upgrd_mode,info->crc_32);
-    UPGRD_INFO("current SWVER=0x%08x, upgrd SWVER=0x%08x", SWVER, info->sw_ver);
+    UPGRD_INFO("current SWVER=0x%08x, upgrd SWVER=0x%08x", app_swver, info->sw_ver);
     UPGRD_INFO("upgrade soft ready!!");
 
     /* save info */
@@ -1083,18 +1087,19 @@ S32 send_msg_to_upgrade(U8 *msg, U32 len)
     }
 
     upgrd_msg->is_processing = 1;
-    /* small buffer */
+    /* small buffer for upgrade message */
     if(len < UPGRD_MSG_LEN_MAX)
     {
         upgrd_msg->data_len = len;
         upgrd_msg->data = upgrd_msg->msg;
         memcpy(upgrd_msg->msg, msg, len);
     }
-    else /* large buffer */
+    else /* large buffer for upgrade data */
     {
         upgrd_msg->data = malloc(len+1);
         if(upgrd_msg->data == NULL)
         {
+            upgrd_msg->is_processing = 0;
             UPGRD_ERROR("malloc failed: err=%s\n", strerror(errno));
             return -1;
         }
@@ -1104,6 +1109,8 @@ S32 send_msg_to_upgrade(U8 *msg, U32 len)
 
     if(sem_post(&upgrd_sem) < 0)
     {
+        free(upgrd_msg->data);
+        upgrd_msg->is_processing = 0;
         UPGRD_ERROR("sem_post error: err=%s\n", strerror(errno));
         return -1;
     }
@@ -1145,7 +1152,7 @@ S32 recv_msg_timeout(U8 **msg, U32 timeout_ms)
 S32 upgrade_task()
 {
     S32  ret;
-    S32  err_code = 0;
+    S32  ret_code = 0;
     U8  *msg = NULL;
     S32  len;
     upgrd_channel_t *pchnl;
@@ -1160,6 +1167,7 @@ S32 upgrade_task()
             continue;
         }
 
+        ret_code = 0;
         /* process upgrade message */
         switch(upgrd_status)
         {
@@ -1168,13 +1176,13 @@ S32 upgrade_task()
                 ret = upgrd_info_check((upgrd_info_t*)msg, len);
                 if(ret < 0)
                 {
-                    err_code = ret;
+                    ret_code = ret;
                     break;
                 }
 
                 /* upgrade info correct, waiting upgrade data */
                 upgrd_status = UPGRD_READY;
-                err_code = UPGRD_READY;
+                ret_code = UPGRD_READY;
                 break;
 
             /* check upgrade data */
@@ -1185,7 +1193,7 @@ S32 upgrade_task()
                 ret = upgrd_data_check(msg, len);
                 if(ret < 0)
                 {
-                    err_code = ERR_CRC;
+                    ret_code = ERR_CRC;
                     break;
                 }
 
@@ -1195,7 +1203,7 @@ S32 upgrade_task()
                 ret = upgrd_data_write(UPGRD_FILE, msg, len);
                 if(ret < 0)
                 {
-                    err_code = ERR_WRITE;
+                    ret_code = ERR_WRITE;
                     break;
                 }
 
@@ -1204,15 +1212,20 @@ S32 upgrade_task()
                 ret = upgrd_data_decompress(UPGRD_FILE);
                 if(ret < 0)
                 {
-                    err_code = ERR_DECOMPRESS;
+                    ret_code = ERR_DECOMPRESS;
                     break;
                 }
 
+                upgrd_status = UPGRD_DONE;
+                UPGRD_INFO("upgrade done!");
+                
                 /* upgrade done! */
                 if(g_upgrd_msg.data && g_upgrd_msg.data_len > UPGRD_MSG_LEN_MAX)
+                {
                     free(g_upgrd_msg.data);
-                upgrd_status = UPGRD_WAIT;
-                err_code = 0;
+                }
+                    
+                ret_code = 0;
 
             break;
             default:
@@ -1220,17 +1233,24 @@ S32 upgrade_task()
                 break;
         }
 
-        if(err_code < 0)
+        if(ret_code < 0)
         {
             upgrd_info_reset();
             upgrd_status = UPGRD_WAIT;
-            UPGRD_ERROR("upgrade error! err_code=%d !", err_code);
+            UPGRD_ERROR("upgrade error! ret_code=%d !", ret_code);
         }
 
         upgrd_msg_reset();
-        UPGRD_INFO("upgrade success! err_code=%d !", err_code);
+        UPGRD_INFO("upgrd msg process! ret_code=%d !", ret_code);
         /* send response to server */
-        send_response_to_server(g_conn, pchnl, err_code);
+        send_response_to_server(g_conn, pchnl, ret_code);
+
+        if(upgrd_status == UPGRD_DONE)
+        {
+            UPGRD_INFO("reboot dnqV2...");
+            sync();
+            reboot( RB_AUTOBOOT );
+        }
     }
 }
 
@@ -1295,10 +1315,50 @@ S32 dnq_upgrd_deinit()
     return 0;
 }
 
+S32 dnq_get_app_version()
+{
+    FILE *fp = NULL;
+    S32  nread = 0;
+    U8  *ptr = NULL;
+    U8   buffer[128] = {0};
+
+    fp = fopen(VERSION_FILE, "r");
+    if(fp == NULL)
+    {
+        UPGRD_ERROR("fopen %s failed! errno=%d:%s", \
+            VERSION_FILE, errno, strerror(errno));
+        return -1;
+    }
+
+    while(1)
+    {
+        memset(buffer, 0, sizeof(buffer));
+        ptr = fgets(buffer, sizeof(buffer), fp);
+        if(!ptr)
+            break;
+
+        printf("buffer=%s\n", buffer);
+        if(strncmp(buffer, "HWVER", 5) == 0)
+        {
+            sscanf(buffer, "HWVER:0x%x", &app_hwver);
+        }
+        else if(strncmp(buffer, "SWVER", 5) == 0)
+        {
+            sscanf(buffer, "SWVER:0x%x", &app_swver);
+        }
+    }
+
+    fclose(fp);
+
+    UPGRD_INFO("App version: HWVER=0x%x, SWVER=0x%x.", app_hwver, app_swver);
+
+    return (app_hwver<<16 | app_swver);
+}
+
 S32 upgrade_main()
 {
+    dnq_get_app_version();
     dnq_checksum_init();
-
     dnq_upgrd_init();
 
     //umask(0);
@@ -1310,6 +1370,10 @@ S32 main(int argc, char **argv)
     pid_t pid;
     U32 is_daemon = 1;
 
+    printf("|--------UPGRADE VERSION %s at %s --------|\n",__DATE__,__TIME__);
+    printf("|--------UPGRADE HWVER=0x%x  --------|\n", HWVER);
+    printf("|--------UPGRADE SWVER=0x%x  --------|\n", UPGRD_SWVER);
+    
     /* foreground */
     if(argc == 2 && strcmp("-f", argv[1])==0)
     {

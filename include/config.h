@@ -36,6 +36,8 @@
 #define MAIN_PROGRAM_NAME   "dnq_manage"
 #define UPGRD_PROGRAM_NAME  "dnq_upgrade"
 
+#define VERSION_FILE        "version.txt"
+
 /*
 *3 获取房屋数量，保存全局配置
 *隔一段时间要向云端要一次时间，进行同步

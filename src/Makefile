@@ -21,26 +21,36 @@ UPGRADE_OBJS = utils.o dnq_checksum.o \
 			   ngx_palloc.o \
 
 INCLUDES = -I. -I$(TOP_DIR)/include
-CFLAGS = -g -DHWVER=$(HardwareVersion) -DSWVER=$(SoftwareVersion) -Wl,--hash-style=sysv
+CFLAGS = -g -DHWVER=$(HardwareVersion) -DSWVER=$(SoftwareVersion) -DUPGRD_SWVER=$(UPGRADE_SWVER) -Wl,--hash-style=sysv
 LDFLAGS = -lm -lrabbitmq -lpthread -liconv
 LDPATH = -L$(TOP_DIR)/lib
 LIBS = 
 
 AT := @
-TARGET = dnq_manage dnq_upgrade
+TARGET = dnq_manage dnq_upgrade 
 
-all: $(TARGET)
+all: prepare $(TARGET) version 
+
+prepare:
+	@touch main.c
+
+version:
+	-$(AT)rm version.txt
+	$(AT)echo "HWVER:$(HardwareVersion)" > version.txt
+	$(AT)echo "SWVER:$(SoftwareVersion)" >> version.txt
 
 dnq_manage: $(OBJS)
 	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $(LDPATH) -static $^ -o $@.static $(LDFLAGS)
 	@echo " LD   $^ "
 	@echo " Create $@ success! (static compile)"
 	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDPATH) $(LDFLAGS) 
+	@tar zcvf $@.tar.gz $@
 	@echo " LD   $^ "
 	@echo " Create $@ success!"
 
 dnq_upgrade: $(UPGRADE_OBJS)
 	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $^ -o $@ $(LDPATH) $(LDFLAGS) 
+	@tar zcvf $@.tar.gz $@
 	@echo " LD   $^ "
 	@echo " Create $@ success!"
 
