@@ -152,6 +152,10 @@ static S32 dnq_get_room_temperature(U32 room_id)
 static S32 update_sn_status(U32 room_id, U32 status)
 {
     dnq_msg_t msg = {0};
+    room_item_t *room = dnq_get_room_item(room_id);
+
+    if(room->sn_status == status)
+        return 0;
     
     msg.Class = MSG_CLASS_MCU;
     msg.code = room_id;          /* room's id */
@@ -197,14 +201,12 @@ void *sensor_task(void *args)
             temperature = dnq_get_room_temperature(i);
             if(temperature < 0)
             {
-                if(rooms[i].sn_status == WORK_STATUS)
-                    update_sn_status(i, STOP_STATUS);
+                update_sn_status(i, STOP_STATUS);
                 dnq_sleep(1);
                 continue;
             }
 
-            if(rooms[i].sn_status == STOP_STATUS)
-                update_sn_status(i, 1);
+            update_sn_status(i, WORK_STATUS);
             update_temperature(i, temperature);
             
             dnq_sleep(DNQ_SENSOR_SCAN_INTERVAL);

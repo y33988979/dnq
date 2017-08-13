@@ -3,7 +3,7 @@
 
 /* 内存池的大小 */
 #define DNQ_OS_MEM_POOL_SIZE       (1*1024*1024)
-#define DNQ_APP_MEM_POOL_SIZE      8192
+#define DNQ_APP_MEM_POOL_SIZE      (1*1024*1024)
 
 /* 电暖气当前路数，电暖气最大路数 */ 
 #define DNQ_ROOM_CNT               16

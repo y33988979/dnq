@@ -102,7 +102,11 @@ U16 dnq_get_room_temp_error(U32 room_id)
 static S32 heater_work_status_update(U32 room_id, U32 status)
 {
     dnq_msg_t msg = {0};
-        
+    room_item_t *room = dnq_get_room_item(room_id);
+    
+    if(room->work_status == status)
+        return 0;
+    
     msg.Class = MSG_CLASS_MANAGE;
     msg.code = room_id;               /* room's id */
     msg.lenght = ROOM_ITEM_WORK_STATUS; /* room's item id */
@@ -157,8 +161,7 @@ S32 dnq_proc()
             DNQ_DEBUG(DNQ_MOD_MANAGE, \
                 "room[%d] found not temp policy! close the hearter", room_id);
             dnq_heater_close(room_id);
-            if(rooms[room_id].work_status == WORK_STATUS)
-                heater_work_status_update(room_id, STOP_STATUS);
+            heater_work_status_update(room_id, STOP_STATUS);
             status[room_id] = CLOSE_STATUS;
             continue;
         }
@@ -202,8 +205,7 @@ S32 dnq_proc()
                 if(reach_temp_limit)
                 {
                     dnq_heater_open(room_id);
-                    if(rooms[room_id].work_status == STOP_STATUS)
-                        heater_work_status_update(room_id, WORK_STATUS);
+                    heater_work_status_update(room_id, WORK_STATUS);
                     status[room_id] = WAIT_HIGH_LIMIT;
                 }
                 
@@ -242,8 +244,7 @@ S32 dnq_proc()
                 if(reach_temp_limit)
                 {
                     dnq_heater_close(room_id);
-                    if(rooms[room_id].work_status == WORK_STATUS)
-                        heater_work_status_update(room_id, STOP_STATUS);
+                    heater_work_status_update(room_id, STOP_STATUS);
                     status[room_id] = WAIT_LOW_LIMIT;
                 }
                 
@@ -258,8 +259,7 @@ S32 dnq_proc()
                 if(setting_temp >= current_temp)
                 {
                     dnq_heater_open(room_id);
-                    if(rooms[room_id].work_status == STOP_STATUS)
-                        heater_work_status_update(room_id, WORK_STATUS);
+                    heater_work_status_update(room_id, WORK_STATUS);
                     status[room_id] = WAIT_HIGH_LIMIT;
                 }
 
