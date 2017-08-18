@@ -227,7 +227,7 @@ static S32 dnq_uart_read(U32 fd, U8 *buffer, U32 len)
     for(i=0; i<rlen; i++)
         DNQ_PRINT2(DNQ_MOD_UART, "%02x ", buffer[i]);
     DNQ_PRINT2(DNQ_MOD_UART, "\n");
-    
+
     return rlen;
 }
 

@@ -472,8 +472,11 @@ static S32 lcd_room_item_update(U32 room_id, U32 idx, U8 *content, U32 color)
         return -1;
     }
     
-    if(!room_in_current_page(room_id))
+    if(!room_in_current_page(room_id)) {
+        DNQ_DEBUG(DNQ_MOD_LCD, "room[%d] is not in current page[%d]!", \
+            room_id, lcd_get_current_page());
         return 0;
+    }
 
     if(idx > ONE_ROOM_ITEM_CNT)
         DNQ_ERROR(DNQ_MOD_LCD, "room's index[%d] error! it must less then %d",\
@@ -839,7 +842,9 @@ static S32 lcd_rooms_update_by_page(U32 page_num)
 
     //if(lcd_get_current_page() == page_num)
     //    return 0;
-    
+
+    lcd_set_current_page(page_num);
+
     room_offset = ROOM_CNT_PER_PAGE*page_num;
     for(i=0; i<ROOM_CNT_PER_PAGE; i++)
     {
@@ -847,8 +852,8 @@ static S32 lcd_rooms_update_by_page(U32 page_num)
         color = g_lcd_items[i].color;
         ret = lcd_item_update_color(i, color);
         #else
-        DNQ_DEBUG(DNQ_MOD_LCD, "room_id==%d, name=%s\n", room_id,g_rooms[room_id].name);
         room_id = room_offset+i;
+        DNQ_DEBUG(DNQ_MOD_LCD, "room_id==%d, name=%s\n", room_id,g_rooms[room_id].name);
         ret = lcd_room_id_update(room_id, g_rooms[room_id].id, DEFAULT_COLOR);
         ret = lcd_room_name_update(room_id, g_rooms[room_id].name, DEFAULT_COLOR);
         ret = lcd_room_current_temp_update(room_id, g_rooms[room_id].curr_temp, DEFAULT_COLOR);
@@ -859,7 +864,6 @@ static S32 lcd_rooms_update_by_page(U32 page_num)
         ret = lcd_room_select_flag_update(room_id, HIDE_FLAG);
         #endif
     }
-    lcd_set_current_page(page_num);
     DNQ_INFO(DNQ_MOD_LCD, "update all rooms'item! page=%d", page_num);
     return ret;
 }
@@ -1003,6 +1007,7 @@ static S32 lcd_next_room_foucs(U32 current_room, U32 direction)
                 current_room++;
                 current_page++;
                 lcd_rooms_update_by_page(current_page);
+                printf("current_page====%d\n", current_page);
             }
         }
         else /* 当前焦点不是当前页的最后一项，向下移动焦点 */
@@ -1166,7 +1171,6 @@ static S32 lcd_setting_key_process(U32 key_code, U32 key_status)
             {   
                 /* move room */
                 next_room = lcd_next_room_foucs(current_room, key_code);
-
                 if(next_room != -1)
                 {
                     lcd_room_select_flag_update(current_room, HIDE_FLAG);

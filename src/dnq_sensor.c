@@ -80,6 +80,7 @@ static S32 recv_cmd_from_sensor(U8 *cmdbuf, U32 len)
     U16 crc16 = 0;
     while(time--)
     {
+        dnq_msleep(300);
         rlen = dnq_sensor_uart_read(cmdbuf+total_len, len-total_len);
         if(rlen < 0)
         {
@@ -89,7 +90,6 @@ static S32 recv_cmd_from_sensor(U8 *cmdbuf, U32 len)
         total_len += rlen;
         if(total_len >= len)  /* recv complete */
             break;
-        dnq_msleep(100);
     }
 
     if(time < 0)
@@ -138,6 +138,7 @@ static S32 dnq_get_room_temperature(U32 room_id)
     ret = recv_cmd_from_sensor(recvbuf, SENSOR_RESPONSE_LEN);
     if(ret < 0)
     {
+        DNQ_DEBUG(DNQ_MOD_SENSOR, "room %d get temperature error!", room_id);
         return -1;
     }
 

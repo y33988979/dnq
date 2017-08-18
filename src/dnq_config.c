@@ -383,11 +383,11 @@ S32 dnq_data_file_create()
     ret = dnq_file_write(DNQ_DATA_FILE, (U8*)&g_dnq_config, sizeof(dnq_config_t));
     if(ret < 0)
     {
-        DNQ_INFO(DNQ_MOD_CONFIG, "create defult data success!!!");
+        DNQ_ERROR(DNQ_MOD_CONFIG, "create defult data failed!!!");
         remove(DNQ_DATA_FILE);
     }
     else
-        DNQ_ERROR(DNQ_MOD_CONFIG, "create defult data failed!!!");
+        DNQ_INFO(DNQ_MOD_CONFIG, "create defult data success!!!");
     
     return ret;
 }
