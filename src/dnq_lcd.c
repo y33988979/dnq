@@ -38,22 +38,22 @@ static dnq_appinfo_t  *lcd_appinfo = NULL;
 room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
 {
  /* id, name ,curr_temp, set_temp, work_status, sn_status, correct*/
-    {0, "三年二班", 2210,3200, STOP_STATUS,WORK_STATUS,0},
-    {1, "门卫室", 2420,2600,   0,0,0},
-    {2, "走廊蓄热12", 3120,500,0,0,-1},
-    {3, "走廊蓄热2", 3220,500, 0,0,0},
-    {4, "科学实验室", 1120,2300,0,0,2},
-    {5, "一年级教研室", 2740,2300,0,0,2},
-    {6, "三年一班", 2720,1900,0,0,1},
-    {7, "水房", 1910,0,0,0,0},
-    {8, "闲置房间1-2", 1810,500,0,0,0},
-    {9, "会议室南", 590, 500,0,0,-1},
-    {10, "会议室北",520,500,0,0,-1},
-    {11, "楼梯间2-3", 1320,1500,0,0,2},
-    {12, "楼梯间4-5", 1320,1500,0,0,0},
-    {13, "楼梯间6-7", 1320,1500,0,0,0},
-    {14, "楼梯间8-9", 1320,1500,0,0,1},
-    {15, "大会议室", 1320,1500,0,0,2},
+    {0, "三年二班",    0,2600, STOP_STATUS,0,0},
+    {1, "门卫室",      0,2600, 0,0,0},
+    {2, "走廊蓄热12",  0,2600, 0,0,0},
+    {3, "走廊蓄热2",   0,2600, 0,0,0},
+    {4, "科学实验室",  0,2600, 0,0,0},
+    {5, "一年级教研室", 0,2600,0,0,0},
+    {6, "三年一班",    0,2600,0,0,0},
+    {7, "水房",        0,2600,0,0,0},
+    {8, "闲置房间1-2", 0,2600,0,0,0},
+    {9, "会议室南",    0,2600,0,0,0},
+    {10, "会议室北",   0,2600,0,0,0},
+    {11, "楼梯间2-3",  0,2600,0,0,0},
+    {12, "楼梯间4-5",  0,2600,0,0,0},
+    {13, "楼梯间6-7",  0,2600,0,0,0},
+    {14, "楼梯间8-9",  0,2600,0,0,0},
+    {15, "大会议室",   0,2600,0,0,0},
     {0,0,0,0,0,0,0},
    
 };
@@ -679,8 +679,6 @@ static S32 lcd_room_temp_correct_update_adjust(U32 room_id, S32 value, U32 color
     {
         if(around_enable)
         {
-            tt;
-            printf("room_item->correct=%d\n", room_item->correct);
             room_item->correct = 5;
         }
         else
@@ -701,7 +699,6 @@ static S32 lcd_room_temp_correct_update_adjust(U32 room_id, S32 value, U32 color
             return 0;
         }
     }
-    tt;
 
     sprintf(buf, "%d", room_item->correct);
     //room_id %= ROOM_CNT_PER_PAGE;
@@ -1052,7 +1049,7 @@ static S32 lcd_next_item_foucs(U32 current_foucs, U32 direction)
 static S32 lcd_showing_key_process(U32 key_code, U32 key_status)
 {
     S32 ret;
-    U32 i;
+    U32 room_id;
     U32 page_count = lcd_get_page_count();
     U32 current_page = lcd_get_current_page();
     U32 around_show_enable = lcd_is_around_enable();
@@ -1062,7 +1059,7 @@ static S32 lcd_showing_key_process(U32 key_code, U32 key_status)
         DNQ_INFO(DNQ_MOD_LCD, "have only one page!");
         return 0;
     }
-        
+
     switch (key_code)
     {
         case DNQ_KEY_UP:
@@ -1128,12 +1125,13 @@ static S32 lcd_showing_key_process(U32 key_code, U32 key_status)
             /* entry to setting status */
             DNQ_INFO(DNQ_MOD_LCD, "enter lcd setting status!");
             lcd_set_operate_status(LCD_STATUS_SETTING);
-            
-            lcd_set_current_room(current_page?ROOM_CNT_PER_PAGE:0);
+
+            room_id = current_page?ROOM_CNT_PER_PAGE:0;
+            lcd_set_current_room(room_id);
             lcd_set_current_foucs(ROOM_ITEM_SELECT_FLAG);
 
             /* flag icon show for setting status */
-            lcd_room_select_flag_update(0, SELECT_FLAG);
+            lcd_room_select_flag_update(room_id, SELECT_FLAG);
 
         break;
         case DNQ_KEY_OK:
@@ -1283,6 +1281,7 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
 {
     S32 i, ret;
     U32 room_id;
+    S32 rooms_mask = 0;
     S32 curr_temp;
     S32 set_temp;
     S32 temp_correct;
@@ -1293,36 +1292,29 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
     switch(msg->code)
     {
         case MQ_MSG_TYPE_SET_TEMP_UPDATE:
-            room_id = msg->lenght;
-            /* update all room */
-            if(room_id == DNQ_ROOM_MAX)
+            
+            rooms_mask = msg->lenght;
+            for(i=0; i<DNQ_ROOM_MAX; i++)
             {
-                for(i=0; i<DNQ_ROOM_MAX; i++)
+                if(rooms_mask & (1<<i)) /* need update */
                 {
-                    set_temp = dnq_get_room_current_setting_temp(i);
+                   set_temp = dnq_get_room_current_setting_temp(i);
                     if(set_temp != DEGREES_NULL)
                     {
                         ret = lcd_room_setting_temp_update(i, (S32)set_temp, DEFAULT_COLOR);
                         DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, set_temp==%d", \
-                            room_id, set_temp);
-                    }
+                            i, set_temp);
+                    } 
                 }
             }
-            else /* update single room */
-            {
-                set_temp = (S32)msg->payload;
-                ret = lcd_room_setting_temp_update(room_id, (S32)set_temp, DEFAULT_COLOR);
-                DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, set_temp==%d", \
-                    room_id, set_temp);
-            }
+                
             break;
         case MQ_MSG_TYPE_TEMP_CORRECT_UPDATE:
 
-            room_id = msg->lenght;
-            /* update all room */
-            if(room_id == DNQ_ROOM_MAX)
+            rooms_mask = msg->lenght;
+            for(i=0; i<DNQ_ROOM_MAX; i++)
             {
-                for(i=0; i<DNQ_ROOM_MAX; i++)
+                if(rooms_mask & (1<<i)) /* need update */
                 {
                     temp_correct = correct_config->rooms[i].correct;
                     curr_temp = rooms[i].curr_temp;
@@ -1332,16 +1324,6 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
                         room_id, curr_temp, temp_correct);
                 }
             }
-            else/* update single room */
-            {
-                temp_correct = (S32)msg->payload;
-                curr_temp = rooms[room_id].curr_temp;
-                ret = lcd_room_temp_correct_update(room_id, (S32)temp_correct, DEFAULT_COLOR);
-                ret = lcd_room_current_temp_update(room_id, (S32)curr_temp, DEFAULT_COLOR);
-                DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, curr_temp==%d, temp_correct==%d", \
-                    room_id, curr_temp, temp_correct);
-            }
-            
             break;
         default:
             DNQ_ERROR(DNQ_MOD_LCD, "unknow msg type=%d", msg->code);

@@ -4,6 +4,8 @@
 
 #include "common.h"
 
+#define CTRL_WHOLE_ROOM    0
+#define CTRL_SINGLE_ROOM   1
 
 #define DNQ_CONFIG_PATH           "/root/dnq/configs"
 #define DNQ_DATA_FILE             "/root/dnq/dnq.dat"

@@ -63,7 +63,7 @@ int main()
     MAIN_CHECK( dnq_debug_init() );
     MAIN_CHECK( dnq_uart_init() );
     MAIN_CHECK( dnq_mcu_init() );
-    MAIN_CHECK( dnq_config_init() );  
+    MAIN_CHECK( dnq_config_init() );
     MAIN_CHECK( dnq_network_init() );
     MAIN_CHECK( dnq_lcd_init() );
     MAIN_CHECK( dnq_sensor_init() );

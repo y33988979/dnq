@@ -259,9 +259,7 @@ S32 timestring_to_second(U8 *timestring)
     timestring[5] = '\0';
     timestring[8] = '\0';
 
-   printf("timestring=%s, second=%d\n", timestring, second);
     second = atoi(timestring)*3600+atoi(timestring+3)*60+atoi(timestring+6);
-     printf("timestring=%s, second=%d\n", timestring, second);
     return second;
 }
 
@@ -300,7 +298,7 @@ S32 json_parse_temp_policy(cJSON *pjson, policy_config_t *pdst)
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
     /* mode value:   0:ctrl_whole,  1:ctrl_single */
-    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt != 1)\
         ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
     {
         DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
@@ -406,7 +404,7 @@ S32 json_parse_temp_limit(cJSON *pjson, limit_config_t *pdst)
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
     /* mode value:   0:ctrl_whole,  1:ctrl_single */
-    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt != 1)\
         ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
     {
         DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
@@ -474,7 +472,7 @@ S32 json_parse_degree_error(cJSON * pjson, error_config_t *pdst)
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
     /* mode value:   0:ctrl_whole,  1:ctrl_single */
-    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt != 1)\
         ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
     {
         DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
@@ -541,7 +539,7 @@ S32 json_parse_power_config(cJSON *pjson, power_config_t *pdst)
     DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
     /* mode value:   0:ctrl_whole,  1:ctrl_single */
-    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt != 1)\
         ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
     {
         DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
@@ -657,7 +655,7 @@ S32 json_parse_correct(cJSON *pjson, correct_config_t *pdst)
     DNQ_DEBUG(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms_cnt);
 
     /* mode value:   0:ctrl_whole,  1:ctrl_single */
-    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt == 1)\
+    if((pdst->mode == CTRL_WHOLE_ROOM && pdst->rooms_cnt != 1)\
         ||(pdst->mode == CTRL_SINGLE_ROOM && pdst->rooms_cnt > 1))
     {
         DNQ_WARN(DNQ_MOD_RABBITMQ, "mode=%s, but room cnt=%d", \
@@ -800,8 +798,8 @@ S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
 
     
     /* 标识  已经收到初始化信息。 */
-    init_info = dnq_get_init_config(NULL);
-    init_info->inited = 1;
+    pdst->inited = 1;
+    DNQ_INFO(DNQ_MOD_RABBITMQ, "init info recv done!");
     
     return 0;
 }
@@ -1389,7 +1387,7 @@ cJSON *json_data_prepare_warn(char *data)
 }
 
 S32 dnq_config_sync_to_lcd(
-    json_type_e json_type, void *cjson_struct, U32 room_id)
+    json_type_e json_type, void *cjson_struct, U32 rooms_mask)
 {
     U32 i;
     S32 ret;
@@ -1410,26 +1408,12 @@ S32 dnq_config_sync_to_lcd(
         case JSON_TYPE_TEMP_LIMIT:
             temp_policy = dnq_get_temp_policy_config(NULL);
 
-            if(room_id == DNQ_ROOM_MAX)
-            {
-                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update all room's set_temp!");
-                msg.code = MQ_MSG_TYPE_SET_TEMP_UPDATE;
-                msg.lenght = DNQ_ROOM_MAX;
-                msg.payload = NULL;
-                send_msg_to_lcd(&msg);
-            }
-            else
-            {
-                set_temp = dnq_get_room_current_setting_temp(room_id);
-                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update single room[%d] set_temp=%d!", room_id, set_temp);
-                if(set_temp != DEGREES_NULL)
-                { 
-                    msg.lenght = room_id;
-                    msg.code = MQ_MSG_TYPE_SET_TEMP_UPDATE;
-                    msg.payload = (void*)(set_temp);
-                    send_msg_to_lcd(&msg);
-                }
-            }
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update rooms set_temp! mask=[0x%04x]", \
+                rooms_mask);
+            msg.code = MQ_MSG_TYPE_SET_TEMP_UPDATE;
+            msg.lenght = rooms_mask;
+            msg.payload = NULL;
+            send_msg_to_lcd(&msg);
 
             datetime_t datetime = {0};
             /* 同步网络时间到rtc */
@@ -1447,26 +1431,11 @@ S32 dnq_config_sync_to_lcd(
         case JSON_TYPE_CORRECT:
             temp_correct = dnq_get_temp_correct_config(NULL);
             
-            if(room_id == DNQ_ROOM_MAX)
-            {
-                value = temp_correct->rooms[0].correct;
-                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update all room's temp_correct=%d!", value);
-                msg.code = MQ_MSG_TYPE_TEMP_CORRECT_UPDATE;
-                msg.lenght = DNQ_ROOM_MAX;
-                msg.payload = (void*)NULL;
-                send_msg_to_lcd(&msg);
-
-            }
-            else
-            {
-                value = temp_correct->rooms[room_id].correct;
-                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update single room[%d] temp_correct=%d!", room_id, value);
-                msg.code = MQ_MSG_TYPE_TEMP_CORRECT_UPDATE;
-                msg.lenght = room_id;
-                msg.payload = (void*)(S32)value;
-                send_msg_to_lcd(&msg);
-            }
-        
+            DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update rooms temp_correct! mask=[0x%04x]", rooms_mask);
+            msg.code = MQ_MSG_TYPE_TEMP_CORRECT_UPDATE;
+            msg.lenght = rooms_mask;
+            msg.payload = (void*)NULL;
+            send_msg_to_lcd(&msg);
             break;
         case JSON_TYPE_INIT:
             break;

@@ -563,8 +563,10 @@ S32 dnq_mcu_heartbeat_check()
     S32 ret;
     U8  recvbuf[64] = {0};
     ret = cmdbuf_update_crc(CMD_ID_HEARTBEAT);
+    mcu_lock();
     ret = send_cmd_to_mcu(CMD_ID_HEARTBEAT);
     ret = recv_cmd_from_mcu(CMD_ID_HEARTBEAT, recvbuf, MCU_RESPONSE_LEN_HEART);
+    mcu_unlock();
     return ret;
 }
 
@@ -631,7 +633,7 @@ void *mcu_task(void *args)
     count = 1;
     while(1)
     {
-        if(count%60 == 0)
+        if(count%60 == 1)
         {
             /* get datetime from rtc */
             ret = dnq_rtc_get_datetime(&datetime);
@@ -644,7 +646,7 @@ void *mcu_task(void *args)
                 */
         }
             
-        if(count%45 == 0)
+        if(count%45 == 2)
         {
             /* heartbeat check */
             ret = dnq_mcu_heartbeat_check();

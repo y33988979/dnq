@@ -70,8 +70,8 @@ static U8   password[] =    "123456";
 static U8   g_dbg_lever = DBG_ALL;
 static upgrd_msg_t  g_upgrd_msg = {0};
 static sem_t  upgrd_sem;
-static U32 app_hwver;
-static U32 app_swver;
+static U32 app_hwver = 0x100;
+static U32 app_swver = 0x101;
 
 static U8   upgrd_info_desc[] =
     {0x47, 0x10, 0x00 ,0x02, 0x00, \

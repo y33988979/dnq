@@ -33,6 +33,7 @@ TARGET = dnq_manage dnq_upgrade
 all: prepare $(TARGET) version update
 
 prepare:
+	@mkdir -p $(UPDATE_DIR)
 	@touch main.c
 
 version:
@@ -83,4 +84,5 @@ update: upgrade_update manage_update update_all
 clean:
 	-rm *.o
 	-rm *.tar.gz *.txt
+	-rm -rf $(UPDATE_DIR)
 	-rm $(TARGET)

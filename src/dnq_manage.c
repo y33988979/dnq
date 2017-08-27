@@ -147,6 +147,10 @@ S32 dnq_proc()
     /* Traversal all rooms */
     for(room_id=0; room_id<DNQ_ROOM_MAX; room_id++)
     {
+        /* check sensor */
+        if(rooms[room_id].sn_status == STOP_STATUS)
+            continue;
+        
         temp_error = error_config->rooms[room_id].error*100;
         current_temp = rooms[room_id].curr_temp + rooms[room_id].correct*100;
         //printf("room_id=%d, current_temp====%d\n",room_id, current_temp);
@@ -318,6 +322,7 @@ S32 dnq_init_info_update()
     
     /* 向服务器发送初始化请求 */
     ret = send_init_request_to_server();
+
     
     /* 等待服务器回传完成 */
     timeout = 3;
@@ -327,7 +332,7 @@ S32 dnq_init_info_update()
         dnq_msleep(500);
     }
         
-    /* 未能获取到初始化信息，先使用之前本地存储的信息 */
+    /* 未能获取到初始化信息，则使用之前本地存储的信息 */
     if(!init_info_is_ok())
     {
         DNQ_ERROR(DNQ_MOD_MANAGE, "can't get host init_info! use local config.");

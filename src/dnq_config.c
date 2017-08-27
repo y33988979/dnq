@@ -27,22 +27,22 @@ dnq_config_t g_dnq_config =
         .rooms = 
         {
             /* room_id, dpid, setting_cnt, setting[] */
-            {0, 0, 1, {0, 60*60*24-1, 30}},
-            {1, 0, 1, {0, 60*60*24-1, 32}},
-            {2, 0, 1, {0, 60*60*24-1, 20}},
-            {3, 0, 1, {0, 60*60*24-1, 22}},
-            {4, 0, 1, {0, 60*60*24-1, 24}},
-            {5, 0, 1, {0, 60*60*24-1, 25}},
+            {0, 0, 1, {0, 60*60*24-1, 26}},
+            {1, 0, 1, {0, 60*60*24-1, 26}},
+            {2, 0, 1, {0, 60*60*24-1, 26}},
+            {3, 0, 1, {0, 60*60*24-1, 26}},
+            {4, 0, 1, {0, 60*60*24-1, 26}},
+            {5, 0, 1, {0, 60*60*24-1, 26}},
             {6, 0, 1, {0, 60*60*24-1, 26}},
-            {7, 0, 1, {0, 60*60*24-1, 27}},
-            {8, 0, 1, {0, 60*60*24-1, 18}},
-            {9, 0, 1, {0, 60*60*24-1, 19}},
-            {10, 0, 1, {0, 60*60*24-1, 20}},
-            {11, 0, 1, {0, 60*60*24-1, 21}},
-            {12, 0, 1, {0, 60*60*24-1, 22}},
-            {13, 0, 1, {0, 60*60*24-1, 23}},
-            {14, 0, 1, {0, 60*60*24-1, 24}},
-            {15, 0, 1, {0, 60*60*24-1, 30}}  
+            {7, 0, 1, {0, 60*60*24-1, 26}},
+            {8, 0, 1, {0, 60*60*24-1, 26}},
+            {9, 0, 1, {0, 60*60*24-1, 26}},
+            {10, 0, 1, {0, 60*60*24-1, 26}},
+            {11, 0, 1, {0, 60*60*24-1, 26}},
+            {12, 0, 1, {0, 60*60*24-1, 26}},
+            {13, 0, 1, {0, 60*60*24-1, 26}},
+            {14, 0, 1, {0, 60*60*24-1, 26}},
+            {15, 0, 1, {0, 60*60*24-1, 26}}  
         },
     },
     .limit_config = 
@@ -51,22 +51,22 @@ dnq_config_t g_dnq_config =
         .rooms = 
         {
             /* room_id, min, max */
-            {0, 20, 30},
-            {1, 20, 30},
-            {2, 20, 28},
-            {3, 20, 30},
-            {4, 20, 30},
-            {5, 20, 28},
-            {6, 20, 30},
-            {7, 20, 30},
-            {8, 20, 28},
-            {9, 20, 30},
-            {10, 20, 28},
-            {11, 20, 30},
-            {12, 20, 30},
-            {13, 20, 28},
-            {14, 20, 30},
-            {15, 20, 28},
+            {0, 0, 30},
+            {1, 0, 30},
+            {2, 0, 30},
+            {3, 0, 30},
+            {4, 0, 30},
+            {5, 0, 30},
+            {6, 0, 30},
+            {7, 0, 30},
+            {8, 0, 30},
+            {9, 0, 30},
+            {10, 0, 30},
+            {11, 0, 30},
+            {12, 0, 30},
+            {13, 0, 30},
+            {14, 0, 30},
+            {15, 0, 30},
         }
     },
     .error_config = 
@@ -75,22 +75,22 @@ dnq_config_t g_dnq_config =
         .rooms = 
         {
             /* room_id, error */
-            {0, 1},
-            {1, 2},
-            {2, 1},
-            {3, 1},
-            {4, 1},
-            {5, 1},
-            {6, 1},
-            {7, 1},
-            {8, 1},
-            {9, 1},
-            {10, 1},
-            {11, 1},
-            {12, 1},
-            {13, 1},
-            {14, 1},
-            {15, 1}
+            {0, 4},
+            {1, 4},
+            {2, 4},
+            {3, 4},
+            {4, 4},
+            {5, 4},
+            {6, 4},
+            {7, 4},
+            {8, 4},
+            {9, 4},
+            {10, 4},
+            {11, 4},
+            {12, 4},
+            {13, 4},
+            {14, 4},
+            {15, 4}
         }
     },
     .power_config = {0},
@@ -101,22 +101,22 @@ dnq_config_t g_dnq_config =
         .rooms = 
         {
             /* room_id, correct */
-            {0, -2},
-            {1, -2},
-            {2, -2},
-            {3, -1},
-            {4, -1},
-            {5, -2},
-            {6, -2},
-            {7, -2},
-            {8, 1},
-            {9, 1},
-            {10, -1},
-            {11, -1},
-            {12, -1},
-            {13, -1},
-            {14, 2},
-            {15, -2}
+            {0, 0},
+            {1, 0},
+            {2, 0},
+            {3, 0},
+            {4, 0},
+            {5, 0},
+            {6, 0},
+            {7, 0},
+            {8, 0},
+            {9, 0},
+            {10, 0},
+            {11, 0},
+            {12, 0},
+            {13, 0},
+            {14, 0},
+            {15, 0}
         }
     },
     .init = {0},
@@ -207,71 +207,71 @@ void dnq_config_print()
     DNQ_DEBUG(DNQ_MOD_CONFIG, "=================================");
     
     DNQ_DEBUG(DNQ_MOD_CONFIG, "====authorization config===");
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=\t%s", config->authorization.type);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "time=\t%s", config->authorization.time);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "authorization=\t%s", config->authorization.authorization);
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=%s,time=%s", \
+        config->authorization.type,  config->authorization.authorization);
 
     DNQ_DEBUG(DNQ_MOD_CONFIG, "====policy_config config===");
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=\t%s", config->policy_config.type);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "time=\t%s", config->policy_config.time);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "ctrl_id=\t%s", config->policy_config.ctrl_id);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "mode=\t%d", config->policy_config.mode);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "rooms_cnt=\t%d", config->policy_config.rooms_cnt);
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=%s,time=%s,ctrl_id=%s,mode=%d,rooms_cnt=%d",\
+        config->policy_config.type, config->policy_config.time,
+        config->policy_config.ctrl_id, config->policy_config.mode,
+        config->policy_config.rooms_cnt);
     
     for(i=0; i<config->policy_config.rooms_cnt; i++)
     {
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=\t%d", config->policy_config.rooms[i].room_id);
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "dpid=\t%d", config->policy_config.rooms[i].dpid);
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "setting_cnt=\t%d", config->policy_config.rooms[i].time_setting_cnt);
+        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=%d,dpid=%d,setting_cnt=%d",\
+            config->policy_config.rooms[i].room_id,
+            config->policy_config.rooms[i].dpid,
+            config->policy_config.rooms[i].time_setting_cnt);
 
         for(j=0; j<config->policy_config.rooms[i].time_setting_cnt; j++)
         {
-            DNQ_DEBUG(DNQ_MOD_CONFIG, "start=\t%d", config->policy_config.rooms[i].time_setting[j].start);
-            DNQ_DEBUG(DNQ_MOD_CONFIG, "starttime=\t%s", config->policy_config.rooms[i].time_setting[j].starttime);
-            DNQ_DEBUG(DNQ_MOD_CONFIG, "end=\t%d", config->policy_config.rooms[i].time_setting[j].end);
-            DNQ_DEBUG(DNQ_MOD_CONFIG, "endtime=\t%s", config->policy_config.rooms[i].time_setting[j].endtime);
-            DNQ_DEBUG(DNQ_MOD_CONFIG, "degrees=\t%d", config->policy_config.rooms[i].time_setting[j].degrees);
+            DNQ_DEBUG(DNQ_MOD_CONFIG, "start=%d,starttime=%s,end=%d,endtime=%s,degrees=%d",\
+                config->policy_config.rooms[i].time_setting[j].start,
+                config->policy_config.rooms[i].time_setting[j].starttime,
+                config->policy_config.rooms[i].time_setting[j].end,
+                config->policy_config.rooms[i].time_setting[j].endtime,
+                config->policy_config.rooms[i].time_setting[j].degrees);
         }
     }
 
     DNQ_DEBUG(DNQ_MOD_CONFIG, "====limit_config config===");
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=\t%s", config->limit_config.type);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "time=\t%s", config->limit_config.time);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "ctrl_id=\t%s", config->limit_config.ctrl_id);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "mode=\t%d", config->limit_config.mode);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "rooms_cnt=\t%d", config->limit_config.rooms_cnt);
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=%s,time=%s,ctrl_id=%s,mode=%d,rooms_cnt=%d",\
+        config->limit_config.type, config->limit_config.time, \
+        config->limit_config.ctrl_id, config->limit_config.mode, \
+        config->limit_config.rooms_cnt);
     
     for(i=0; i<config->limit_config.rooms_cnt; i++)
     {
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=\t%d", config->limit_config.rooms[i].room_id);
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "max=\t%d", config->limit_config.rooms[i].max);
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "min=\t%d", config->limit_config.rooms[i].min);
+        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=%d,max=%d,min=%d", \
+            config->limit_config.rooms[i].room_id,\
+            config->limit_config.rooms[i].max,
+            config->limit_config.rooms[i].min);
     }
-#if 0
+#if 1
     //error_config
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "====error_config config===\n");
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=\t%s\n", config->error_config.type);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "time=\t%s\n", config->error_config.time);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "ctrl_id=\t%s\n", config->error_config.ctrl_id);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "mode=\t%d\n", config->error_config.mode);
-    
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "====error_config config===");
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=%s,time=%s,ctrl_id=%s,mode=%d", \
+        config->error_config.type, config->error_config.time,\
+        config->error_config.ctrl_id, config->error_config.mode);    
     for(i=0; i<config->error_config.rooms_cnt; i++)
     {
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=\t%d\n", config->error_config.rooms[i].room_id);
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "error=\t%d\n", config->error_config.rooms[i].error);
+        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=%d,error=%d", \
+            config->error_config.rooms[i].room_id,\
+            config->error_config.rooms[i].error);
     }
 
     //correct_config
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "====correct_config config===\n");
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=\t%s\n", config->correct_config.type);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "time=\t%s\n", config->correct_config.time);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "ctrl_id=\t%s\n", config->correct_config.ctrl_id);
-    DNQ_DEBUG(DNQ_MOD_CONFIG, "mode=\t%d\n", config->correct_config.mode);
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "====correct_config config===");
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "type=\t%s", config->correct_config.type);
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "time=\t%s", config->correct_config.time);
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "ctrl_id=\t%s", config->correct_config.ctrl_id);
+    DNQ_DEBUG(DNQ_MOD_CONFIG, "mode=\t%d", config->correct_config.mode);
     
     for(i=0; i<config->error_config.rooms_cnt; i++)
     {
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=\t%d\n", config->correct_config.rooms[i].room_id);
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "correct=\t%d\n", config->correct_config.rooms[i].correct);
+        DNQ_DEBUG(DNQ_MOD_CONFIG, "id=%d,correct=%d", \
+            config->correct_config.rooms[i].room_id,\
+            config->correct_config.rooms[i].correct);    
     }
 #endif
     printf("=================================\n");
@@ -281,7 +281,7 @@ S32 dnq_config_adjust()
 {
     U32  i;    
     S32  setting_temp;
-    U8   gb2312_out[32] = {0};
+    U8   gb2312_out[SIZE_32] = {0};
     room_item_t *rooms = dnq_get_rooms();
     init_info_t *init_config;
     policy_config_t *policy_config;
@@ -292,8 +292,8 @@ S32 dnq_config_adjust()
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         rooms[i].id = init_config->rooms[i].room_order;
-        u2g(init_config->rooms[i].room_name, 16, gb2312_out,sizeof(gb2312_out));   
-        strncpy(rooms[i].name, gb2312_out, 16);
+        u2g(init_config->rooms[i].room_name, SIZE_16, gb2312_out,sizeof(gb2312_out));   
+        strncpy(rooms[i].name, gb2312_out, SIZE_16);
     }
 
     policy_config = dnq_get_temp_policy_config(NULL);
@@ -378,9 +378,12 @@ S32 dnq_config_load1()
 
 S32 dnq_data_file_set_default_value()
 {
+    S32 i;
     S8  utf8_out[SIZE_32] = {0};
     dnq_config_t *all_config = &g_dnq_config;
 
+    //memset(all_config, 0, sizeof(dnq_config_t));
+    
     g2u("松花江小学", SIZE_32, utf8_out, sizeof(utf8_out));
     strncpy(all_config->init.project_name, utf8_out, SIZE_32);
     
@@ -561,54 +564,102 @@ S32 dnq_config_update_authorization(void *cjson_struct)
     
     return 0;
 }
-/* 同步云端下发的温度策略，到本地，返回需要更新的room_id */
+/* 同步云端下发的温度策略，到本地，返回需要更新的rooms,每个bit代表一个room */
 S32 dnq_config_update_temp_policy(policy_config_t *policy_config)
 {
-    S32 i, room_id;
+    S32 i, j, room_id;
+    S32 rooms_mask = 0;
+    S32 degrees;
+    S32 bad_degrees = 0;
     S32 set_temp = 0;
     policy_config_t *curr_policy;
+    limit_config_t *limit_config;
 
     room_item_t *rooms = dnq_get_rooms();
     curr_policy = dnq_get_temp_policy_config(NULL);
+    limit_config = dnq_get_temp_limit_config(NULL);
 
     curr_policy->mode = policy_config->mode;
     strcpy(curr_policy->time, policy_config->time);
     
     /* single mode */
-    if(policy_config->mode == 1)
+    if(policy_config->mode == CTRL_SINGLE_ROOM)
     {
-        room_id = policy_config->rooms[0].room_id - 1;
-        memcpy(&curr_policy->rooms[room_id],\
-            &policy_config->rooms[0], sizeof(room_temp_policy_t));
-        
-        set_temp = dnq_get_room_current_setting_temp(room_id);
-        if(set_temp != DEGREES_NULL)
-            rooms[room_id].set_temp = set_temp;
-        
+        for(i=0; i<policy_config->rooms_cnt; i++)
+        {
+            bad_degrees = 0;
+            room_id = policy_config->rooms[i].room_id - 1;
+
+            /* degrees must be in the limit */
+            for(j=0; j<policy_config->rooms[i].time_setting_cnt; j++)
+            {
+                degrees = policy_config->rooms[i].time_setting[j].degrees;
+                if(degrees > limit_config->rooms[room_id].max
+                    || degrees < limit_config->rooms[room_id].min)
+                {
+                    DNQ_ERROR(DNQ_MOD_CONFIG, "roomid[%d], error policy! degrees=%d,it must be %d~%d!", \
+                        room_id, degrees, limit_config->rooms[room_id].min,
+                        limit_config->rooms[room_id].max);
+                    bad_degrees = 1;
+                    break;
+                }
+            }
+            
+            if(bad_degrees)
+                continue;
+            
+            rooms_mask |= 1<<room_id;
+            memcpy(&curr_policy->rooms[room_id],\
+            &policy_config->rooms[i], sizeof(room_temp_policy_t));
+            
+            set_temp = dnq_get_room_current_setting_temp(room_id);
+            if(set_temp != DEGREES_NULL)
+                rooms[room_id].set_temp = set_temp;
+        }
     }
-    else if(policy_config->mode == 0) /* whole all config */
+    /* whole all config */
+    else if(policy_config->mode == CTRL_WHOLE_ROOM)
     {
         for(i=0; i<DNQ_ROOM_CNT; i++)
         {
+            bad_degrees = 0;
+            degrees = policy_config->rooms[0].time_setting[j].degrees;
+            if(degrees > limit_config->rooms[i].max
+                || degrees < limit_config->rooms[i].min)
+            {
+                DNQ_ERROR(DNQ_MOD_CONFIG, "roomid[%d], error policy! degrees=%d,it must be %d~%d!", \
+                    room_id, degrees, limit_config->rooms[room_id].min,
+                    limit_config->rooms[room_id].max);
+                bad_degrees = 1;
+                break;
+            }
+
+            if(bad_degrees)
+                continue;
+        
             memcpy(&curr_policy->rooms[i], \
                 &policy_config->rooms[0], sizeof(room_temp_policy_t));
             set_temp = dnq_get_room_current_setting_temp(i);
             if(set_temp != DEGREES_NULL)
                 rooms[i].set_temp = set_temp;
         }
-        room_id = DNQ_ROOM_MAX;
+        rooms_mask = 0xFFFF;
     }
     else
+    {
         DNQ_ERROR(DNQ_MOD_CONFIG, "error mode=%d! value must be 0 or 1!", policy_config->mode);
+        return -1;
+    }
 
     DNQ_INFO(DNQ_MOD_CONFIG, "update temp config!");
     
-    return room_id;
+    return rooms_mask;
 }
 
 S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
 {
     S32 room_id = -1;
+    S32 rooms_mask = 0;
     S32 degrees, set_temp;
     S32 low, high;
     S32 i, j;
@@ -621,9 +672,10 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
     curr_limit_config->mode = limit_config->mode;
 
     /* single mode */
-    if(limit_config->mode == 1)
+    if(limit_config->mode == CTRL_SINGLE_ROOM)
     {
         room_id = limit_config->rooms[0].room_id - 1;
+        rooms_mask |= 1<<room_id;
 
         /* check low temperature limit, must be 0'C~6'C */
         degrees = limit_config->rooms[0].min*100;
@@ -646,11 +698,17 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
                 room_id, degrees, low, high);
              return -1;
         }
-        
-        memcpy(&curr_limit_config->rooms[room_id],\
-            &limit_config->rooms[0], sizeof(room_temp_limit_t));
+
+        for(i=0; i<limit_config->rooms_cnt; i++)
+        {
+            room_id = limit_config->rooms[i].room_id - 1;
+            memcpy(&curr_limit_config->rooms[room_id],\
+            &limit_config->rooms[i], sizeof(room_temp_limit_t));
+            rooms_mask |= 1<<room_id;
+        }
         
         /* 如果策略中设定的温度，如果在limit之外，需要更改设定温度 */
+        #if 0
         for(i=0; i<curr_policy->rooms[room_id].time_setting_cnt; i++)
         {
             degrees = curr_policy->rooms[room_id].time_setting[i].degrees;
@@ -665,51 +723,39 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
         set_temp = dnq_get_room_current_setting_temp(room_id);
         if(set_temp != DEGREES_NULL)
             rooms[room_id].set_temp = set_temp;
+        #endif
     }
-    else if(limit_config->mode == 0) /* whole all config */
+    /* whole all config */
+    else if(limit_config->mode == CTRL_WHOLE_ROOM) 
     {
+        /* check low temperature limit, must be 0'C~6'C */
+        degrees = limit_config->rooms[0].min*100;
+        high = DNQ_TEMP_MIN + DNQ_TEMP_THRESHOLD_OFFSET;
+        low = DNQ_TEMP_MIN - DNQ_TEMP_THRESHOLD_OFFSET;
+        if(degrees > high || degrees < low)
+        {
+            DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] must be %d'C~%d'C!",\
+                i, degrees, low, high);
+            return -1;
+        }
+        
+        /* check high temperature limit, must be 27'C~33'C */
+        degrees = limit_config->rooms[0].max*100;
+        high = DNQ_TEMP_MAX + DNQ_TEMP_THRESHOLD_OFFSET;
+        low = DNQ_TEMP_MAX - DNQ_TEMP_THRESHOLD_OFFSET;
+        if(degrees > high || degrees < low)
+        {
+            DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s high_limit[%d] must be %d'C~%d'C!",\
+                i, degrees, low, high);
+             return -1;
+        }
+        
         for(i=0; i<DNQ_ROOM_CNT; i++)
         {
-            /* check low temperature limit, must be 0'C~6'C */
-            degrees = limit_config->rooms[i].min*100;
-            high = DNQ_TEMP_MIN + DNQ_TEMP_THRESHOLD_OFFSET;
-            low = DNQ_TEMP_MIN - DNQ_TEMP_THRESHOLD_OFFSET;
-            if(degrees > high || degrees < low)
-            {
-                DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] must be %d'C~%d'C!",\
-                    i, degrees, low, high);
-                return -1;
-            }
-            
-            /* check high temperature limit, must be 27'C~33'C */
-            degrees = limit_config->rooms[i].max*100;
-            high = DNQ_TEMP_MAX + DNQ_TEMP_THRESHOLD_OFFSET;
-            low = DNQ_TEMP_MAX - DNQ_TEMP_THRESHOLD_OFFSET;
-            if(degrees > high || degrees < low)
-            {
-                DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s high_limit[%d] must be %d'C~%d'C!",\
-                    i, degrees, low, high);
-                 return -1;
-            }
-        
             memcpy(&curr_limit_config->rooms[i], \
                 &limit_config->rooms[0], sizeof(room_temp_limit_t));
-            for(j=0; j<curr_policy->rooms[i].time_setting_cnt; j++)
-            {
-                degrees = curr_policy->rooms[i].time_setting[j].degrees;
-                if(degrees > limit_config->rooms[i].max)
-                    DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s hight_limit[%d] can't less than the set_temp[%d]!",\
-                    i, limit_config->rooms[i].max, degrees);
-                if(degrees < limit_config->rooms[i].min)
-                    DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] can't greater than the set_temp[%d]!",\
-                    i, limit_config->rooms[i].min, degrees);
-            }
-
-            set_temp = dnq_get_room_current_setting_temp(i);
-            if(set_temp != DEGREES_NULL)
-                rooms[i].set_temp = set_temp;
         }
-        room_id = DNQ_ROOM_MAX;
+        rooms_mask = 0xFFFF;
     }
     else
     {
@@ -718,26 +764,44 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
     }
 
     DNQ_INFO(DNQ_MOD_CONFIG, "update limit config!");
-    return room_id;
+    
+    return rooms_mask;
 }
 
 S32 dnq_config_update_temp_error(void *cjson_struct)
 {
     S32 i;
-    S32 room_id;
+    S32 room_id = -1;
+    S32 rooms_mask = 0;
     error_config_t *error_config = (error_config_t *)cjson_struct;
     error_config_t *curr_error = dnq_get_temp_error_config(NULL);
 
-    for(i=0; i<error_config->rooms_cnt; i++)
+    /* single mode */
+    if(error_config->mode == CTRL_SINGLE_ROOM)
     {
-        room_id = error_config->rooms[i].room_id - 1;
-        if(room_id >= 0 && room_id < DNQ_ROOM_MAX)
+        for(i=0; i<error_config->rooms_cnt; i++)
         {
+            room_id = error_config->rooms[i].room_id - 1;
+            rooms_mask |= 1<<room_id;
             curr_error->rooms[room_id].error = error_config->rooms[i].error;
         }
     }
+    /* whole all config */
+    else if(error_config->mode == CTRL_WHOLE_ROOM)
+    {
+        for(i=0; i<DNQ_ROOM_CNT; i++)
+        {
+            curr_error->rooms[i].error = error_config->rooms[0].error;
+        }
+        rooms_mask = 0xFFFF;
+    }
+    else
+    {
+        DNQ_ERROR(DNQ_MOD_CONFIG, "error mode=%d! value must be 0 or 1!", error_config->mode);
+        return -1;
+    }
     
-    return 0;
+    return rooms_mask;
 }
 
 S32 dnq_config_update_power_config(void *cjson_struct)
@@ -759,31 +823,37 @@ S32 dnq_config_update_response(void *cjson_struct)
 S32 dnq_config_update_temp_correct(correct_config_t *correct_config)
 {
     S32 i, room_id;
+    S32 rooms_mask = 0;
     correct_config_t *curr_correct;
     room_item_t *rooms = dnq_get_rooms();
     
     curr_correct = dnq_get_temp_correct_config(NULL);
 
     /* single mode */
-    if(correct_config->mode == 1)
+    if(correct_config->mode == CTRL_SINGLE_ROOM)
     {
         room_id = correct_config->rooms[0].room_id - 1;
+        rooms_mask |= 1<<room_id;
         memcpy(&curr_correct->rooms[room_id],\
             &correct_config->rooms[0], sizeof(room_temp_error_t));
     }
-    else if(correct_config->mode == 0) /* whole all config */
+    /* whole all config */
+    else if(correct_config->mode == CTRL_WHOLE_ROOM) 
     {
         for(i=0; i<DNQ_ROOM_CNT; i++)
         {
             memcpy(&curr_correct->rooms[i], \
                 &correct_config->rooms[0], sizeof(room_temp_error_t));
         }
-        room_id = DNQ_ROOM_MAX;
+        rooms_mask = 0xFFFF;
     }
     else
+    {
         DNQ_ERROR(DNQ_MOD_CONFIG, "error mode=%d! value must be 0 or 1!", correct_config->mode);
+        return -1;
+    }
 
-    return room_id;
+    return rooms_mask;
 }
 
 
@@ -800,7 +870,7 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
     
     S32 ret = -1;
     U32 i, size = 0;
-    S32 room_id = -1;
+    S32 rooms_mask = 0;
     dnq_msg_t msg = {0};
     switch(json_type)
     {
@@ -812,17 +882,17 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             dnq_json_save_file(JSON_FILE_AUTHORRIZATION, json_data, len);
         break;
         case JSON_TYPE_TEMP_POLICY:
-            room_id = dnq_config_update_temp_policy((policy_config_t *)cjson_struct);
-            if(room_id < 0)
+            rooms_mask = dnq_config_update_temp_policy((policy_config_t *)cjson_struct);
+            if(rooms_mask < 0)
                 return -1;
-            dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
+            dnq_config_sync_to_lcd(json_type, cjson_struct, rooms_mask);
             dnq_json_save_file(JSON_FILE_POLICY, json_data, len);
         break;
         case JSON_TYPE_TEMP_LIMIT:
-            room_id = dnq_config_update_temp_limit((limit_config_t *)cjson_struct);
-            if(room_id < 0)
+            rooms_mask = dnq_config_update_temp_limit((limit_config_t *)cjson_struct);
+            if(rooms_mask < 0)
                 return -1;
-            dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
+            dnq_config_sync_to_lcd(json_type, cjson_struct, rooms_mask);
             dnq_json_save_file(JSON_FILE_LIMIT, json_data, len);
         break;
         case JSON_TYPE_TEMP_ERROR:
@@ -847,10 +917,10 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             return 0;
         break;
         case JSON_TYPE_CORRECT:            
-            room_id = dnq_config_update_temp_correct((correct_config_t*)cjson_struct);
-            if(room_id < 0)
+            rooms_mask = dnq_config_update_temp_correct((correct_config_t*)cjson_struct);
+            if(rooms_mask < 0)
                 return -1;
-            dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
+            dnq_config_sync_to_lcd(json_type, cjson_struct, rooms_mask);
             dnq_json_save_file(JSON_FILE_CORRECT, json_data, len);
         break;
         case JSON_TYPE_INIT:
@@ -870,6 +940,6 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
     /* save all config to file --> dnq.dat */
     dnq_data_file_save();    
     
-    return ret;
+    return 0;
 }
 

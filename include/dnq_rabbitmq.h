@@ -3,10 +3,6 @@
 
 #include "common.h"
 
-
-#define CTRL_WHOLE_ROOM    0
-#define CTRL_SINGLE_ROOM   1
-
 #define SERVER_IPADDR   "112.74.43.136"
 
 typedef struct channel{
