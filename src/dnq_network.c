@@ -928,7 +928,7 @@ S32 dnq_net_get_link_status(U8 *if_name)
 
     if((skfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
-       DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
+        DNQ_ERROR(DNQ_MOD_NETWORK, "socket error! errno=%d:%s", errno, strerror(errno));
         return -1;
     }
 
@@ -1020,10 +1020,6 @@ S32 dnq_server_link_isgood(U32 isSaveIp)
 {
     U32 server_ip;
     struct in_addr addr;
-    
-    server_ip = dnq_net_get_ipaddr(ETH_NAME);
-    if(server_ip == 0)
-        return 0;
 
     server_ip = dnq_net_get_host_by_name(DNQ_SERVER_URL);
     if(server_ip != 0)
@@ -1091,8 +1087,6 @@ void netlink_callback_register(netlink_callback callback)
 {
     if(callback)
         netlink_status_callback = callback;
-    else
-        netlink_status_callback = NULL;
 }
 
 static void net_status_change(net_status_e status)
@@ -1126,7 +1120,6 @@ static void net_status_change(net_status_e status)
         break;
     }
 
-    printf("netlink_status_callback=0x%08x\n", netlink_status_callback);
     if(netlink_status_callback)
         netlink_status_callback(status);
     //lcd_net_status_update(status);
@@ -1140,8 +1133,7 @@ void *network_task(void *args)
 
     sleep(3);
     while(1)
-    {
-        
+    {   
         ret = dnq_net_get_link_status(ETH_NAME);
         if(ret == 1)
         {
@@ -1181,7 +1173,7 @@ void *network_task(void *args)
             last_status = current_status;
         }
 
-        dnq_sleep(2);
+        dnq_sleep(3);
     }
 }
 

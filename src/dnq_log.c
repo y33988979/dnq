@@ -175,6 +175,13 @@ void dnq_debug_control()
             debug_help();
             continue;
         }
+
+        if(strncmp(cmdline, "configprint", strlen("configprint")) == 0)
+        {
+            dnq_config_print();
+            continue;
+        }
+                
         if(strncmp(cmdline, "debugset ", strlen("debugset ")) != 0)
         {
             printf("DNQ_V2 > ");
@@ -194,7 +201,6 @@ void dnq_debug_control()
         while(len-- && *ptr == '\0')
             ptr++;
 
-        printf("len=%d\n", len);
         if(len < 0) {debug_help();continue;}
         module_id = atoi(ptr);
 

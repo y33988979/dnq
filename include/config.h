@@ -15,8 +15,9 @@
 #define DNQ_CORRECT_ADJUST_STEP    1
 
 /* 电暖气工作的高低温极限值，实际温度值要除以100 */
-#define DNQ_TEMP_MAX    3100
-#define DNQ_TEMP_MIN    0
+#define DNQ_TEMP_MAX    3000
+#define DNQ_TEMP_MIN    300
+#define DNQ_TEMP_THRESHOLD_OFFSET    300
 
 /* 云服务器参数 */
 #define DNQ_SERVER_URL   "iot.wiseheater.com"
@@ -39,10 +40,9 @@
 #define VERSION_FILE        "version.txt"
 
 /*
-*3 获取房屋数量，保存全局配置
-*隔一段时间要向云端要一次时间，进行同步
-*内存池释放问题
+*初始化数据问题，LCD初始状态，初始化配置等。
 *
+
 软件硬件版本号
 mode=0 控制所有房间，需要调试下，lcd需要更新所有房间
 制作rootfs，整个烧写镜像

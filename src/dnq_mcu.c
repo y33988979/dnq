@@ -676,7 +676,8 @@ S32 dnq_mcu_init()
     dnq_task_t *task;
     datetime_t datetime = {0};
    
-    dnq_heater_ctrl_test();
+    //dnq_heater_ctrl_test();
+    dnq_close_all_heater();
     ret = dnq_rtc_get_datetime(&datetime);
     if(ret != -1)
         dnq_kernel_date_update(&datetime);

@@ -65,7 +65,7 @@
 
 /* some string  */
 #define SOME_SPACE            "                                         "
-#define TITLE_STR " 松花江小学-主楼-三楼西/一号箱 "
+#define TITLE_STR " 松花江小学-主楼-二楼东/三号箱 "
 #define HEADER_STR " 序号     房间       室温   设置温度    状态     SN    温度校准 "
 #define DATE_STR "2017年5月15日 18:33:33"
      

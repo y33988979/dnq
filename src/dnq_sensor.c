@@ -197,8 +197,8 @@ void *sensor_task(void *args)
         /* get room temperature from sensor */
         for(i=0; i<DNQ_ROOM_CNT; i++)
         {
-            if(i >= 4)
-                continue;
+            //if(i >= 4)
+            //    continue;
             temperature = dnq_get_room_temperature(i);
             if(temperature < 0)
             {

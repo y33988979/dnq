@@ -281,6 +281,7 @@ S32 dnq_lcd_init_info_sync()
     room_item_t *rooms = dnq_get_rooms();
 
     init_config = dnq_get_init_config(NULL);
+        
     for(i=0; i<init_config->rooms_cnt; i++)
     {
         room_id = init_config->rooms[i].room_order;        
@@ -292,7 +293,7 @@ S32 dnq_lcd_init_info_sync()
         strncpy(rooms[i].name, gb2312_out, SIZE_16);
         DNQ_INFO(DNQ_MOD_MANAGE, "[%d]:room_id=%d,room_name='%s'", \
             i,room_id, init_config->rooms[i].room_name);
-
+        
         //rooms[i].correct = init_config->rooms[i].correct;
     }
 
@@ -304,7 +305,6 @@ S32 dnq_lcd_init_info_sync()
 
 /* 每次开机要和rabbitmq服务器通信，索要主机初始化的信息，如:
 各房间名称，主机位置，当前时间等，主要用来初始化lcd屏幕，展示信息 */
-/* rabbitmq 通路检查，查看是否已和服务器建立通信连接 */
 S32 dnq_init_info_update()
 { 
     S32 ret;
@@ -336,7 +336,7 @@ S32 dnq_init_info_update()
     /* 云端回传的时间为字符串格式  "2017-06-04 18:14:18" */    
     memcpy(time_string, init_info->time, sizeof(time_string));
 
-    /* 时间字符串转换成datetime结构 */
+    /* 时间字符串转换成datetime_t结构 */
     dnq_timestr_to_datetime(time_string, &datetime);
     /* 同步网络时间到rtc芯片 */
     dnq_rtc_datetime_sync(&datetime);

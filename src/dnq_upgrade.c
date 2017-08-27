@@ -63,7 +63,8 @@
 
 static U8   upgrd_server_ip[16] = "118.190.114.219";
 static U32  upgrd_server_port = DNQ_SERVER_PORT;
-static U8   mac_addr[] =  "70b3d5cf4924";
+static U8   host_mac_addr[16] =  {0x70, 0xb3, 0xd5, 0xcf, 0x49, 0x24};
+static U8   host_mac_addr_str[16] =  "70b3d5cf4924";
 static U8   username[] =  "host001";
 static U8   password[] =    "123456";
 static U8   g_dbg_lever = DBG_ALL;
@@ -193,9 +194,11 @@ S32 send_response_to_server(
 {
     S32 ret = -1;
     U8  message[256] = {0};
+    U8  mac_str[32] = {0};
 
+    upgrd_get_host_mac_string(mac_str);
     /* A simple json data */
-    sprintf(message, "{type:\"upgrade\",mac:\"%s\",status:%d}", mac_addr, ret_code);
+    sprintf(message, "{type:\"upgrade\",mac:\"%s\",status:%d}", mac_str, ret_code);
     /* send response to server */
     ret = send_msg_to_server(conn, pchnl, message);
     return ret;
@@ -393,7 +396,72 @@ void *usbhotplug()
     
 }
 
-U32 upgrd_get_host_ipaddr(U8 *if_name)
+S32 upgrd_get_host_mac_addr(U8 *if_name, U8 *mac_addr)
+{
+    int sockfd;
+    int ret;
+    struct ifreq ifr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if(sockfd < 0)
+    {
+        UPGRD_ERROR("socket error! errno=%d:%s", errno, strerror(errno));
+        return -1;
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    strcpy(ifr.ifr_name, if_name);
+
+    ret = ioctl(sockfd, SIOCGIFHWADDR, &ifr);
+    if(ret < 0)
+    {
+        UPGRD_ERROR("ioctl error!, errno=%d:%s", errno, strerror(errno));
+        close(sockfd);
+        return -1;
+    }
+
+    mac_addr[0] = ifr.ifr_ifru.ifru_hwaddr.sa_data[0];
+    mac_addr[1] = ifr.ifr_ifru.ifru_hwaddr.sa_data[1];
+    mac_addr[2] = ifr.ifr_ifru.ifru_hwaddr.sa_data[2];
+    mac_addr[3] = ifr.ifr_ifru.ifru_hwaddr.sa_data[3];
+    mac_addr[4] = ifr.ifr_ifru.ifru_hwaddr.sa_data[4];
+    mac_addr[5] = ifr.ifr_ifru.ifru_hwaddr.sa_data[5];
+
+    /*
+    UPGRD_INFO(DNQ_MOD_NETWORK, "set mac_addr success: %02X:%02X:%02X:%02X:%02X:%02X",\
+    mac_addr[0], mac_addr[1], mac_addr[2],\
+    mac_addr[3], mac_addr[4], mac_addr[5]);
+    */
+    close(sockfd);
+    
+    return 0;
+}
+
+S32 upgrd_get_host_mac_string(U8 *mac_str)
+{
+    if(mac_str)
+    {
+        strcpy(mac_str, host_mac_addr_str);
+    }
+    return 0;
+}
+
+S32 upgrd_set_host_mac(U8 *mac_addr)
+{
+    U8 mac_str[16] = {0};
+    
+    if(mac_addr)
+    {
+        strncpy(host_mac_addr, mac_addr, 16);
+        sprintf(mac_str, "%02x%02x%02x%02x%02x%02x", \
+            mac_addr[0], mac_addr[1], mac_addr[2],
+            mac_addr[3], mac_addr[4], mac_addr[5]);
+        strncpy(host_mac_addr_str, mac_str, 16);
+    }
+    return 0;
+}
+
+S32 upgrd_get_host_ipaddr(U8 *if_name)
 {
     U32 ip_addr;
     int sockfd;
@@ -432,7 +500,7 @@ U32 upgrd_get_host_ipaddr(U8 *if_name)
     return ip_addr;
 }
 
-U32 upgrd_get_server_ipaddr(U8 *ipaddr)
+S32 upgrd_get_server_ipaddr(U8 *ipaddr)
 {
     if(ipaddr)
     {
@@ -480,10 +548,6 @@ S32 upgrd_server_link_isgood(U32 isSaveIp)
     U32 server_ip;
     struct in_addr addr;
     
-    server_ip = upgrd_get_host_ipaddr(ETH_NAME);
-    if(server_ip == 0)
-        return 0;
-
     server_ip = upgrd_get_host_by_name(DNQ_SERVER_URL);
     if(server_ip != 0)
     {
@@ -498,7 +562,6 @@ S32 upgrd_server_link_isgood(U32 isSaveIp)
     
     return 0;
 }
-
 
 static S32 upgrd_data_decompress(U8 *filename)
 {
@@ -642,7 +705,7 @@ static S32 upgrd_data_write(U8 *filename, U8 *data, U32 data_len)
 static void upgrd_info_print(upgrd_info_t *info)
 {
     UPGRD_INFO("tag:\t0x%x", info->tag);
-    UPGRD_INFO("upgrade_type:\t%d", info->upgrade_type);
+    UPGRD_INFO("upgrade_type:\t0x%x", info->upgrade_type);
     UPGRD_INFO("file_type:\t%d", info->file_type);
     UPGRD_INFO("mac:\t%02X:%02X:%02X:%02X:%02X:%02X", \
         info->mac[0],info->mac[1],info->mac[2],\
@@ -677,9 +740,15 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
 {
     U32 upgrd_mode;
     U32 upgrd_type;
-    U8  host_mac[8] = {0};
+    U8  host_mac[16] = {0};
 
-    memcpy(host_mac, mac_addr, 6);
+    memcpy(host_mac, host_mac_addr, 6);
+
+    info->sw_ver = swap16(info->sw_ver);
+    info->hw_ver = swap16(info->hw_ver);
+    info->need_ver = swap16(info->need_ver);
+    info->crc_32 = swap32(info->crc_32);
+    
     upgrd_info_print(info);
 
     printf("sizeof(upgrd_info_t) == %d\n", sizeof(upgrd_info_t));
@@ -739,8 +808,9 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
         /* 遇到高版本升级 */
         if(info->sw_ver <= app_swver)
         {
-            UPGRD_ERROR( "upgrd_mode:%d, Not need upgrd! \
-                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, app_swver, info->sw_ver);
+            UPGRD_ERROR("upgrd_mode:%d, Not need upgrd!", upgrd_mode);
+            UPGRD_ERROR("current SWVER=0x%04x, upgrd SWVER=0x%04x", \
+                app_swver, info->sw_ver);
             return ERR_SWVER;
         }
     }
@@ -749,8 +819,9 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
         /* 指定版本号升级 */
         if(info->need_ver != app_swver)
         {
-            UPGRD_ERROR( "upgrd_mode:%d, Not need upgrd! \
-                current SWVER=0x%08x, upgrd SWVER=0x%08x", upgrd_mode, app_swver, info->sw_ver);
+            UPGRD_ERROR("upgrd_mode:%d, Not need upgrd!", upgrd_mode);
+            UPGRD_ERROR("current SWVER=0x%08x, upgrd SWVER=0x%08x", \
+                app_swver, info->sw_ver);
             return ERR_SWVER;
         }
     }
@@ -760,11 +831,9 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
         return ERR_MODE;
     }
 
-    info->crc_32 = swap32(info->crc_32);
-
     /* need upgrade */
-    UPGRD_INFO("upgrd_mode:%d,upgrade data CRC:0x%08x",upgrd_mode,info->crc_32);
-    UPGRD_INFO("current SWVER=0x%08x, upgrd SWVER=0x%08x", app_swver, info->sw_ver);
+    UPGRD_INFO("upgrd_mode:%d,upgrade data CRC:0x%08x",upgrd_mode, info->crc_32);
+    UPGRD_INFO("current SWVER=0x%04x, upgrd SWVER=0x%04x", app_swver, info->sw_ver);
     UPGRD_INFO("upgrade soft ready!!");
 
     /* save info */
@@ -965,7 +1034,7 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
     UPGRD_INFO("create new connecting! socket=%d, ip=%s, port=%d", \
         status, serverip, port);
 
-    die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 30, AMQP_SASL_METHOD_PLAIN, \
+    die_on_amqp_error(amqp_login(conn, "/", 0, 131072, 60, AMQP_SASL_METHOD_PLAIN, \
     username, password), "Logging in");
 
     UPGRD_INFO("Login success! user=%s, passwd=%s", username, password);
@@ -997,7 +1066,7 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
 
             //queue declare
             strcpy(pchnl->qname, UPGRD_CHNL_RX_QUEUE_NAME_PREFIX);
-            strcat(pchnl->qname, mac_addr);
+            strcat(pchnl->qname, host_mac_addr_str);
             r = amqp_queue_declare(conn,
                                 pchnl->chid,
                                 amqp_cstring_bytes(pchnl->qname),
@@ -1011,7 +1080,7 @@ static S32 upgrd_rabbitmq_init(char *serverip, int port, amqp_connection_state_t
             UPGRD_INFO("queue declare %s!", pchnl->qname);
 
             //bind
-            strcpy(pchnl->rtkey, mac_addr);
+            strcpy(pchnl->rtkey, host_mac_addr_str);
             amqp_queue_bind(conn,
                             pchnl->chid,
                             amqp_cstring_bytes(pchnl->qname),
@@ -1296,12 +1365,24 @@ S32 create_task(U8 *name, U32 stack_size, void *func, void *param)
 S32 dnq_upgrd_init()
 {
     S32  ret;
+    U8  mac_addr[16] = {0};
 
     if (sem_init(&upgrd_sem, 0, 0) == -1)
     {
         UPGRD_ERROR("sem_init ");
         return -1;
     }
+
+    /* get host mac */
+    if(upgrd_get_host_mac_addr(ETH_NAME, mac_addr) < 0)
+    {
+        UPGRD_ERROR("get mac error!!");
+        UPGRD_ERROR("get mac error!!");
+        strncpy(mac_addr, host_mac_addr_str, 16); //default value
+    }
+    
+    /* save mac_addr and mac_addr_string */
+    upgrd_set_host_mac(mac_addr);
 
     create_task("usbhotplug_task", 1024*1024, usbhotplug, NULL);
     create_task("rabbitmq_task", 1024*1024, rabbitmq_task, NULL);

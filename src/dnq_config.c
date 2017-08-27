@@ -376,10 +376,32 @@ S32 dnq_config_load1()
 }
 #endif
 
+S32 dnq_data_file_set_default_value()
+{
+    S8  utf8_out[SIZE_32] = {0};
+    dnq_config_t *all_config = &g_dnq_config;
+
+    g2u("松花江小学", SIZE_32, utf8_out, sizeof(utf8_out));
+    strncpy(all_config->init.project_name, utf8_out, SIZE_32);
+    
+    g2u("主楼", SIZE_32, utf8_out, sizeof(utf8_out));
+    strncpy(all_config->init.building_name, utf8_out, SIZE_32);
+    
+    g2u("二楼东", SIZE_32, utf8_out, sizeof(utf8_out));
+    strncpy(all_config->init.buildPosition, utf8_out, SIZE_32);
+    
+    g2u("三号箱[def]", SIZE_32, utf8_out, sizeof(utf8_out));
+    strncpy(all_config->init.hostName, utf8_out, SIZE_32);
+
+    return 0;
+}
+
 S32 dnq_data_file_create()
 {
     S32 ret = 0;
     dnq_config_t *all_config = &g_dnq_config;
+    
+    dnq_data_file_set_default_value();
     ret = dnq_file_write(DNQ_DATA_FILE, (U8*)&g_dnq_config, sizeof(dnq_config_t));
     if(ret < 0)
     {
@@ -387,7 +409,9 @@ S32 dnq_data_file_create()
         remove(DNQ_DATA_FILE);
     }
     else
+    {
         DNQ_INFO(DNQ_MOD_CONFIG, "create defult data success!!!");
+    }
     
     return ret;
 }
@@ -438,7 +462,7 @@ S32 dnq_get_room_current_setting_temp(U32 room_id)
             return room_time_setting[i].degrees*100;
     }
     
-    return 0xFF;
+    return DEGREES_NULL;
 }
 
 timesetting_t* dnq_get_room_setting_by_time(U32 room_id, U32 current_time)
@@ -540,7 +564,7 @@ S32 dnq_config_update_authorization(void *cjson_struct)
 /* 同步云端下发的温度策略，到本地，返回需要更新的room_id */
 S32 dnq_config_update_temp_policy(policy_config_t *policy_config)
 {
-    U32 i, room_id;
+    S32 i, room_id;
     S32 set_temp = 0;
     policy_config_t *curr_policy;
 
@@ -584,8 +608,9 @@ S32 dnq_config_update_temp_policy(policy_config_t *policy_config)
 
 S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
 {
-    U32 room_id ;
+    S32 room_id = -1;
     S32 degrees, set_temp;
+    S32 low, high;
     S32 i, j;
     policy_config_t *curr_policy;
     limit_config_t *curr_limit_config;
@@ -599,6 +624,29 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
     if(limit_config->mode == 1)
     {
         room_id = limit_config->rooms[0].room_id - 1;
+
+        /* check low temperature limit, must be 0'C~6'C */
+        degrees = limit_config->rooms[0].min*100;
+        high = DNQ_TEMP_MIN + DNQ_TEMP_THRESHOLD_OFFSET;
+        low = DNQ_TEMP_MIN - DNQ_TEMP_THRESHOLD_OFFSET;
+        if(degrees > high || degrees < low)
+        {
+            DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] must be %d'C~%d'C!",\
+                room_id, degrees, low, high);
+            return -1;
+        }
+        
+        /* check high temperature limit, must be 27'C~33'C */
+        degrees = limit_config->rooms[0].max*100;
+        high = DNQ_TEMP_MAX + DNQ_TEMP_THRESHOLD_OFFSET;
+        low = DNQ_TEMP_MAX - DNQ_TEMP_THRESHOLD_OFFSET;
+        if(degrees > high || degrees < low)
+        {
+            DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s high_limit[%d] must be %d'C~%d'C!",\
+                room_id, degrees, low, high);
+             return -1;
+        }
+        
         memcpy(&curr_limit_config->rooms[room_id],\
             &limit_config->rooms[0], sizeof(room_temp_limit_t));
         
@@ -622,17 +670,39 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
     {
         for(i=0; i<DNQ_ROOM_CNT; i++)
         {
+            /* check low temperature limit, must be 0'C~6'C */
+            degrees = limit_config->rooms[i].min*100;
+            high = DNQ_TEMP_MIN + DNQ_TEMP_THRESHOLD_OFFSET;
+            low = DNQ_TEMP_MIN - DNQ_TEMP_THRESHOLD_OFFSET;
+            if(degrees > high || degrees < low)
+            {
+                DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] must be %d'C~%d'C!",\
+                    i, degrees, low, high);
+                return -1;
+            }
+            
+            /* check high temperature limit, must be 27'C~33'C */
+            degrees = limit_config->rooms[i].max*100;
+            high = DNQ_TEMP_MAX + DNQ_TEMP_THRESHOLD_OFFSET;
+            low = DNQ_TEMP_MAX - DNQ_TEMP_THRESHOLD_OFFSET;
+            if(degrees > high || degrees < low)
+            {
+                DNQ_ERROR(DNQ_MOD_CONFIG, "room[%d]'s high_limit[%d] must be %d'C~%d'C!",\
+                    i, degrees, low, high);
+                 return -1;
+            }
+        
             memcpy(&curr_limit_config->rooms[i], \
                 &limit_config->rooms[0], sizeof(room_temp_limit_t));
             for(j=0; j<curr_policy->rooms[i].time_setting_cnt; j++)
             {
                 degrees = curr_policy->rooms[i].time_setting[j].degrees;
-                if(degrees > limit_config->rooms[0].max)
+                if(degrees > limit_config->rooms[i].max)
                     DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s hight_limit[%d] can't less than the set_temp[%d]!",\
-                    i, limit_config->rooms[0].max, degrees);
-                if(degrees < limit_config->rooms[0].min)
+                    i, limit_config->rooms[i].max, degrees);
+                if(degrees < limit_config->rooms[i].min)
                     DNQ_WARN(DNQ_MOD_CONFIG, "room[%d]'s low_limit[%d] can't greater than the set_temp[%d]!",\
-                    i, limit_config->rooms[0].min, degrees);
+                    i, limit_config->rooms[i].min, degrees);
             }
 
             set_temp = dnq_get_room_current_setting_temp(i);
@@ -642,16 +712,30 @@ S32 dnq_config_update_temp_limit(limit_config_t *limit_config)
         room_id = DNQ_ROOM_MAX;
     }
     else
+    {
         DNQ_ERROR(DNQ_MOD_CONFIG, "error mode=%d! value must be 0 or 1!", limit_config->mode);
+        return -1;
+    }
 
     DNQ_INFO(DNQ_MOD_CONFIG, "update limit config!");
-    return 0;
+    return room_id;
 }
 
 S32 dnq_config_update_temp_error(void *cjson_struct)
 {
-    error_config_t *error_config;
-    error_config = (error_config_t *)cjson_struct;
+    S32 i;
+    S32 room_id;
+    error_config_t *error_config = (error_config_t *)cjson_struct;
+    error_config_t *curr_error = dnq_get_temp_error_config(NULL);
+
+    for(i=0; i<error_config->rooms_cnt; i++)
+    {
+        room_id = error_config->rooms[i].room_id - 1;
+        if(room_id >= 0 && room_id < DNQ_ROOM_MAX)
+        {
+            curr_error->rooms[room_id].error = error_config->rooms[i].error;
+        }
+    }
     
     return 0;
 }
@@ -674,7 +758,7 @@ S32 dnq_config_update_response(void *cjson_struct)
 
 S32 dnq_config_update_temp_correct(correct_config_t *correct_config)
 {
-    U32 i, room_id;
+    S32 i, room_id;
     correct_config_t *curr_correct;
     room_item_t *rooms = dnq_get_rooms();
     
@@ -714,87 +798,77 @@ S32 dnq_config_update_init_info(void *cjson_struct)
 S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, void *cjson_struct)
 {
     
-    S32 ret = 0;
+    S32 ret = -1;
     U32 i, size = 0;
-    U32 room_id;
+    S32 room_id = -1;
     dnq_msg_t msg = {0};
     switch(json_type)
     {
         case JSON_TYPE_AUTHORRIZATION:
             ret = dnq_config_update_authorization(cjson_struct);
-            if(!ret)
-            {
-                memcpy(&g_dnq_config.authorization, cjson_struct, sizeof(authorization_t));
-                dnq_json_save_file(JSON_FILE_AUTHORRIZATION, json_data, len);
-            }
+            if(ret < 0)
+                return -1;
+            memcpy(&g_dnq_config.authorization, cjson_struct, sizeof(authorization_t));
+            dnq_json_save_file(JSON_FILE_AUTHORRIZATION, json_data, len);
         break;
         case JSON_TYPE_TEMP_POLICY:
             room_id = dnq_config_update_temp_policy((policy_config_t *)cjson_struct);
-            ret = dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
+            if(room_id < 0)
+                return -1;
+            dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
             dnq_json_save_file(JSON_FILE_POLICY, json_data, len);
         break;
         case JSON_TYPE_TEMP_LIMIT:
             room_id = dnq_config_update_temp_limit((limit_config_t *)cjson_struct);
-            ret = dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
+            if(room_id < 0)
+                return -1;
+            dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
             dnq_json_save_file(JSON_FILE_LIMIT, json_data, len);
         break;
         case JSON_TYPE_TEMP_ERROR:
             ret = dnq_config_update_temp_error(cjson_struct);
-            if(!ret)
-            {
-                error_config_t *error_config = (error_config_t *)cjson_struct;
-
-                for(i=0; i<error_config->rooms_cnt; i++)
-                {
-                    room_id = error_config->rooms[i].room_id - 1;
-                    if(room_id >= 0 && room_id < DNQ_ROOM_MAX)
-                    {
-                        g_dnq_config.error_config.rooms[room_id].error = error_config->rooms[i].error;
-                    }
-                }
-                
-                dnq_json_save_file(JSON_FILE_ERROR, json_data, len);
-            }
+            if(ret < 0)
+                return -1;
+            dnq_json_save_file(JSON_FILE_ERROR, json_data, len);
         break;
         case JSON_TYPE_POWER_CONFIG:
             ret = dnq_config_update_power_config(cjson_struct);
-            if(!ret)
-            {
-                memcpy(&g_dnq_config.power_config, cjson_struct, sizeof(power_config_t));
-                dnq_json_save_file(JSON_FILE_POWER, json_data, len);
-            }
+            if(ret < 0)
+                return -1;
+            memcpy(&g_dnq_config.power_config, cjson_struct, sizeof(power_config_t));
+            dnq_json_save_file(JSON_FILE_POWER, json_data, len);
         break;
         case JSON_TYPE_RESPONSE:
             ret = dnq_config_update_response(cjson_struct);
-            if(!ret)
-            {
-                memcpy(&g_dnq_config.response, cjson_struct, sizeof(response_t));
-                dnq_json_save_file(JSON_FILE_RESPONSE, json_data, len);
-            }
+            if(ret < 0)
+                return -1;
+            memcpy(&g_dnq_config.response, cjson_struct, sizeof(response_t));
+            dnq_json_save_file(JSON_FILE_RESPONSE, json_data, len);
+            return 0;
         break;
         case JSON_TYPE_CORRECT:            
             room_id = dnq_config_update_temp_correct((correct_config_t*)cjson_struct);
-            ret = dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
+            if(room_id < 0)
+                return -1;
+            dnq_config_sync_to_lcd(json_type, cjson_struct, room_id);
             dnq_json_save_file(JSON_FILE_CORRECT, json_data, len);
         break;
         case JSON_TYPE_INIT:
             ret = dnq_config_update_init_info(cjson_struct);
-            if(!ret)
-            {
-                memcpy(&g_dnq_config.init, cjson_struct, sizeof(init_info_t));
-                dnq_json_save_file(JSON_FILE_INIT, json_data, len);
-                //dnq_data_file_save();
-            }
+            if(ret < 0)
+                return -1;
+            memcpy(&g_dnq_config.init, cjson_struct, sizeof(init_info_t));
+            dnq_json_save_file(JSON_FILE_INIT, json_data, len);
         break;
         default:
             DNQ_ERROR(DNQ_MOD_CONFIG, "unknown json type: %d", json_type);
+            return -1;
             break;
     
     }
 
-    if(ret == 0)
-        dnq_data_file_save();
-    
+    /* save all config to file --> dnq.dat */
+    dnq_data_file_save();    
     
     return ret;
 }

@@ -776,7 +776,7 @@ static S32 lcd_net_status_update(net_status_e status)
 {
     S32 ret = 0;
     U8  buf[32];
-    printf("statusstatus---%d-----------\n", status);
+    DNQ_INFO(DNQ_MOD_LCD, "netstat update: %d", status);
     if(status == LINK_UP)
         sprintf(buf, "网络状态: %s", "网线已连接");
     else if(status == LINK_DOWN)
@@ -1304,7 +1304,7 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
                     {
                         ret = lcd_room_setting_temp_update(i, (S32)set_temp, DEFAULT_COLOR);
                         DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, set_temp==%d", \
-                            room_id, curr_temp, set_temp);
+                            room_id, set_temp);
                     }
                 }
             }
@@ -1313,7 +1313,7 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
                 set_temp = (S32)msg->payload;
                 ret = lcd_room_setting_temp_update(room_id, (S32)set_temp, DEFAULT_COLOR);
                 DNQ_DEBUG(DNQ_MOD_LCD, "room_id=%d, set_temp==%d", \
-                    room_id, curr_temp, set_temp);
+                    room_id, set_temp);
             }
             break;
         case MQ_MSG_TYPE_TEMP_CORRECT_UPDATE:
@@ -1354,10 +1354,35 @@ static S32 lcd_rabbitmq_msg_process(dnq_msg_t *msg)
 static S32 lcd_manage_msg_process(dnq_msg_t *msg)
 {
     S32 ret = 0;
+    init_info_t *init_info = dnq_get_init_config(NULL);
+    S8  gb2312_out[SIZE_32] = {0};
+    S8  project_name[SIZE_32] = {0};
+    S8  building_name[SIZE_32] = {0};
+    S8  buildPosition[SIZE_32] = {0};
+    S8  hostName[SIZE_32] = {0};
+    S8  title_string[256] = {0};
 
     switch(msg->code)
-        {
+    {
         case 0x100: /* update init info! */
+
+            /* utf8 --> gb2312 */
+            u2g(init_info->project_name, SIZE_32, project_name, sizeof(gb2312_out));   
+            u2g(init_info->building_name, SIZE_32, building_name, sizeof(gb2312_out));   
+            u2g(init_info->buildPosition, SIZE_32, buildPosition, sizeof(gb2312_out));   
+            u2g(init_info->hostName, SIZE_32, hostName, sizeof(gb2312_out));
+
+            #if 1/* default value*/
+            if(init_info->buildPosition[0] == '\0')
+                strncpy(buildPosition, "二楼东", SIZE_32);
+            if(init_info->hostName[0] == '\0')
+                strncpy(hostName, "三号箱", SIZE_32);
+            #endif
+
+            /* strcat title */
+            sprintf(title_string, " %s-%s-%s/%s", \
+                project_name, building_name, buildPosition, hostName);
+            lcd_title_update(title_string);
             ret = lcd_rooms_update_by_page(lcd_get_current_page());
             break;
         default:
@@ -1430,7 +1455,7 @@ S32 lcd_netinfo_update(net_status_e status)
     msg.Class = MSG_CLASS_NETWORK;
     msg.code = NET_MSG_TYPE_NET_STATUS_CHANGE;
     msg.payload = (void *)status;
-    printf("send_msg_to_lcd----%d\n",status);
+    DNQ_INFO(DNQ_MOD_LCD, "send_msg_to_lcd -> netstat:%d", status);
     
     return send_msg_to_lcd(&msg);
 }
@@ -1542,7 +1567,6 @@ S32 dnq_lcd_init()
         DNQ_ERROR(DNQ_MOD_LCD, "lcd_task create error!");
         return -1;
     }
-    printf("pAppinfo0=0x%x\n", lcd_appinfo);
     
     DNQ_INFO(DNQ_MOD_LCD, "lcd_init ok!");
     return 0;

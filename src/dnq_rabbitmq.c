@@ -181,7 +181,7 @@ static char *password = "123456";
         if(!obj)\
         {\
             DNQ_ERROR(DNQ_MOD_RABBITMQ, "item \"%s\" not found!", item_name);\
-            return -1;\
+            break;\
         }\
         if(obj->type != item_type)\
         {\
@@ -737,6 +737,12 @@ S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
     //buildingName
     copy_json_item_to_struct_item(\
     obj, pjson, JSON_ITEM_BUILDING_NAME, pdst->building_name, cJSON_String);
+    //buildPosition
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_BUILD_POSITION, pdst->buildPosition, cJSON_String);
+    //hostName
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_HOST_NAME, pdst->hostName, cJSON_String);
     //equipmentMac
     copy_json_item_to_struct_item(\
     obj, pjson, JSON_ITEM_EQUIPMENT_MAC, pdst->equipment_mac, cJSON_String);
@@ -785,7 +791,7 @@ S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
         obj, room_obj, JSON_ITEM_ROOM_ORDER, &pdst->rooms[i].room_order, cJSON_Number);
         //room_floor
         copy_json_item_to_struct_item(\
-        obj, room_obj, JSON_ITEM_ROOM_ORDER, &pdst->rooms[i].room_floor, cJSON_Number);
+        obj, room_obj, JSON_ITEM_ROOM_FLOOR, &pdst->rooms[i].room_floor, cJSON_Number);
         
         //position
         copy_json_item_to_struct_item(\
@@ -1193,7 +1199,8 @@ S32 send_msg_to_server(
 S32 send_response_to_server(
     amqp_connection_state_t conn,
     channel_t *pchnl,
-    json_type_e json_type)
+    json_type_e json_type,
+    S8 *message)
 {
     S32 ret = -1;
     char  *json_response = NULL;
@@ -1206,7 +1213,7 @@ S32 send_response_to_server(
 
         strcpy(response.type, TYPE_STR_AUTHORRIZATION);
         strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "authorization");
+        strcpy(response.status, message);
         
         json_response = json_create_response(&response);
         if(!json_response)
@@ -1220,7 +1227,7 @@ S32 send_response_to_server(
         
         strcpy(response.type, TYPE_STR_TEMP_POLICY);
         strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "policy");
+        strcpy(response.status, message);
         json_response = json_create_response(&response);
         if(!json_response)
             return -1;
@@ -1232,7 +1239,7 @@ S32 send_response_to_server(
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: limit");
         strcpy(response.type, TYPE_STR_TEMP_LIMIT);
         strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "limit");
+        strcpy(response.status, message);
         
         json_response = json_create_response(&response);
         if(!json_response)
@@ -1245,7 +1252,7 @@ S32 send_response_to_server(
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: degree error");
         strcpy(response.type, TYPE_STR_DEGREE_ERROR);
         strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "error");
+        strcpy(response.status, message);
         json_response = json_create_response(&response);
         if(!json_response)
             return -1;
@@ -1257,7 +1264,7 @@ S32 send_response_to_server(
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: power config");
         strcpy(response.type, TYPE_STR_POWER_CONFIG);
         strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "power");
+        strcpy(response.status, message);
         
         json_response = json_create_response(&response);
         if(!json_response)
@@ -1274,7 +1281,7 @@ S32 send_response_to_server(
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: correct");
         strcpy(response.type, TYPE_STR_CORRECT);
         strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "correct");
+        strcpy(response.status, message);
         
         json_response = json_create_response(&response);
         if(!json_response)
@@ -1287,7 +1294,7 @@ S32 send_response_to_server(
         DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: init");
         strcpy(response.type, TYPE_STR_INIT);
         strcpy(response.mac, MAC_ADDR);
-        strcpy(response.status, "init");
+        strcpy(response.status, message);
         
         json_response = json_create_response(&response);
         if(!json_response)
@@ -1405,7 +1412,7 @@ S32 dnq_config_sync_to_lcd(
 
             if(room_id == DNQ_ROOM_MAX)
             {
-                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update all room's set_temp=%d!", value);
+                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update all room's set_temp!");
                 msg.code = MQ_MSG_TYPE_SET_TEMP_UPDATE;
                 msg.lenght = DNQ_ROOM_MAX;
                 msg.payload = NULL;
@@ -1413,8 +1420,8 @@ S32 dnq_config_sync_to_lcd(
             }
             else
             {
-                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update single room[%d] set_temp=%d!", room_id, value);
                 set_temp = dnq_get_room_current_setting_temp(room_id);
+                DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update single room[%d] set_temp=%d!", room_id, set_temp);
                 if(set_temp != DEGREES_NULL)
                 { 
                     msg.lenght = room_id;
@@ -1499,11 +1506,10 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     if(ret < 0)
     {
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "config data check error!");
-        return -1;
     }
 
     /* send response to server */
-    ret = send_response_to_server(conn, pchnl, json_type);
+    ret = send_response_to_server(conn, pchnl, json_type, (ret<0)?"true":"false");
     if(ret < 0)
         return -1;
 
@@ -1797,14 +1803,14 @@ S32 rabbitmq_task()
 
     while(1)
     {
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "check netlink status...");
         if(!dnq_server_link_isgood(1))
         {
+            DNQ_INFO(DNQ_MOD_RABBITMQ, "server netlink is down..");
             sleep(3);
             continue;
         }
         
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "rabbitmq link is good!");
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "server netlink is good!");
         dnq_get_server_ip(server_ip);
         server_port = dnq_get_server_port();
         
@@ -1814,6 +1820,7 @@ S32 rabbitmq_task()
         sleep(10);
     }
 }
+
 #define TEST_MAC_ADDR  "70b3d5cf4924"
 void *rabbitmq_send_test()
 {
@@ -1893,8 +1900,7 @@ S32 dnq_rabbitmq_init()
     cJSON_Hooks hooks = {dnq_malloc, dnq_free};
     cJSON_InitHooks(&hooks);
 
-    //sleep(10);
-    task = dnq_task_create("rabbitmq_task", 512*1024, rabbitmq_task, NULL);
+    task = dnq_task_create("rabbitmq_task", 1024*1024, rabbitmq_task, NULL);
     if(!task) 
         return -1;
     
@@ -2014,7 +2020,7 @@ int json_test()
     
     return ret;
 }
-
+#if 0
 int main0(int argc, char const *const *argv)
 {
   char const *hostname;
@@ -2181,5 +2187,5 @@ YLOG("[ychen]: amqp_channel_open! chnl=%d\n", pchnl->chid);
 
   return 0;
 }
-
+#endif
 

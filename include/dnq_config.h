@@ -216,6 +216,8 @@ typedef struct _init_info
     U32       equipment_id;
     U8        project_name[SIZE_32];
     U8        building_name[SIZE_32];
+    U8        buildPosition[SIZE_32];
+    U8        hostName[SIZE_32];
     U8        equipment_mac[SIZE_32];
     U16       rooms_cnt;
     room_info_t    rooms[DNQ_ROOM_MAX];

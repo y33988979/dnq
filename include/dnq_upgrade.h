@@ -122,6 +122,15 @@ typedef struct _upgrd_channel{
 	char rtkey[32];
 }upgrd_channel_t;
 
+
+S32 upgrd_get_host_macaddr(U8 *if_name, U8 *mac_addr);
+S32 upgrd_get_host_mac_string(U8 *mac_str);
+S32 upgrd_set_host_mac(U8 *mac_addr);
+S32 upgrd_get_host_ipaddr(U8 *if_name);
+S32 upgrd_get_server_ipaddr(U8 *ipaddr);
+U32 upgrd_get_server_port();
+U32 upgrd_get_host_by_name(U8 *cname);
+S32 upgrd_server_link_isgood(U32 isSaveIp);
 S32 send_msg_to_upgrade(U8 *msg, U32 len);
 S32 recv_msg_timeout(U8 **msg, U32 timeout_ms);
 S32 dnq_upgrd_init();
