@@ -28,7 +28,7 @@ LDPATH = -L$(TOP_DIR)/lib
 LIBS = 
 
 AT := @
-TARGET = dnq_manage dnq_upgrade 
+TARGET = dnq_manage dnq_upgrade macset
 
 all: prepare $(TARGET) version update
 
@@ -40,6 +40,10 @@ version:
 	$(AT)echo "HWVER:$(HardwareVersion)" > version.txt
 	$(AT)echo "SWVER:$(SoftwareVersion)" >> version.txt
 	$(AT)echo "UPGRADE_SWVER:$(UPGRADE_SWVER)" >> version.txt
+
+macset:
+	$(AT)$(CC) macset.c -o macset
+	@echo " Create $@ success!"
 
 dnq_manage: $(OBJS)
 	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $(LDPATH) -static $^ -o $@.static $(LDFLAGS)
