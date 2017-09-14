@@ -896,6 +896,8 @@ static S32 lcd_update_all()
     U8 mac_addr[16] = {0};
     U8 mac_info[64] = {0};
 
+    init_info_t *config = dnq_get_init_config();
+
     ret = lcd_title_update(TITLE_STR);
     //ret = lcd_date_update("2017-07-00 00:00:00");
     ret = lcd_header_update(HEADER_STR);
@@ -1354,7 +1356,7 @@ static S32 lcd_manage_msg_process(dnq_msg_t *msg)
             u2g(init_info->buildPosition, SIZE_32, buildPosition, sizeof(gb2312_out));   
             u2g(init_info->hostName, SIZE_32, hostName, sizeof(gb2312_out));
 
-            #if 1/* default value*/
+            #if 0/* default value*/
             if(init_info->buildPosition[0] == '\0')
                 strncpy(buildPosition, "¶þÂ¥¶«", SIZE_32);
             if(init_info->hostName[0] == '\0')

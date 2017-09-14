@@ -329,7 +329,7 @@ S32 dnq_init_info_update()
     while(!init_info_is_ok() && timeout--)
     {
         DNQ_INFO(DNQ_MOD_MANAGE, "waiting server reply...");
-        dnq_msleep(500);
+        dnq_msleep(1000);
     }
         
     /* 未能获取到初始化信息，则使用之前本地存储的信息 */
