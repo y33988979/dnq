@@ -18,6 +18,7 @@
 #include "dnq_os.h"
 #include "dnq_log.h"
 #include "dnq_lcd.h"
+#include "dnq_config.h"
 #include "dnq_sensor.h"
 
 dnq_task_t *g_sensor_task = NULL;
@@ -107,7 +108,36 @@ but %d bytes is expected!", total_len, len);
     return 0;
 }
 
-static S32 dnq_get_room_temperature(U32 room_id)
+static S32 dnq_get_room_temperature_1(U32 room_id)
+{
+    S32 ret;
+    S8  sensor_name[128] = {0};
+    U8  buffer[128] = {0};
+    S32 temp = 0;
+    U8 *ptr = NULL;
+
+    room_item_t *rooms = dnq_get_rooms();
+
+    sprintf(sensor_name, "/sys/bus/w1/devices/%s", rooms[room_id].sn_name);
+    ret = dnq_file_read(sensor_name, buffer, sizeof(buffer));
+    if(ret < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_SENSOR, "can't access sensor[%s], roomid=%d!",\
+            rooms[room_id].sn_name, room_id);
+        return -1;
+    }
+
+    ptr = strstr(buffer, "T=");
+    ptr += 2;
+    temp = atoi(ptr);
+
+    if(temp == 85000)
+        return -1;
+
+    return temp;    
+}
+
+static S32 dnq_get_room_temperature_2(U32 room_id)
 {
     S32   ret;
     S32   temperature;
@@ -147,6 +177,15 @@ static S32 dnq_get_room_temperature(U32 room_id)
         room_id, temperature/100, (temperature%100)/10);
 
     return temperature;
+}
+
+static S32 dnq_get_room_temperature(U32 room_id)
+{
+    if(g_dnq_config.sensor_generation == 1)
+        return dnq_get_room_temperature_1(room_id);
+    else
+        return dnq_get_room_temperature_2(room_id);
+    return 0;
 }
 
 

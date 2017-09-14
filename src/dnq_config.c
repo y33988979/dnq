@@ -139,7 +139,7 @@ S32 dnq_file_read(U8 *filepath, U8 *buffer, U32 len)
     if(len < 0)
     {
         fclose(fp);
-        DNQ_ERROR(DNQ_MOD_CONFIG, "read error! err=%s!", filepath, strerror(errno));
+        DNQ_ERROR(DNQ_MOD_CONFIG, "read %s error! err=%s!", filepath, strerror(errno));
         return -1;
     }
     fclose(fp);
@@ -164,7 +164,7 @@ S32 dnq_file_write(U8 *filepath, U8 *buffer, U32 len)
     if(len < 0)
     {
         fclose(fp);
-        DNQ_ERROR(DNQ_MOD_CONFIG, "write error! err=%s!", filepath, strerror(errno));
+        DNQ_ERROR(DNQ_MOD_CONFIG, "write %s error! err=%s!", filepath, strerror(errno));
         return -1;
     }
 
@@ -172,9 +172,60 @@ S32 dnq_file_write(U8 *filepath, U8 *buffer, U32 len)
     return 0; 
 }
 
+S32 parse_ds18b20_sn_config()
+{
+    S32 len;
+    S8  buffer[512] = {0};
+    S8 *line_start = NULL;
+    S8 *line_end = NULL;
+    S8  sn_name[32] = {0};
+    S32 sn[10] = {0};
+    S32 id;
+    S32 i;
+    
+    room_item_t *rooms = dnq_get_rooms();
+
+    len = dnq_file_read(DNQ_SN_CONF_FILE, buffer, sizeof(buffer));
+    if(len < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_CONFIG, "parse ds18b20 config failed!");
+        return -1;
+    }
+
+    line_start = buffer;
+    for(i=0; i<DNQ_ROOM_MAX; i++)
+    {
+        if((line_end=strchr(line_start, '\n')) == NULL)
+            break;
+
+        memset(sn_name, 0, sizeof(sn_name));
+        memset(&sn, 0, sizeof(sn));
+        
+        sscanf(line_start, "%d@%d#%d#%d#%d#%d#%d#%d#%d\n", \
+            &id, &sn[0],&sn[1],&sn[2],&sn[3],&sn[4],&sn[5],&sn[6],&sn[7]);
+        sprintf(sn_name, "%02x-%02x%02x%02x%02x%02x%02x", \
+            sn[0],sn[6],sn[5],sn[4],sn[3],sn[2],sn[1]);
+        strcpy(rooms[id].sn_name, sn_name);
+        DNQ_INFO(DNQ_MOD_CONFIG, "read config: sn_id=%d, name=%s", id, sn_name);
+        
+        line_start = line_end + 1;       
+    }
+
+    DNQ_INFO(DNQ_MOD_CONFIG, "total %d sn is detected!", i);
+    
+    return 0;      
+}
+
 S32 dnq_config_init()
 {
     S32 ret = 0;
+
+    /* check config, for first generation temperature sensor */
+    if((ret=access(DNQ_SN_CONF_FILE, F_OK)) == 0) 
+    {
+        parse_ds18b20_sn_config();
+        g_dnq_config.sensor_generation = 1;
+    }
 
     if((ret=access(DNQ_DATA_FILE, F_OK)) < 0)
     {

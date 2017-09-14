@@ -160,18 +160,20 @@ S32 dnq_uart_close(U32 fd)
 
 S32 dnq_uart_init()
 {
-    lcd_uart_fd = dnq_uart_open(DNQ_LCD_UART);
-    if(lcd_uart_fd < 0)
-    {
-        DNQ_ERROR(DNQ_MOD_UART, "Lcd uart port6 init failed!");
-        return -1;
-    }
     mcu_uart_fd = dnq_uart_open(DNQ_MCU_UART);
     if(mcu_uart_fd < 0)
     {
         DNQ_ERROR(DNQ_MOD_UART, "Mcu uart port1 init failed!");
         return -1;
     }
+    
+    lcd_uart_fd = dnq_uart_open(DNQ_LCD_UART);
+    if(lcd_uart_fd < 0)
+    {
+        DNQ_ERROR(DNQ_MOD_UART, "Lcd uart port6 init failed!");
+        return -1;
+    }
+    
     sensor_uart_fd = dnq_uart_open(DNQ_SENSOR_UART);
     if(sensor_uart_fd < 0)
     {

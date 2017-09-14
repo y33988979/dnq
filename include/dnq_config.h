@@ -10,6 +10,8 @@
 #define DNQ_CONFIG_PATH           "/root/dnq/configs"
 #define DNQ_DATA_FILE             "/root/dnq/dnq.dat"
 #define DNQ_CONFIG_FILE           "/root/dnq/dnq.conf"
+#define DNQ_SN_CONF_FILE          "/root/dnq/sn.conf"
+
 /*
 * json config define
 * json配置文件 文件名称定义
@@ -244,6 +246,7 @@ typedef struct _dnq_config
     response_t       response;
     correct_config_t correct_config;
     init_info_t      init;
+    U32              sensor_generation;
     U32                    reserved;
 }dnq_config_t;
 
@@ -326,6 +329,8 @@ typedef enum json_type
 
 S32 dnq_config_init();
 S32 dnq_config_deinit();
+S32 dnq_file_read(U8 *filepath, U8 *buffer, U32 len);
+S32 dnq_file_write(U8 *filepath, U8 *buffer, U32 len);
 void dnq_config_print();
 S32 dnq_config_load();
 S32 dnq_data_file_save();

@@ -897,7 +897,7 @@ static S32 lcd_update_all()
     U8 mac_info[64] = {0};
     S8 title_string[128] = {0};
 
-    init_info_t *config = dnq_get_init_config();
+    init_info_t *config = dnq_get_init_config(NULL);
 
     /* strcat title */
     sprintf(title_string, " %s-%s-%s/%s", \
