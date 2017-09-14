@@ -895,10 +895,15 @@ static S32 lcd_update_all()
     U32 ret = 0;
     U8 mac_addr[16] = {0};
     U8 mac_info[64] = {0};
+    S8 title_string[128] = {0};
 
     init_info_t *config = dnq_get_init_config();
 
-    ret = lcd_title_update(TITLE_STR);
+    /* strcat title */
+    sprintf(title_string, " %s-%s-%s/%s", \
+    config->project_name, config->building_name, \
+    config->buildPosition, config->hostName);
+    ret = lcd_title_update(title_string);
     //ret = lcd_date_update("2017-07-00 00:00:00");
     ret = lcd_header_update(HEADER_STR);
   
