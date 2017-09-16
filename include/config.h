@@ -24,7 +24,7 @@
 #define DNQ_SERVER_PORT     5672
 
 /* 扫描每一路传感器的间隔时间 */
-#define DNQ_SENSOR_SCAN_INTERVAL  1
+#define DNQ_SENSOR_SCAN_INTERVAL  2
 
 /* 使用485自动收发，需要硬件支持，若不支持自动收发，注释掉 */
 #define DNQ_RS485_AUTO_TXRX_SUPPORT    1

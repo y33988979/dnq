@@ -741,6 +741,9 @@ S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
     //hostName
     copy_json_item_to_struct_item(\
     obj, pjson, JSON_ITEM_HOST_NAME, pdst->hostName, cJSON_String);
+    //heater_work_mode
+    copy_json_item_to_struct_item(\
+    obj, pjson, JSON_ITEM_WORK_MODE, &pdst->heater_work_mode, cJSON_Number);
     //equipmentMac
     copy_json_item_to_struct_item(\
     obj, pjson, JSON_ITEM_EQUIPMENT_MAC, pdst->equipment_mac, cJSON_String);

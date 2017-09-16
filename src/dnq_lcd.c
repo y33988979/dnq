@@ -35,7 +35,7 @@ static lcd_status_t  lcd_status =
 };
 static dnq_appinfo_t  *lcd_appinfo = NULL;
  
-room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
+static room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
 {
  /* id, name ,curr_temp, set_temp, work_status, sn_status, correct*/
     {0, "ÈýÄê¶þ°à",    0,2600, STOP_STATUS,0,0},
@@ -83,6 +83,16 @@ static lcd_item_t    g_lcd_items[LCD_ITEM_MAX] =
     /* ... */
     
 };
+
+S32 dnq_rooms_init()
+{
+    S32 i = 0;
+    for(i=0; i<DNQ_ROOM_MAX; i++)
+    {
+        strncpy(g_rooms[i].sn_name, "28-000000000000", SIZE_32);
+    }
+    return 0;
+}
 
 room_item_t *dnq_get_rooms()
 {

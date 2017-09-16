@@ -218,6 +218,7 @@ typedef struct _init_info
     U32       project_id;
     U32       building_id;
     U32       equipment_id;
+    U32       heater_work_mode;
     U8        project_name[SIZE_32];
     U8        building_name[SIZE_32];
     U8        buildPosition[SIZE_32];
@@ -247,7 +248,7 @@ typedef struct _dnq_config
     correct_config_t correct_config;
     init_info_t      init;
     U32              sensor_generation;
-    U32                    reserved;
+    U32              reserved;
 }dnq_config_t;
 
 

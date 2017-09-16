@@ -198,8 +198,6 @@ typedef enum rabbitmq_msg_type
 
 }rabbitmq_msg_type_e;
 
-extern room_item_t g_rooms[DNQ_ROOM_MAX+1];
-
 
 S32 dnq_lcd_init();
 S32 dnq_lcd_deinit();

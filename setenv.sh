@@ -9,7 +9,10 @@ export TOP_DIR=$(pwd)
 
 export PATH=$PATH:$TOP_DIR/bin
 
+mkdir -p $TOP_DIR/pub
+
 echo "TOP_DIR=$TOP_DIR"
-echo "PATH=$PATH"
+echo "PUB_DIR=$TOP_DIR/pub"
+#echo "PATH=$PATH"
 echo "set environment ok!"
 

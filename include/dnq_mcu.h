@@ -56,6 +56,8 @@ typedef struct _datatime
 
 S32 dnq_mcu_init();
 S32 dnq_mcu_deinit();
+S32 dnq_heater_get_workmode();
+void dnq_heater_set_workmode(U32 work_mode);
 S32 dnq_heater_ctrl_single(U32 id, U32 mode, U32 value);
 S32 dnq_heater_ctrl_whole(U32 mode, U32 *value_array);
 S32 dnq_open_all_heater();

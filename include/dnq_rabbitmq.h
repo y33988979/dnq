@@ -66,6 +66,7 @@ typedef struct channel{
 #define JSON_ITEM_BUILDING_NAME   "buildingName"
 #define JSON_ITEM_BUILD_POSITION  "buildPosition"
 #define JSON_ITEM_HOST_NAME       "hostName"
+#define JSON_ITEM_WORK_MODE       "jobMode"
 #define JSON_ITEM_EQUIPMENT_MAC   "equipmentMac"
 
 #define JSON_ITEM_ID              "id"

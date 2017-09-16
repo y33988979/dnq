@@ -6,7 +6,7 @@
  *  yuchen  <yuchen@jiuzhoutech.com, 382347665@qq.com>
  * 
  *  this is a communicate Program between cpu and mcu.
- *  mcu1:  heater control      protocol: RS232
+ *  mcu1:  heater control      protocol: RS485
  *
  * Note : 
  */
@@ -108,33 +108,65 @@ but %d bytes is expected!", total_len, len);
     return 0;
 }
 
+S32 dnq_w1_sysfile_read(U8 *filepath, U8 *buffer, U32 len)
+{
+    S32    ret = 0;
+    FILE  *fp = NULL;
+
+    fp = fopen(filepath, "r");
+    if(fp == NULL)
+    {
+        DNQ_DEBUG(DNQ_MOD_SENSOR, "open file %s error! err=%s!", filepath, strerror(errno));
+        return -1;
+    }
+
+    ret = fread(buffer, 1, len, fp);
+    if(len < 0)
+    {
+        fclose(fp);
+        DNQ_DEBUG(DNQ_MOD_SENSOR, "read %s error! err=%s!", filepath, strerror(errno));
+        return -1;
+    }
+    fclose(fp);
+    DNQ_DEBUG(DNQ_MOD_SENSOR, "read len=%d\n", ret);
+
+    return ret; 
+}
+
 static S32 dnq_get_room_temperature_1(U32 room_id)
 {
     S32 ret;
     S8  sensor_name[128] = {0};
     U8  buffer[128] = {0};
-    S32 temp = 0;
+    S32 temperature = 0;
     U8 *ptr = NULL;
 
     room_item_t *rooms = dnq_get_rooms();
 
+    if(strlen(rooms[room_id].sn_name) == 0)
+        return -1;
+
     sprintf(sensor_name, "/sys/bus/w1/devices/%s", rooms[room_id].sn_name);
-    ret = dnq_file_read(sensor_name, buffer, sizeof(buffer));
+    ret = dnq_w1_sysfile_read(sensor_name, buffer, sizeof(buffer));
     if(ret < 0)
     {
-        DNQ_ERROR(DNQ_MOD_SENSOR, "can't access sensor[%s], roomid=%d!",\
+        DNQ_DEBUG(DNQ_MOD_SENSOR, "can't access sensor[%s], roomid=%d!",\
             rooms[room_id].sn_name, room_id);
         return -1;
     }
 
+    /* parse temperature */
     ptr = strstr(buffer, "T=");
     ptr += 2;
-    temp = atoi(ptr);
+    temperature = atoi(ptr);
 
-    if(temp == 85000)
+    if(temperature == 85000)
         return -1;
 
-    return temp;    
+    DNQ_DEBUG(DNQ_MOD_SENSOR, "room %d temperature is %d.%d'C!",\
+        room_id, temperature/1000, (temperature%1000)/10);
+
+    return temperature;    
 }
 
 static S32 dnq_get_room_temperature_2(U32 room_id)
@@ -157,7 +189,7 @@ static S32 dnq_get_room_temperature_2(U32 room_id)
     
     ret = dnq_sensor_uart_write(cmdbuf, SENSOR_REQUEST_LEN);
     if(ret < 0)
-        printf("dnq_sensor_uart_write error!\n");
+        DNQ_ERROR(DNQ_MOD_SENSOR, "sensor_uart write error! errno=%d:%s", errno, strerror(errno));
     dnq_sensor_uart_sync();
     dnq_msleep(10);
     

@@ -23,6 +23,7 @@
 
 static datetime_t g_datetime;
 static U32  g_curr_second = 0;
+static U32  g_heater_mode = HEATER_MODE_POWER;
 static dnq_task_t *g_mcu_task;
 static pthread_mutex_t mcu_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -314,6 +315,31 @@ static S32 recv_cmd_from_mcu(cmd_id_e cmd_id, U8 *recvbuf, U32 len)
     return 0;
 }
 
+S32 dnq_heater_get_workmode()
+{
+    if(g_heater_mode != HEATER_MODE_POWER
+        && g_heater_mode != HEATER_MODE_SWITCH)
+    {
+        DNQ_ERROR(DNQ_MOD_MCU, "[BUG]: bad heater work_mode[%d]", g_heater_mode);
+    } 
+    return g_heater_mode;
+}
+
+void dnq_heater_set_workmode(U32 work_mode)
+{
+    if(g_heater_mode != HEATER_MODE_POWER
+        && g_heater_mode != HEATER_MODE_SWITCH)
+    {
+        DNQ_ERROR(DNQ_MOD_MCU, "can't set heater work_mode[%d], mode must be 0x%x or 0x%x ",\
+        g_heater_mode, HEATER_MODE_POWER, HEATER_MODE_SWITCH);
+        return;
+    }
+    DNQ_INFO(DNQ_MOD_MCU, "set heater is %s mode",\
+        (g_heater_mode==HEATER_MODE_POWER)?"power":"switch");
+
+    g_heater_mode = work_mode;
+}
+
 S32 dnq_heater_ctrl_single(U32 id, U32 mode, U32 value)
 {
     S32 ret;
@@ -331,10 +357,11 @@ S32 dnq_heater_ctrl_single(U32 id, U32 mode, U32 value)
 S32 dnq_heater_open(U32 id)
 {
     S32 ret = 0;
+    U32 work_mode = dnq_heater_get_workmode();
     room_item_t *room = dnq_get_room_item(id);
     if(room->work_status == STOP_STATUS)
     {
-        ret = dnq_heater_ctrl_single(id, HEATER_MODE_SWITCH, HEATER_OPEN);
+        ret = dnq_heater_ctrl_single(id, work_mode, HEATER_OPEN);
         //room->work_status = WORK_STATUS;
         DNQ_INFO(DNQ_MOD_MCU, "open heart! id=%d", id);
     }
@@ -345,10 +372,11 @@ S32 dnq_heater_open(U32 id)
 S32 dnq_heater_close(U32 id)
 {
     S32 ret = 0;
+    U32 work_mode = dnq_heater_get_workmode();
     room_item_t *room = dnq_get_room_item(id);
     if(room->work_status == WORK_STATUS)
     {
-        ret = dnq_heater_ctrl_single(id, HEATER_MODE_SWITCH, HEATER_CLOSE);
+        ret = dnq_heater_ctrl_single(id, work_mode, HEATER_CLOSE);
         //room->work_status = STOP_STATUS;
         DNQ_INFO(DNQ_MOD_MCU, "close heart! id=%d", id);
     }
@@ -574,24 +602,26 @@ S32 dnq_open_all_heater()
 {
     S32 i;
     S32 status[DNQ_ROOM_CNT];
+    U32 work_mode = dnq_heater_get_workmode();
     
     for(i=0;i<DNQ_ROOM_CNT;i++)
     {
         status[i] = HEATER_OPEN;
     }
-    return dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, status);
+    return dnq_heater_ctrl_whole(work_mode, status);
 }
 
 S32 dnq_close_all_heater()
 {
     S32 i;
     S32 status[DNQ_ROOM_CNT];
+    U32 work_mode = dnq_heater_get_workmode();
     
     for(i=0;i<DNQ_ROOM_CNT;i++)
     {
         status[i] = HEATER_CLOSE;
     }
-    return dnq_heater_ctrl_whole(HEATER_MODE_SWITCH, status);
+    return dnq_heater_ctrl_whole(work_mode, status);
 }
 
 

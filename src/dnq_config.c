@@ -14,6 +14,7 @@
 #include "ngx_palloc.h"
 #include "dnq_checksum.h"
 #include "dnq_lcd.h"
+#include "dnq_mcu.h"
 #include "dnq_log.h"
 #include "cJSON.h"
 
@@ -185,6 +186,11 @@ S32 parse_ds18b20_sn_config()
     
     room_item_t *rooms = dnq_get_rooms();
 
+    for(i=0; i<DNQ_ROOM_MAX; i++)
+    {
+        strncpy(rooms[i].sn_name, "28-000000000000", SIZE_32);
+    }
+
     len = dnq_file_read(DNQ_SN_CONF_FILE, buffer, sizeof(buffer));
     if(len < 0)
     {
@@ -205,7 +211,7 @@ S32 parse_ds18b20_sn_config()
             &id, &sn[0],&sn[1],&sn[2],&sn[3],&sn[4],&sn[5],&sn[6],&sn[7]);
         sprintf(sn_name, "%02x-%02x%02x%02x%02x%02x%02x", \
             sn[0],sn[6],sn[5],sn[4],sn[3],sn[2],sn[1]);
-        strcpy(rooms[id].sn_name, sn_name);
+        strncpy(rooms[id-1].sn_name, sn_name, SIZE_32);
         DNQ_INFO(DNQ_MOD_CONFIG, "read config: sn_id=%d, name=%s", id, sn_name);
         
         line_start = line_end + 1;       
@@ -220,13 +226,10 @@ S32 dnq_config_init()
 {
     S32 ret = 0;
 
-    /* check config, for first generation temperature sensor */
-    if((ret=access(DNQ_SN_CONF_FILE, F_OK)) == 0) 
-    {
-        parse_ds18b20_sn_config();
-        g_dnq_config.sensor_generation = 1;
-    }
-
+    /* 
+     * load the config data "dnq.dat" from flash to g_dnq_config in ram.
+     * if config file is not existed, create it by default data.
+     */
     if((ret=access(DNQ_DATA_FILE, F_OK)) < 0)
     {
         ret = dnq_data_file_create(); 
@@ -236,6 +239,19 @@ S32 dnq_config_init()
         dnq_config_load();
     }
 
+    /* check sn config, for first generation temperature sensor */
+    if((ret=access(DNQ_SN_CONF_FILE, F_OK)) == 0) 
+    {
+        parse_ds18b20_sn_config();
+        g_dnq_config.sensor_generation = 1;
+        DNQ_INFO(DNQ_MOD_CONFIG, "use first generation sensor");
+    }
+
+    /*
+    * adjust the global config data
+    * 1. convert room's name from utf-8 to gb2313.
+    * 2. update setting temp according to current time
+    */
     dnq_config_adjust();
     dnq_config_print();
     
@@ -365,12 +381,14 @@ S32 dnq_config_adjust()
 S32 dnq_config_load()
 {
     S32  ret = 0;
-    
+    U32  mode;
     ret = dnq_file_read(DNQ_DATA_FILE, (U8*)&g_dnq_config, sizeof(dnq_config_t));
     if(ret < 0)
         return -1;
 
     g_dnq_config.init.inited = 0;
+    mode = g_dnq_config.init.heater_work_mode;
+    dnq_heater_set_workmode((mode==1)?HEATER_MODE_POWER:HEATER_MODE_SWITCH);
     
     return ret;
 }
@@ -979,6 +997,7 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             if(ret < 0)
                 return -1;
             memcpy(&g_dnq_config.init, cjson_struct, sizeof(init_info_t));
+            dnq_heater_set_workmode(g_dnq_config.init.heater_work_mode);
             dnq_json_save_file(JSON_FILE_INIT, json_data, len);
         break;
         default:
