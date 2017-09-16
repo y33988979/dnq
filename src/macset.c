@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 
     if(argc == 1)
     {
-        printf("Usage: ./macset [AA:BB:CC:DD:EE:FF]\n");
+        printf("Usage: ./macset AA:BB:CC:DD:EE:FF\n");
         return -1;
     }
     if(argc == 2)
@@ -81,7 +81,8 @@ int main(int argc, char **argv)
 	        if (WIFEXITED(r) && 0 == (WEXITSTATUS(r)))
             {
                 system("cat /etc/init.d/rcS");
-                printf("\nnew mac[%s]\n", mac);
+                printf("the new mac is [%s].\n", mac);
+                printf("mac update success!!\n");
                 return 0;
             }
             else
