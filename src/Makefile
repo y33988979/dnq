@@ -108,7 +108,7 @@ update: upgrade_update manage_update update_all
 
 #.PHONY clean
 clean:
-	-rm *.o
-	-rm *.tar.gz *.txt
-	-rm -rf $(UPDATE_DIR)
-	-rm $(TARGET)
+	-@rm -rf *.o
+	-@rm -rf *.tar.gz *.txt
+	-@rm -rf $(UPDATE_DIR)
+	-@rm -rf $(TARGET)
