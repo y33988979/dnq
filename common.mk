@@ -10,9 +10,12 @@ LDPATH = -L$(TOP_DIR)/lib
 LIBS =•
 
 PUB_DIR=$(TOP_DIR)/pub
+BIN_DIR=$(TOP_DIR)/bin
 
 APP_DIR=$(PUB_DIR)/app
 ROOTFS_DIR=$(PUB_DIR)/rootfs
+DATA_DIR=$(PUB_DIR)/data
+UPDATE_DIR=$(PUB_DIR)/update
 IMAGE_DIR=$(PUB_DIR)/image
 
 HWVER=0x100

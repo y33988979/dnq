@@ -3,6 +3,8 @@
 # Copyright (C) Jiuzhou, Inc.
 # 
 
+include $(TOP_DIR)/common.mk
+
 CC=arm-linux-gcc
 CXX=arm-linux-g++
 
@@ -20,7 +22,8 @@ UPGRADE_OBJS = utils.o dnq_checksum.o \
 			   #dnq_log.o dnq_common.o \
 			   ngx_palloc.o \
 
-UPDATE_DIR = update
+ROOTFS_APP_DIR=$(ROOTFS_DIR)/root/dnq
+
 INCLUDES = -I. -I$(TOP_DIR)/include
 CFLAGS = -g -DHWVER=$(HardwareVersion) -DSWVER=$(SoftwareVersion) -DUPGRD_SWVER=$(UPGRADE_SWVER) -Wl,--hash-style=sysv
 LDFLAGS = -lm -lrabbitmq -lpthread -liconv
@@ -30,10 +33,17 @@ LIBS =
 AT := @
 TARGET = dnq_manage dnq_upgrade macset
 
-all: prepare $(TARGET) version update
+all: install image
+install: prepare $(TARGET) version update
+	@cp -rf $(TARGET) $(APP_DIR)
 
+image: rootfs_jffs2
+	
 prepare:
+	@mkdir -p $(APP_DIR)
 	@mkdir -p $(UPDATE_DIR)
+	@mkdir -p $(IMAGE_DIR)
+	@mkdir -p $(DATA_DIR)
 	@touch main.c
 
 version:
@@ -43,7 +53,7 @@ version:
 
 macset:
 	$(AT)$(CC) macset.c -o macset
-	@echo " Create $@ success!"
+	@echo -e "\e[32m Create $@ success! \e[0m"
 
 dnq_manage: $(OBJS)
 	$(AT)$(CC) $(CFLAGS) $(INCLUDES) $(LDPATH) -static $^ -o $@.static $(LDFLAGS)
@@ -58,27 +68,39 @@ dnq_upgrade: $(UPGRADE_OBJS)
 	@echo " LD   $^ "
 	@echo " Create $@ success!"
 
+jffs2_image: rootfs_jffs2 data_jffs2
+rootfs_jffs2: $(TARGET)
+	@cp -rf $(TARGET) $(ROOTFS_APP_DIR)
+	@cp -rf $(BIN_DIR)/rcS $(ROOTFS_DIR)/etc/init.d
+	@cp -rf $(BIN_DIR)/profile $(ROOTFS_DIR)/etc/profile
+	$(TOP_DIR)/bin/mkfs.jffs2 -s 0x1000 -e 0x10000 --pad=0x700000 -d $(ROOTFS_DIR) -o $(IMAGE_DIR)/rootfs_$(HardwareVersion)_$(SoftwareVersion).jffs2 -n -l
+	@echo -e "\e[32m Create rootfs_jffs2 success! \033[0m"
+
+data_jffs2:
+	$(TOP_DIR)/bin/mkfs.jffs2 -s 0x1000 -e 0x10000 --pad=0x700000 -d $(DATA_DIR) -o $(IMAGE_DIR)/data_$(HardwareVersion)_$(SoftwareVersion).jffs2 -n -l
+	@echo -e "\e[32m Create rootfs_jffs2 success! \033[0m"
+
 manage_update: dnq_manage version.txt
 	@tar zcvf $<.tar.gz $^
 	#@crc32 $<.tar.gz | tr [a-z] [A-Z] > crc32.txt
 	./mkdesc.sh $<.tar.gz manage_desc.txt
 	cp $<.tar.gz manage_desc.txt $(UPDATE_DIR)
-	@echo " Create $<.tar.gz "
+	@echo -e "\e[32m Create $<.tar.gz \033[0m"
 
 upgrade_update: dnq_upgrade version.txt
 	@tar zcvf $<.tar.gz $^
 	./mkdesc.sh $<.tar.gz upgrd_desc.txt
 	cp $<.tar.gz upgrd_desc.txt $(UPDATE_DIR)
-	@echo " Create $<.tar.gz "
+	@echo -e "\e[32m Create $<.tar.gz \033[0m"
 
 update_all: dnq_upgrade dnq_manage version.txt
 	@tar zcvf $@.tar.gz $^
 	./mkdesc.sh $@.tar.gz update_desc.txt
 	cp $@.tar.gz update_desc.txt $(UPDATE_DIR)
-	@echo " Create $@.tar.gz "
+	@echo -e "\e[32m Create $@.tar.gz \e[0m"
 
 update: upgrade_update manage_update update_all
-	@echo " Create update success!"
+	@echo -e "\e[32m Create update success! \e[0m"
 
 %.o: %.c
 	$(AT)$(CC) $(CFLAGS) $(INCLUDES) -c $^ -o $@

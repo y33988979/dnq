@@ -1,0 +1,13 @@
+
+#ifconfig eth0 192.168.30.189
+#mount -tnfs -o nolock -o tcp 192.168.30.184:/home/ychen /mnt
+
+cd /root/dnq/
+./dnq_upgrade
+./dnq_manage
+date >> exit.dump
+cat /proc/meminfo | grep MemFree >> exit.dump
+echo "dnq_manage exit..."
+sleep 5
+reboot
+

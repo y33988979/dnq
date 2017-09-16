@@ -22,17 +22,23 @@ LIBS =
 DEPEND_LIB := lib/librabbitmq.so
 TARGET = dnq
 
-all: $(DEPEND_LIB) 
+all: $(DEPEND_LIB)
 	make -C src all
 
 $(DEPEND_LIB):
 	make -C extern
 
 sdk:
-	make -C sdk/rootfs
+	make -C sdk all
+
+sdk_clean:
+	make -C sdk clean
 
 #.PHONY clean
 clean:
 	make -C src clean
+
+distclean: sdk_clean clean
+	-rm -rf $(PUB_DIR)/*
 
 .PHONY: clean all sdk

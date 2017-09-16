@@ -1,0 +1,20 @@
+#!/bin/sh
+/bin/mount -t proc none /proc
+/bin/mount -t sysfs sysfs /sys
+/bin/mount -t ramfs /tmp
+/bin/mount -t ramfs /mnt
+#/bin/mkdir /mnt/pts
+#/bin/mount -t devpts devpts /dev/pts
+/bin/echo > /dev/mdev.seq
+/bin/echo /bin/mdev > /proc/sys/kernel/hotplug
+/bin/mdev -s
+
+#add by ychen at 20170507
+/bin/mount -t jffs2 /dev/mtdblock3 /data
+mkdir -p /mnt/net
+#ifconfig eth0 hw ether 70:B3:D5:CF:49:24
+ifconfig eth0 up
+ifconfig lo up
+udhcpc -i eth0 &
+
+

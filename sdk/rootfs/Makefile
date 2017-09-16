@@ -13,9 +13,10 @@ all: $(BUILD_DIR)/tar
 $(BUILD_DIR)/tar:
 	test -d $(BUILD_DIR) || tar xvf $(ROOTFS_SRC_NAME).tar.bz2 -C .
 	cp -rf rootfs_48strip $(ROOTFS_DIR)
-	touch $@
+	#touch $@
 
 clean:
 	-@rm -rf $(BUILD_DIR)
 
 .PHONY: clean 
+
