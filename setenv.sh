@@ -5,7 +5,6 @@ export SoftwareVersion=0x101
 export UPGRADE_SWVER=0x100
 
 export TOP_DIR=$(pwd)
-cd src
 
 echo "TOP_DIR=$TOP_DIR"
-echo "please make"
+echo "set environment ok!"

@@ -3,7 +3,10 @@
 # Copyright (C) Jiuzhou, Inc.
 # 
 
-TOP_DIR=${PWD}
+ifeq ($(TOP_DIR),)
+$(error "please source . setenv.sh first!!")	
+endif
+
 include common.mk
 
 CC=arm-linux-gcc
@@ -19,18 +22,17 @@ LIBS =
 DEPEND_LIB := lib/librabbitmq.so
 TARGET = dnq
 
-all: $(DEPEND_LIB)
+all: $(DEPEND_LIB) 
 	make -C src all
 
 $(DEPEND_LIB):
 	make -C extern
 
-test:
-	make -C tests all
-
-test_clean:
-	make -C tests clean
+sdk:
+	make -C sdk/rootfs
 
 #.PHONY clean
 clean:
 	make -C src clean
+
+.PHONY: clean all sdk
