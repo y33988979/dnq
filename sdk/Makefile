@@ -31,6 +31,7 @@ depends_uninstall    := $(addsuffix _uninstall, $(depends))
 .PHONY: all clean install mod_install uninstall prebuild
 
 prebuild:
+	@mkdir -p $(IMAGE_DIR)
 	@cp -rf $(PREBUILD_DIR)/* $(IMAGE_DIR)
 
 all: $(depends) prebuild
