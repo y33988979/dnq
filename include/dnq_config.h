@@ -208,6 +208,8 @@ typedef struct room_info
     U16       room_order;
     U16       room_floor;
     U8        position[SIZE_16];
+    U16       work_mode;
+    U16       power_mode_val;
 }room_info_t;
 
 typedef struct _init_info
@@ -330,6 +332,7 @@ typedef enum json_type
 
 S32 dnq_config_init();
 S32 dnq_config_deinit();
+S32 dnq_config_reset();
 S32 dnq_file_read(U8 *filepath, U8 *buffer, U32 len);
 S32 dnq_file_write(U8 *filepath, U8 *buffer, U32 len);
 void dnq_config_print();

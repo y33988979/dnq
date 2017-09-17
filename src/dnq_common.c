@@ -110,6 +110,14 @@ S32 dnq_system_call(U8 *command)
     return 0;
 }
 
+S32 dnq_reboot()
+{
+    DNQ_INFO(DNQ_MOD_ALL, "dnqV2 reboot...\n");
+    fflush(stdout);
+    sync();
+    reboot(0x1234567);
+}
+
 S32 dnq_init()
 {
     S32 ret;

@@ -155,6 +155,7 @@ typedef struct room_item
     U16      work_status;
     U16      sn_status;
     S32      correct;
+    U16      power_mode_val;
     S8       sn_name[SIZE_32];
 }room_item_t;
 

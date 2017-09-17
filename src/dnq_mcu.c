@@ -359,9 +359,22 @@ S32 dnq_heater_open(U32 id)
     S32 ret = 0;
     U32 work_mode = dnq_heater_get_workmode();
     room_item_t *room = dnq_get_room_item(id);
+    
     if(room->work_status == STOP_STATUS)
     {
-        ret = dnq_heater_ctrl_single(id, work_mode, HEATER_OPEN);
+        if(work_mode == HEATER_MODE_POWER)
+        {
+            ret = dnq_heater_ctrl_single(id, work_mode, room->power_mode_val);
+        }
+        else if(work_mode == HEATER_MODE_SWITCH)
+        {
+            ret = dnq_heater_ctrl_single(id, work_mode, HEATER_OPEN);
+        }
+        else
+        {
+            DNQ_ERROR(DNQ_MOD_MCU, "open heart failed! id=%d", id);
+            return -1;
+        }
         //room->work_status = WORK_STATUS;
         DNQ_INFO(DNQ_MOD_MCU, "open heart! id=%d", id);
     }
@@ -603,10 +616,23 @@ S32 dnq_open_all_heater()
     S32 i;
     S32 status[DNQ_ROOM_CNT];
     U32 work_mode = dnq_heater_get_workmode();
+    room_item_t *rooms = dnq_get_rooms();
     
     for(i=0;i<DNQ_ROOM_CNT;i++)
     {
-        status[i] = HEATER_OPEN;
+        if(work_mode == HEATER_MODE_POWER)
+        {
+            status[i] = rooms[i].power_mode_val;
+        }
+        else if(work_mode == HEATER_MODE_SWITCH)
+        {
+            status[i] = HEATER_OPEN;
+        }
+        else
+        {
+            DNQ_ERROR(DNQ_MOD_MCU, "open all heart failed!");
+            return -1;
+        }
     }
     return dnq_heater_ctrl_whole(work_mode, status);
 }
@@ -629,13 +655,15 @@ S32 dnq_all_heater_init()
 {
     S32 i;
     room_item_t *rooms = dnq_get_rooms();
+    U32 work_mode = dnq_heater_get_workmode();
 
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
-        if(rooms[i].work_status = WORK_STATUS)
-            dnq_heater_ctrl_single(i, HEATER_MODE_SWITCH, HEATER_OPEN);
-        else if(rooms[i].work_status = WORK_STATUS)
-            dnq_heater_ctrl_single(i, HEATER_MODE_SWITCH, HEATER_CLOSE);
+        if(rooms[i].work_status == WORK_STATUS)
+            dnq_heater_ctrl_single(i, work_mode, \
+            (work_mode==HEATER_MODE_POWER)?rooms[i].power_mode_val:HEATER_OPEN);
+        else if(rooms[i].work_status == STOP_STATUS)
+            dnq_heater_ctrl_single(i, work_mode, HEATER_CLOSE);
     }
     return 0;
 }

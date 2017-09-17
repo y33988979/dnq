@@ -264,6 +264,14 @@ S32 dnq_config_deinit()
     return 0;
 }
 
+S32 dnq_config_reset()
+{
+    DNQ_INFO(DNQ_MOD_ALL, "dnqV2 config reset...\n");
+    dnq_system_call("rm -rf /root/dnq/dnq.dat");
+    dnq_reboot();
+    return 0;
+}
+
 void dnq_config_print()
 {
     U32 i = 0;
@@ -363,6 +371,11 @@ S32 dnq_config_adjust()
         strncpy(rooms[i].name, gb2312_out, SIZE_16);
     }
 
+    for(i=0; i<DNQ_ROOM_CNT; i++)
+    {
+        rooms[i].power_mode_val = init_config->rooms[i].power_mode_val;
+    }
+    
     policy_config = dnq_get_temp_policy_config(NULL);
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
@@ -452,6 +465,12 @@ S32 dnq_data_file_set_default_value()
     dnq_config_t *all_config = &g_dnq_config;
 
     //memset(all_config, 0, sizeof(dnq_config_t));
+    
+    for(i=0; i<DNQ_ROOM_MAX; i++)
+    {
+        all_config->init.rooms[i].work_mode = HEATER_MODE_POWER;
+        all_config->init.rooms[i].power_mode_val = HEATER_POWER_100;
+    }
     
     g2u("松花江小学", SIZE_32, utf8_out, sizeof(utf8_out));
     strncpy(all_config->init.project_name, utf8_out, SIZE_32);

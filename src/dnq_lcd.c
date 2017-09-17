@@ -89,6 +89,7 @@ S32 dnq_rooms_init()
     S32 i = 0;
     for(i=0; i<DNQ_ROOM_MAX; i++)
     {
+        g_rooms[i].power_mode_val = HEATER_POWER_100;
         strncpy(g_rooms[i].sn_name, "28-000000000000", SIZE_32);
     }
     return 0;

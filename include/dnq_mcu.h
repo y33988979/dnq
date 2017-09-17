@@ -12,9 +12,9 @@
 #define HEATER_OPEN    1
 #define HEATER_CLOSE   3
 
-#define HEATER_POWER_100   0
-#define HEATER_POWER_75    1
-#define HEATER_POWER_0     2   /* poweroff */
+#define HEATER_POWER_100   1
+#define HEATER_POWER_75    2
+#define HEATER_POWER_0     3   /* poweroff */
 
 /* command define */
 #define CMD_IDX_ALL_CTRL       0
