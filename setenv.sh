@@ -9,7 +9,7 @@ export TOP_DIR=$(pwd)
 
 export PATH=$PATH:$TOP_DIR/bin
 
-mkdir -p $TOP_DIR/pub
+mkdir -p $TOP_DIR/pub/image
 
 echo "TOP_DIR=$TOP_DIR"
 echo "PUB_DIR=$TOP_DIR/pub"

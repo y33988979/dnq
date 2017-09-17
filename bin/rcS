@@ -11,6 +11,7 @@
 
 #add by ychen at 20170507
 /bin/mount -t jffs2 /dev/mtdblock3 /data
+/root/dnq/init.sh
 mkdir -p /mnt/net
 #ifconfig eth0 hw ether 70:B3:D5:CF:49:24
 ifconfig eth0 up
