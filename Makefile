@@ -27,8 +27,8 @@ all: $(DEPEND_LIB)
 
 $(DEPEND_LIB):
 	make -C extern
-
-sdk:
+	
+sdk: 
 	make -C sdk all
 
 sdk_clean:

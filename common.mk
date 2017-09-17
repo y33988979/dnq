@@ -11,6 +11,7 @@ LIBS =•
 
 PUB_DIR=$(TOP_DIR)/pub
 BIN_DIR=$(TOP_DIR)/bin
+PREBUILD_DIR=$(TOP_DIR)/sdk/prebuild
 
 APP_DIR=$(PUB_DIR)/app
 ROOTFS_DIR=$(PUB_DIR)/rootfs

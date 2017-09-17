@@ -37,7 +37,7 @@ all: install image
 install: prepare $(TARGET) version update
 	@cp -rf $(TARGET) $(APP_DIR)
 
-image: rootfs_jffs2
+image: rootfs_jffs2 data_jffs2
 	
 prepare:
 	@mkdir -p $(APP_DIR)
@@ -73,12 +73,13 @@ rootfs_jffs2: $(TARGET)
 	@cp -rf $(TARGET) $(ROOTFS_APP_DIR)
 	@cp -rf $(BIN_DIR)/rcS $(ROOTFS_DIR)/etc/init.d
 	@cp -rf $(BIN_DIR)/profile $(ROOTFS_DIR)/etc/profile
+	@cp -rf $(BIN_DIR)/busybox $(ROOTFS_DIR)/bin/busybox
 	$(TOP_DIR)/bin/mkfs.jffs2 -s 0x1000 -e 0x10000 --pad=0x700000 -d $(ROOTFS_DIR) -o $(IMAGE_DIR)/rootfs_$(HardwareVersion)_$(SoftwareVersion).jffs2 -n -l
-	@echo -e "\e[32m Create rootfs_jffs2 success! \033[0m"
+	@echo -e "\e[32m Create $@ success! \033[0m"
 
 data_jffs2:
-	$(TOP_DIR)/bin/mkfs.jffs2 -s 0x1000 -e 0x10000 --pad=0x700000 -d $(DATA_DIR) -o $(IMAGE_DIR)/data_$(HardwareVersion)_$(SoftwareVersion).jffs2 -n -l
-	@echo -e "\e[32m Create rootfs_jffs2 success! \033[0m"
+	$(TOP_DIR)/bin/mkfs.jffs2 -s 0x1000 -e 0x10000 --pad=0x380000 -d $(DATA_DIR) -o $(IMAGE_DIR)/data_$(HardwareVersion)_$(SoftwareVersion).jffs2 -n -l
+	@echo -e "\e[32m Create $@ success! \033[0m"
 
 manage_update: dnq_manage version.txt
 	@tar zcvf $<.tar.gz $^
