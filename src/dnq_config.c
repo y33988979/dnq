@@ -481,7 +481,7 @@ S32 dnq_data_file_set_default_value()
     g2u("二楼东", SIZE_32, utf8_out, sizeof(utf8_out));
     strncpy(all_config->init.buildPosition, utf8_out, SIZE_32);
     
-    g2u("三号箱[def]", SIZE_32, utf8_out, sizeof(utf8_out));
+    g2u("三号箱", SIZE_32, utf8_out, sizeof(utf8_out));
     strncpy(all_config->init.hostName, utf8_out, SIZE_32);
 
     return 0;

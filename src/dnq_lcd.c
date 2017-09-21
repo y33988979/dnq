@@ -876,6 +876,28 @@ static S32 lcd_rooms_update_by_page(U32 page_num)
     return ret;
 }
 
+static S32 lcd_get_title_string_gbk(S8 *title_string)
+{
+    S8  gb2312_out[SIZE_32] = {0};
+    S8  project_name[SIZE_32] = {0};
+    S8  building_name[SIZE_32] = {0};
+    S8  buildPosition[SIZE_32] = {0};
+    S8  hostName[SIZE_32] = {0};
+    init_info_t *init_config = dnq_get_init_config(NULL);
+    
+    /* title */
+    u2g(init_config->project_name, SIZE_32, project_name, sizeof(gb2312_out));
+    u2g(init_config->building_name, SIZE_32, building_name, sizeof(gb2312_out));
+    u2g(init_config->buildPosition, SIZE_32, buildPosition, sizeof(gb2312_out));
+    u2g(init_config->hostName, SIZE_32, hostName, sizeof(gb2312_out));
+
+    /* strcat title */
+    sprintf(title_string, " %s-%s-%s/%s", \
+        project_name, building_name, buildPosition, hostName);
+
+    return 0;
+}
+
 static S32 lcd_clear_all()
 {
     U32 i = 0, j = 0;
@@ -906,14 +928,14 @@ static S32 lcd_update_all()
     U32 ret = 0;
     U8 mac_addr[16] = {0};
     U8 mac_info[64] = {0};
+    S8  gb2312_out[SIZE_32] = {0};
+    S8  project_name[SIZE_32] = {0};
+    S8  building_name[SIZE_32] = {0};
+    S8  buildPosition[SIZE_32] = {0};
+    S8  hostName[SIZE_32] = {0};
     S8 title_string[128] = {0};
 
-    init_info_t *config = dnq_get_init_config(NULL);
-
-    /* strcat title */
-    sprintf(title_string, " %s-%s-%s/%s", \
-    config->project_name, config->building_name, \
-    config->buildPosition, config->hostName);
+    lcd_get_title_string_gbk(title_string);
     ret = lcd_title_update(title_string);
     //ret = lcd_date_update("2017-07-00 00:00:00");
     ret = lcd_header_update(HEADER_STR);
@@ -1366,22 +1388,7 @@ static S32 lcd_manage_msg_process(dnq_msg_t *msg)
     {
         case 0x100: /* update init info! */
 
-            /* utf8 --> gb2312 */
-            u2g(init_info->project_name, SIZE_32, project_name, sizeof(gb2312_out));   
-            u2g(init_info->building_name, SIZE_32, building_name, sizeof(gb2312_out));   
-            u2g(init_info->buildPosition, SIZE_32, buildPosition, sizeof(gb2312_out));   
-            u2g(init_info->hostName, SIZE_32, hostName, sizeof(gb2312_out));
-
-            #if 0/* default value*/
-            if(init_info->buildPosition[0] == '\0')
-                strncpy(buildPosition, "¶þÂ¥¶«", SIZE_32);
-            if(init_info->hostName[0] == '\0')
-                strncpy(hostName, "ÈýºÅÏä", SIZE_32);
-            #endif
-
-            /* strcat title */
-            sprintf(title_string, " %s-%s-%s/%s", \
-                project_name, building_name, buildPosition, hostName);
+            lcd_get_title_string_gbk(title_string);
             lcd_title_update(title_string);
             ret = lcd_rooms_update_by_page(lcd_get_current_page());
             break;
