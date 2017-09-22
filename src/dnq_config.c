@@ -254,6 +254,7 @@ S32 dnq_config_init()
     */
     dnq_config_adjust();
     dnq_config_print();
+    DNQ_INFO(DNQ_MOD_CONFIG, "dnq config size ==== %d", sizeof(dnq_config_t));
     
     return 0;
 }
@@ -362,8 +363,10 @@ S32 dnq_config_adjust()
     policy_config_t *policy_config;
     error_config_t  *error_config;
     limit_config_t  *limit_config;
+    power_config_t  *power_config;
     
     init_config = dnq_get_init_config(NULL);
+    power_config = dnq_get_power_config_config(NULL);
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         rooms[i].id = init_config->rooms[i].room_order;
@@ -373,7 +376,7 @@ S32 dnq_config_adjust()
 
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
-        rooms[i].power_mode_val = init_config->rooms[i].power_mode_val;
+        rooms[i].power_mode_val = power_config->rooms[i].power_mode_val;
     }
     
     policy_config = dnq_get_temp_policy_config(NULL);
@@ -468,8 +471,8 @@ S32 dnq_data_file_set_default_value()
     
     for(i=0; i<DNQ_ROOM_MAX; i++)
     {
-        all_config->init.rooms[i].work_mode = HEATER_MODE_POWER;
-        all_config->init.rooms[i].power_mode_val = HEATER_POWER_100;
+        all_config->power_config.rooms[i].work_mode = HEATER_MODE_POWER;
+        all_config->power_config.rooms[i].power_mode_val = HEATER_POWER_100;
     }
     
     g2u("松花江小学", SIZE_32, utf8_out, sizeof(utf8_out));
@@ -587,6 +590,14 @@ authorization_t*
     if(config)
         memcpy(config, &g_dnq_config.authorization, sizeof(authorization_t));
     return &g_dnq_config.authorization;
+}
+
+dnq_config_t*
+    dnq_get_all_config(dnq_config_t *config)
+{
+    if(config)
+        memcpy(config, &g_dnq_config, sizeof(dnq_config_t));
+    return &g_dnq_config;
 }
 
 policy_config_t* 
@@ -1016,7 +1027,8 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             if(ret < 0)
                 return -1;
             memcpy(&g_dnq_config.init, cjson_struct, sizeof(init_info_t));
-            dnq_heater_set_workmode(g_dnq_config.init.heater_work_mode);
+            dnq_heater_set_workmode(\
+                g_dnq_config.init.heater_work_mode?HEATER_MODE_POWER:HEATER_MODE_SWITCH);
             dnq_json_save_file(JSON_FILE_INIT, json_data, len);
         break;
         default:

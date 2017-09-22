@@ -130,6 +130,8 @@ typedef struct room_power_config
 {
     U16       room_id;
     U16       config_cnt;
+    U16       work_mode;
+    U16       power_mode_val;
     U16       power[6];   /* need fixed?  */
     U16       num[6];     /* need fixed?  */
 }room_power_config_t;
@@ -208,8 +210,8 @@ typedef struct room_info
     U16       room_order;
     U16       room_floor;
     U8        position[SIZE_16];
-    U16       work_mode;
-    U16       power_mode_val;
+    U16       work_mode;      /* save room's power mode from server, unused */
+    U16       power_mode_val; /* save room's power value from server, unused */
 }room_info_t;
 
 typedef struct _init_info
@@ -250,6 +252,7 @@ typedef struct _dnq_config
     correct_config_t correct_config;
     init_info_t      init;
     U32              sensor_generation;
+    U32              room_count;
     U32              reserved;
 }dnq_config_t;
 
@@ -345,6 +348,9 @@ extern dnq_config_t g_dnq_config;
 
 #define init_info_is_ok()  (g_dnq_config.init.inited)
 
+
+dnq_config_t*
+    dnq_get_all_config(dnq_config_t *config);
 authorization_t*
     dnq_get_authorization_config(authorization_t *config);
 policy_config_t*
@@ -361,7 +367,8 @@ correct_config_t*
     dnq_get_temp_correct_config(correct_config_t *config);
 init_info_t*
     dnq_get_init_config(init_info_t *config);
-
+void dnq_set_rooms_count(U32 count);
+U32 dnq_get_rooms_count();
 timesetting_t* dnq_get_room_setting_by_time(U32 room_id, U32 current_time);
 S32 dnq_get_room_current_setting_temp(U32 room_id);
 

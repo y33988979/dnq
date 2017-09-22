@@ -260,13 +260,15 @@ void *sensor_task(void *args)
 {
     U32 i;
     S32 temperature;
-    
+    U32 rooms_count;
+    init_info_t *init_config = dnq_get_init_config(NULL);
     room_item_t *rooms = dnq_get_rooms();
 
     while(1)
     {
+        rooms_count = init_config->rooms_cnt;
         /* get room temperature from sensor */
-        for(i=0; i<DNQ_ROOM_CNT; i++)
+        for(i=0; i<rooms_count; i++)
         {
             //if(i >= 4)
             //    continue;

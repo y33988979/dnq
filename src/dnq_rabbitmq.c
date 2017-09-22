@@ -1734,6 +1734,7 @@ int rabbitmq_init(char *serverip, int port, amqp_connection_state_t *pconn)
     */
     *pconn = conn;
 
+    dnq_msleep(500);
     /* 代码执行到这里，rabbitmq所有通道已建立，可以与云端通信，通知其他模块 */
     rabbitmq_start_notify();
 

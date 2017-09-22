@@ -131,10 +131,12 @@ S32 dnq_proc()
     policy_config_t *policy_config;
     room_temp_policy_t   *rooms_policy;
     limit_config_t    *limit_config;
+    init_info_t       *init_config;
     timesetting_t     *current_setting;
     room_item_t *rooms = dnq_get_rooms();
     static U32 status[DNQ_ROOM_MAX] = {0};
 
+    init_config = dnq_get_init_config(NULL);
     error_config = dnq_get_temp_error_config(NULL);
     policy_config = dnq_get_temp_policy_config(NULL);
     limit_config = dnq_get_temp_limit_config(NULL);
@@ -145,7 +147,7 @@ S32 dnq_proc()
     //current_second = datetime.hour*3600+datetime.minute*60+datetime.second;
 
     /* Traversal all rooms */
-    for(room_id=0; room_id<DNQ_ROOM_MAX; room_id++)
+    for(room_id=0; room_id<init_config->rooms_cnt; room_id++)
     {
         /* check sensor */
         if(rooms[room_id].sn_status == STOP_STATUS)

@@ -737,6 +737,7 @@ S32 dnq_mcu_init()
     datetime_t datetime = {0};
    
     //dnq_heater_ctrl_test();
+    dnq_mcu_heartbeat_check();
     dnq_close_all_heater();
     ret = dnq_rtc_get_datetime(&datetime);
     if(ret != -1)

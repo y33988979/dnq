@@ -34,7 +34,7 @@ static lcd_status_t  lcd_status =
     .current_foucs = 0
 };
 static dnq_appinfo_t  *lcd_appinfo = NULL;
- 
+
 static room_item_t g_rooms[DNQ_ROOM_MAX+1] = 
 {
  /* id, name ,curr_temp, set_temp, work_status, sn_status, correct*/
