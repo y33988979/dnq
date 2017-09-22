@@ -502,6 +502,7 @@ S32 dnq_rtc_get_datetime_str(U8 *datetime)
     U8  recvbuf[64];
     mcu_lock();
     ret = send_cmd_to_mcu(CMD_ID_GET_TIME);
+    ret = cmdbuf_update_crc(CMD_ID_GET_TIME);
     ret = recv_cmd_from_mcu(CMD_ID_GET_TIME, recvbuf, MCU_RESPONSE_LEN_GETTIME);
     mcu_unlock();
     if(ret < 0)
