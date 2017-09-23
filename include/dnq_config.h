@@ -132,8 +132,6 @@ typedef struct room_power_config
     U16       config_cnt;
     U16       work_mode;
     U16       power_mode_val;
-    U16       power[6];   /* need fixed?  */
-    U16       num[6];     /* need fixed?  */
 }room_power_config_t;
 
 typedef struct _power_config

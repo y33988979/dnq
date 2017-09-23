@@ -364,7 +364,8 @@ S32 dnq_heater_open(U32 id)
     {
         if(work_mode == HEATER_MODE_POWER)
         {
-            ret = dnq_heater_ctrl_single(id, work_mode, room->power_mode_val);
+            ret = dnq_heater_ctrl_single(id, work_mode, \
+                (room->power_mode_val==75)?HEATER_POWER_75:HEATER_POWER_100);
         }
         else if(work_mode == HEATER_MODE_SWITCH)
         {
@@ -623,7 +624,7 @@ S32 dnq_open_all_heater()
     {
         if(work_mode == HEATER_MODE_POWER)
         {
-            status[i] = rooms[i].power_mode_val;
+            status[i] = (rooms[i].power_mode_val==75)?HEATER_POWER_75:HEATER_POWER_100;
         }
         else if(work_mode == HEATER_MODE_SWITCH)
         {
@@ -657,12 +658,14 @@ S32 dnq_all_heater_init()
     S32 i;
     room_item_t *rooms = dnq_get_rooms();
     U32 work_mode = dnq_heater_get_workmode();
+    S32 power_mode_val = 0;
+    power_mode_val = (rooms[i].power_mode_val==75)?HEATER_POWER_75:HEATER_POWER_100;
 
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         if(rooms[i].work_status == WORK_STATUS)
             dnq_heater_ctrl_single(i, work_mode, \
-            (work_mode==HEATER_MODE_POWER)?rooms[i].power_mode_val:HEATER_OPEN);
+            (work_mode==HEATER_MODE_POWER)?power_mode_val:HEATER_OPEN);
         else if(rooms[i].work_status == STOP_STATUS)
             dnq_heater_ctrl_single(i, work_mode, HEATER_CLOSE);
     }

@@ -48,7 +48,7 @@ typedef struct channel{
 #define JSON_ITEM_MIN             "min"
 #define JSON_ITEM_ERROR           "error"
 #define JSON_ITEM_CONFIGS         "configs"
-#define JSON_ITEM_POWER           "power"
+#define JSON_ITEM_POWER           "level"
 #define JSON_ITEM_NUM             "num"
 #define JSON_ITEM_RECTIFY         "rectify"
 #define JSON_ITEM_CORRECT         "correct"

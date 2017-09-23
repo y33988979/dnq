@@ -508,12 +508,13 @@ S32 json_parse_degree_error(cJSON * pjson, error_config_t *pdst)
 S32 json_parse_power_config(cJSON *pjson, power_config_t *pdst)
 {
     int     i = 0;
-    int     j = 0;
+    int     room_id = 0;
     cJSON  *obj = NULL;
     cJSON  *rooms = NULL;
     cJSON  *room_obj = NULL;
     cJSON  *configs = NULL;
     cJSON  *config_obj = NULL;
+    room_item_t *g_rooms = dnq_get_rooms();
 
     //type
     strcpy(pdst->type, "power");
@@ -557,32 +558,15 @@ S32 json_parse_power_config(cJSON *pjson, power_config_t *pdst)
         obj, room_obj, JSON_ITEM_ROOMID, &pdst->rooms[i].room_id, cJSON_Number);
         DNQ_INFO(DNQ_MOD_RABBITMQ, "id:\t%d!", pdst->rooms[i].room_id);
 
-        //configs
-        configs = cJSON_GetObjectItem(room_obj, JSON_ITEM_ROOMS);
-        if(!cJSON_IsArray(configs))
-        {
-            DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s must be a array!", JSON_ITEM_CONFIGS);
-            return -1;
-        }
-        
-        //configs size
-        pdst->rooms[i].config_cnt = cJSON_GetArraySize(rooms);
-        DNQ_INFO(DNQ_MOD_RABBITMQ, "%s array's size=%d!", JSON_ITEM_ROOMS, pdst->rooms[i].config_cnt);
+        room_id = pdst->rooms[i].room_id - 1;
+        //power
+        copy_json_item_to_struct_item(\
+            obj, room_obj, JSON_ITEM_POWER, &pdst->rooms[i].power_mode_val, cJSON_Number);
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "power:\t%d!", pdst->rooms[i].power_mode_val);
 
-        //item from configs array
-        for(j=0; j<pdst->rooms[i].config_cnt; j++)
+        if(room_id >= 0 && room_id < DNQ_ROOM_MAX)
         {
-            //item from array
-            config_obj = cJSON_GetArrayItem(configs, j);
-
-            //power
-            copy_json_item_to_struct_item(\
-                obj, config_obj, JSON_ITEM_POWER, &pdst->rooms[i].power[j], cJSON_Number);
-            DNQ_INFO(DNQ_MOD_RABBITMQ, "power:\t%s!", pdst->rooms[i].power[j]);
-            //num
-            copy_json_item_to_struct_item(\
-                obj, config_obj, JSON_ITEM_NUM, &pdst->rooms[i].num[j], cJSON_Number);
-            DNQ_INFO(DNQ_MOD_RABBITMQ, "num:\t%s!", pdst->rooms[i].num[j]);
+            g_rooms[room_id].power_mode_val = pdst->rooms[i].power_mode_val;
         }
     }
     

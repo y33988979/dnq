@@ -472,7 +472,7 @@ S32 dnq_data_file_set_default_value()
     for(i=0; i<DNQ_ROOM_MAX; i++)
     {
         all_config->power_config.rooms[i].work_mode = HEATER_MODE_POWER;
-        all_config->power_config.rooms[i].power_mode_val = HEATER_POWER_100;
+        all_config->power_config.rooms[i].power_mode_val = 100;
     }
     
     g2u("松花江小学", SIZE_32, utf8_out, sizeof(utf8_out));
@@ -905,10 +905,38 @@ S32 dnq_config_update_temp_error(void *cjson_struct)
 
 S32 dnq_config_update_power_config(void *cjson_struct)
 {
-    power_config_t *power_config;
-    power_config = (power_config_t *)cjson_struct;
-    
-    return 0;
+    S32 i = 0;
+    S32 room_id = -1;
+    S32 rooms_mask = 0;
+    room_item_t *rooms = dnq_get_rooms();
+    power_config_t *power_config = (power_config_t*)cjson_struct;
+    power_config_t *curr_power_config = dnq_get_power_config_config(NULL);
+
+    /* single mode */
+    if(power_config->mode == CTRL_SINGLE_ROOM)
+    {
+        room_id = power_config->rooms[0].room_id - 1;
+        rooms_mask |= 1<<room_id;
+        curr_power_config->rooms[room_id].power_mode_val = \
+            power_config->rooms[0].power_mode_val;
+    }
+    /* whole all config */
+    else if(power_config->mode == CTRL_WHOLE_ROOM)
+    {
+        for(i=0; i<DNQ_ROOM_CNT; i++)
+        {
+            curr_power_config->rooms[i].power_mode_val = \
+            power_config->rooms[0].power_mode_val;
+        }
+        rooms_mask = 0xFFFF;
+    }
+    else
+    {
+        DNQ_ERROR(DNQ_MOD_CONFIG, "error mode=%d! value must be 0 or 1!", power_config->mode);
+        return -1;
+    }
+        
+    return rooms_mask;
 }
 
 S32 dnq_config_update_response(void *cjson_struct)
@@ -1004,7 +1032,6 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             ret = dnq_config_update_power_config(cjson_struct);
             if(ret < 0)
                 return -1;
-            memcpy(&g_dnq_config.power_config, cjson_struct, sizeof(power_config_t));
             dnq_json_save_file(JSON_FILE_POWER, json_data, len);
         break;
         case JSON_TYPE_RESPONSE:
