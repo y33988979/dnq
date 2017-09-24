@@ -31,10 +31,10 @@ LDPATH = -L$(TOP_DIR)/lib
 LIBS = 
 
 AT := @
-TARGET = dnq_manage dnq_upgrade macset
+TARGET = dnq_manage dnq_upgrade macset version.txt
 
 all: install image
-install: prepare $(TARGET) version update
+install: prepare $(TARGET) update
 	@cp -rf $(TARGET) $(APP_DIR)
 
 image: rootfs_jffs2 data_jffs2
@@ -46,10 +46,10 @@ prepare:
 	@mkdir -p $(DATA_DIR)
 	@touch main.c
 
-version:
-	$(AT)echo "HWVER:$(HardwareVersion)" > version.txt
-	$(AT)echo "SWVER:$(SoftwareVersion)" >> version.txt
-	$(AT)echo "UPGRADE_SWVER:$(UPGRADE_SWVER)" >> version.txt
+version.txt:
+	$(AT)echo "HWVER:$(HardwareVersion)" > $@
+	$(AT)echo "SWVER:$(SoftwareVersion)" >> $@
+	$(AT)echo "UPGRADE_SWVER:$(UPGRADE_SWVER)" >> $@
 
 macset:
 	$(AT)$(CC) macset.c -o macset
