@@ -5,10 +5,7 @@
 
 include $(TOP_DIR)/common.mk
 
-objects += rootfs
-objects += application
-#objects += uboot
-#objects += kernel
+objects := busybox
 
 
 objects_clean        := $(addsuffix _clean, $(objects))
@@ -32,8 +29,6 @@ depends_uninstall    := $(addsuffix _uninstall, $(depends))
 .PHONY: all clean install mod_install uninstall prebuild
 
 prebuild:
-	@mkdir -p $(IMAGE_DIR)
-	@cp -rf $(PREBUILD_DIR)/* $(IMAGE_DIR)
 
 all: $(depends) prebuild
 

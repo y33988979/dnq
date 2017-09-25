@@ -6,17 +6,17 @@
 include $(TOP_DIR)/common.mk
 
 ROOTFS_SRC_NAME=rootfs_48strip
-BUILD_DIR=$(ROOTFS_SRC_NAME)
+ROOTFS_SRC_DIR=$(ROOTFS_SRC_NAME)
 
-all: $(BUILD_DIR)/tar
+all: $(ROOTFS_SRC_DIR)/tar
 
-$(BUILD_DIR)/tar:
-	test -d $(BUILD_DIR) || tar xvf $(ROOTFS_SRC_NAME).tar.bz2 -C .
-	cp -rf rootfs_48strip $(ROOTFS_DIR)
+$(ROOTFS_SRC_DIR)/tar:
+	test -d $(ROOTFS_SRC_DIR) || tar xvf $(ROOTFS_SRC_NAME).tar.bz2 -C .
+	cp -rf $(ROOTFS_SRC_DIR) $(ROOTFS_DIR)
 	#touch $@
 
 clean:
-	-@rm -rf $(BUILD_DIR)
+	-@rm -rf $(ROOTFS_SRC_DIR)
 
 .PHONY: clean 
 
