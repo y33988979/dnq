@@ -146,7 +146,7 @@ static S32 dnq_get_room_temperature_1(U32 room_id)
     if(strlen(rooms[room_id].sn_name) == 0)
         return -1;
 
-    sprintf(sensor_name, "/sys/bus/w1/devices/%s", rooms[room_id].sn_name);
+    sprintf(sensor_name, "/sys/bus/w1/devices/%s/w1_slave", rooms[room_id].sn_name);
     ret = dnq_w1_sysfile_read(sensor_name, buffer, sizeof(buffer));
     if(ret < 0)
     {
@@ -156,7 +156,13 @@ static S32 dnq_get_room_temperature_1(U32 room_id)
     }
 
     /* parse temperature */
-    ptr = strstr(buffer, "T=");
+    ptr = strstr(buffer, "t=");
+    if(!ptr){
+        DNQ_ERROR(DNQ_MOD_SENSOR, "can't found \"T=\" in sensor[%s]!, roomid=%d", \
+            rooms[room_id].sn_name, room_id);
+        return -1;
+    }
+        
     ptr += 2;
     temperature = atoi(ptr);
 
@@ -166,7 +172,7 @@ static S32 dnq_get_room_temperature_1(U32 room_id)
     DNQ_DEBUG(DNQ_MOD_SENSOR, "room %d temperature is %d.%d'C!",\
         room_id, temperature/1000, (temperature%1000)/10);
 
-    return temperature;    
+    return temperature/10;
 }
 
 static S32 dnq_get_room_temperature_2(U32 room_id)

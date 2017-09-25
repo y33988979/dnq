@@ -10,7 +10,7 @@
 #define DNQ_CONFIG_PATH           "/root/dnq/configs"
 #define DNQ_DATA_FILE             "/root/dnq/dnq.dat"
 #define DNQ_CONFIG_FILE           "/root/dnq/dnq.conf"
-#define DNQ_SN_CONF_FILE          "/root/dnq/sn.conf"
+#define DNQ_SN_CONF_FILE          "/root/dnq/SN.conf"
 
 /*
 * json config define
