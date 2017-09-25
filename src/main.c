@@ -55,8 +55,8 @@ int main()
    
     dnq_print_version();
        
-    //dnq_debug_setlever(1,5); 
-    //dnq_debug_setlever(DNQ_MOD_CONFIG, 5);
+    dnq_debug_setlever(DNQ_MOD_ALL, 3);
+    dnq_debug_setlever(DNQ_MOD_SENSOR, 5);
     dnq_debug_setlever(DNQ_MOD_RABBITMQ, 5);
 
     MAIN_CHECK( dnq_init() );
