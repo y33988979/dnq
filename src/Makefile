@@ -72,6 +72,7 @@ jffs2_image: rootfs_jffs2 data_jffs2
 rootfs_jffs2: $(TARGET)
 	@cp -rf $(TARGET) $(ROOTFS_APP_DIR)
 	@cp -rf $(BIN_DIR)/*.ko $(ROOTFS_APP_DIR)
+	@chmod 777 $(BIN_DIR)/init.sh
 	@cp -rf $(BIN_DIR)/init.sh $(ROOTFS_APP_DIR)
 	@cp -rf $(BIN_DIR)/rcS $(ROOTFS_DIR)/etc/init.d
 	@cp -rf $(BIN_DIR)/profile $(ROOTFS_DIR)/etc/profile
