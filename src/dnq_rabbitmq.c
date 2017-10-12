@@ -916,11 +916,10 @@ char *json_create_status(client_status_t *pdst)
     }
 
     cJSON_AddStringToObject(pjson, "mac",  pdst->mac);
+    room_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(pjson, "rooms", room_array);
     for(i=0; i<pdst->rooms_cnt; i++)
     {
-        room_array = cJSON_CreateArray();
-        
-        cJSON_AddItemToObject(pjson, "rooms", room_array);
         room_obj = cJSON_CreateObject();
         cJSON_AddNumberToObject(room_obj, "id",  pdst->rooms[i].room_id);
         cJSON_AddNumberToObject(room_obj, "degree",  pdst->rooms[i].degree);
@@ -1305,7 +1304,7 @@ S32 send_room_status_to_server()
     {
         status.rooms[i].room_id = i;
         status.rooms[i].degree = rooms[i].curr_temp;
-        status.rooms[i].loss =  47*i*200;
+        status.rooms[i].loss =  2045 + (i+1)*127;
     }
 
     msg = json_create_status(&status);
