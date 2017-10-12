@@ -364,14 +364,17 @@ S32 dnq_config_adjust()
     error_config_t  *error_config;
     limit_config_t  *limit_config;
     power_config_t  *power_config;
+    correct_config_t *correct_config;
     
     init_config = dnq_get_init_config(NULL);
     power_config = dnq_get_power_config_config(NULL);
+    correct_config = dnq_get_temp_correct_config(NULL);
     for(i=0; i<DNQ_ROOM_CNT; i++)
     {
         rooms[i].id = init_config->rooms[i].room_order;
         u2g(init_config->rooms[i].room_name, SIZE_16, gb2312_out,sizeof(gb2312_out));   
         strncpy(rooms[i].name, gb2312_out, SIZE_16);
+        rooms[i].correct = correct_config->rooms[i].correct;
     }
 
     for(i=0; i<DNQ_ROOM_CNT; i++)
