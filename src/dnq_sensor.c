@@ -273,6 +273,7 @@ void *sensor_task(void *args)
     while(1)
     {
         rooms_count = init_config->rooms_cnt;
+        
         /* get room temperature from sensor */
         for(i=0; i<rooms_count; i++)
         {
@@ -282,7 +283,7 @@ void *sensor_task(void *args)
             if(temperature < 0)
             {
                 update_sn_status(i, STOP_STATUS);
-                dnq_sleep(1);
+                dnq_sleep(DNQ_SENSOR_SCAN_INTERVAL);
                 continue;
             }
 
@@ -291,6 +292,7 @@ void *sensor_task(void *args)
             
             dnq_sleep(DNQ_SENSOR_SCAN_INTERVAL);
         }
+        dnq_sleep(DNQ_SENSOR_SCAN_INTERVAL);
     }
 }
 

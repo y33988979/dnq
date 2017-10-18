@@ -493,7 +493,7 @@ S32 dnq_rtc_set_datetime(datetime_t *datetime)
     /* sync kernel datetime */
     dnq_kernel_date_update(datetime);
     
-    DNQ_INFO(DNQ_MOD_MCU, "set_datetime: ret=%d\n", ret);
+    DNQ_INFO(DNQ_MOD_MCU, "set_datetime: ret=%d", ret);
     return ret;
 }
 

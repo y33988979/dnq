@@ -358,7 +358,6 @@ S32 json_parse_temp_policy(cJSON *pjson, policy_config_t *pdst)
             //degrees
             copy_json_item_to_struct_item(\
                 obj, timesettings_obj, JSON_ITEM_DEGREES, &pdst->rooms[i].time_setting[j].degrees, cJSON_Number);
-            DNQ_INFO(DNQ_MOD_RABBITMQ, "degrees:\t%d!", pdst->rooms[i].time_setting[j].degrees);
         }
     }
 
@@ -890,8 +889,6 @@ S32 json_parse(char *json,void *cjson_struct)
     
     cJSON_Delete(pjson); 
 
-    printf("msg_type=%d\n", msg_type); 
-
     if(msg_type < 0)
         DNQ_ERROR(DNQ_MOD_RABBITMQ, "json parse failed!");
     else
@@ -1391,7 +1388,6 @@ S32 dnq_config_sync_to_lcd(
         case JSON_TYPE_AUTHORRIZATION:
             break;
         case JSON_TYPE_TEMP_POLICY:
-        case JSON_TYPE_TEMP_LIMIT:
             temp_policy = dnq_get_temp_policy_config(NULL);
 
             DNQ_DEBUG(DNQ_MOD_RABBITMQ, "update rooms set_temp! mask=[0x%04x]", \
@@ -1406,6 +1402,8 @@ S32 dnq_config_sync_to_lcd(
             dnq_timestr_to_datetime(temp_policy->time, &datetime);
             dnq_rtc_datetime_sync(&datetime);
             
+            break;
+        case JSON_TYPE_TEMP_LIMIT:
             break;
         case JSON_TYPE_TEMP_ERROR:
 
@@ -1464,7 +1462,7 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     }
 
     /* send response to server */
-    ret = send_response_to_server(conn, pchnl, json_type, (ret<0)?"true":"false");
+    ret = send_response_to_server(conn, pchnl, json_type, (ret<0)?"false":"true");
     if(ret < 0)
         return -1;
 

@@ -239,6 +239,7 @@ S32 dnq_config_init()
         dnq_config_load();
     }
 
+    g_dnq_config.sensor_generation = 2;
     /* check sn config, for first generation temperature sensor */
     if((ret=access(DNQ_SN_CONF_FILE, F_OK)) == 0) 
     {
