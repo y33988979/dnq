@@ -1436,7 +1436,7 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
 {
     S32 ret = -1;
     char  *json_msg = NULL;
-    char   cjson_struct[3072] = {0};
+    char   cjson_struct[4096] = {0};
     char  *json_response = NULL;
     json_type_e  json_type = 0;
     channel_t   *pchnl = NULL;

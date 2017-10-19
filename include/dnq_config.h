@@ -59,7 +59,7 @@ typedef struct room_temp_policy
     U16            room_id;
     U16            dpid;
     U16            time_setting_cnt;
-    timesetting_t  time_setting[4];
+    timesetting_t  time_setting[12];
 }room_temp_policy_t;
 
 typedef struct _policy_config

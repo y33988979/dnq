@@ -475,6 +475,8 @@ S32 dnq_data_file_set_default_value()
     
     for(i=0; i<DNQ_ROOM_MAX; i++)
     {
+        all_config->error_config.rooms[i].error = 2;
+        all_config->correct_config.rooms[i].correct = 0;
         all_config->power_config.rooms[i].work_mode = HEATER_MODE_POWER;
         all_config->power_config.rooms[i].power_mode_val = 100;
     }
@@ -553,8 +555,8 @@ S32 dnq_get_room_current_setting_temp(U32 room_id)
     
     for(i=0; i<room_policy->time_setting_cnt; i++)
     {
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "current_time=%d, start=%d, end=%d\n", \
-            current_time, room_time_setting[i].start, room_time_setting[i].end);
+        DNQ_DEBUG(DNQ_MOD_CONFIG, "room[%d]current_time=%d, start=%d, end=%d", \
+            i,current_time, room_time_setting[i].start, room_time_setting[i].end);
         if(current_time >= room_time_setting[i].start
         && current_time <= room_time_setting[i].end)
             return room_time_setting[i].degrees*100;

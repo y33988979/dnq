@@ -1549,9 +1549,11 @@ void *lcd_task(void *args)
                 
                 lcd_net_msg_process(pRecvMsg);
             break;
+            default:
+                DNQ_ERROR(DNQ_MOD_LCD, "unknown msg type: %d", pRecvMsg->Class);
+                break;
             
         }
-        dnq_msleep(200);
     }
 
     dnq_app_task_delete(lcd_appinfo);
