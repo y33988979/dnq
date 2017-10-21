@@ -8,6 +8,6 @@ cd /root/dnq/
 date >> exit.dump
 cat /proc/meminfo | grep MemFree >> exit.dump
 echo "dnq_manage exit..."
-sleep 5
+sleep 300
 reboot
 

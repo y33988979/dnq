@@ -110,6 +110,14 @@ S32 dnq_system_call(U8 *command)
     return 0;
 }
 
+S32 dnq_rootfs_init()
+{
+    S8 cmd[128] = {0};
+    
+    sprintf(cmd, "sed -i 's/.*sleep .*$/sleep 300/g' /etc/profile");
+    dnq_system_call(cmd);
+}
+
 S32 dnq_reboot()
 {
     DNQ_INFO(DNQ_MOD_ALL, "dnqV2 reboot...\n");
