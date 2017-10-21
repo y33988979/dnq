@@ -18,6 +18,9 @@
 #include "dnq_log.h"
 #include "cJSON.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
 dnq_config_t g_dnq_config = 
 {
     .inited = 0,
@@ -225,7 +228,14 @@ S32 parse_ds18b20_sn_config()
 S32 dnq_config_init()
 {
     S32 ret = 0;
+    struct stat st;
 
+    ret = stat(DNQ_DATA_FILE, &st);
+    if(ret < 0)
+        DNQ_ERROR(DNQ_MOD_CONFIG, "get dnq.dat filesize error: %s", strerror(errno));
+    else if(sizeof(dnq_config_t) != st.st_size)
+        dnq_system_call("rm -rf /root/dnq/dnq.dat");
+    
     /* 
      * load the config data "dnq.dat" from flash to g_dnq_config in ram.
      * if config file is not existed, create it by default data.
@@ -555,7 +565,7 @@ S32 dnq_get_room_current_setting_temp(U32 room_id)
     
     for(i=0; i<room_policy->time_setting_cnt; i++)
     {
-        DNQ_DEBUG(DNQ_MOD_CONFIG, "room[%d]current_time=%d, start=%d, end=%d", \
+        DNQ_DEBUG(DNQ_MOD_CONFIG, "room[%d],current_time=%d, start=%d, end=%d", \
             i,current_time, room_time_setting[i].start, room_time_setting[i].end);
         if(current_time >= room_time_setting[i].start
         && current_time <= room_time_setting[i].end)

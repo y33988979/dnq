@@ -1095,6 +1095,8 @@ char *json_create_init(U8 *MAC)
     }
 
     cJSON_AddStringToObject(pjson, "mac",  MAC);
+    cJSON_AddNumberToObject(pjson, "hwver",  HWVER);
+    cJSON_AddNumberToObject(pjson, "swver",  SWVER);
 
     pstr = cJSON_Print(pjson);
     if(!pstr)

@@ -1317,6 +1317,7 @@ S32 upgrade_task()
         if(upgrd_status == UPGRD_DONE)
         {
             UPGRD_INFO("reboot dnqV2...");
+            system_call("script/upgrd_done.sh");
             sync();
             reboot( RB_AUTOBOOT );
         }
