@@ -33,6 +33,10 @@ LIBS =
 AT := @
 TARGET = dnq_manage dnq_upgrade macset version.txt
 
+MANAGE_TARGETS_UPDATE  = dnq_manage version.txt init.sh script
+UPGRADE_TARGETS_UPDATE = dnq_upgrade version.txt 
+ALL_TARGETS_UPDATE     = dnq_manage dnq_upgrade version.txt init.sh script
+
 all: install image
 install: prepare $(TARGET) update
 	@cp -rf $(TARGET) $(APP_DIR)
@@ -44,15 +48,19 @@ prepare:
 	@mkdir -p $(UPDATE_DIR)
 	@mkdir -p $(IMAGE_DIR)
 	@mkdir -p $(DATA_DIR)
+	@cp -rf $(BIN_DIR)/script $(APP_DIR)
+	@cp -rf $(BIN_DIR)/init.sh $(APP_DIR)
 	@touch main.c
 
 version.txt:
 	$(AT)echo "HWVER:$(HardwareVersion)" > $@
 	$(AT)echo "SWVER:$(SoftwareVersion)" >> $@
 	$(AT)echo "UPGRADE_SWVER:$(UPGRADE_SWVER)" >> $@
+	@cp -rf $@ $(APP_DIR)
 
 macset:
 	$(AT)$(CC) macset.c -o macset
+	@cp -rf $@ $(APP_DIR)
 	@echo -e "\e[32m Create $@ success! \e[0m"
 
 dnq_manage: $(OBJS)
@@ -72,6 +80,7 @@ jffs2_image: rootfs_jffs2 data_jffs2
 rootfs_jffs2: $(TARGET)
 	@cp -rf $(TARGET) $(ROOTFS_APP_DIR)
 	@cp -rf $(BIN_DIR)/*.ko $(ROOTFS_APP_DIR)
+	@cp -rf $(BIN_DIR)/script $(ROOTFS_APP_DIR)
 	@chmod 777 $(BIN_DIR)/init.sh
 	@cp -rf $(BIN_DIR)/init.sh $(ROOTFS_APP_DIR)
 	@cp -rf $(BIN_DIR)/rcS $(ROOTFS_DIR)/etc/init.d
@@ -85,25 +94,27 @@ data_jffs2:
 	@echo -e "\e[32m Create $@ success! \033[0m"
 
 manage_update: dnq_manage version.txt
-	@tar zcvf $<.tar.gz $^
-	#@crc32 $<.tar.gz | tr [a-z] [A-Z] > crc32.txt
-	./mkdesc.sh $<.tar.gz manage_desc.txt
-	cp $<.tar.gz manage_desc.txt $(UPDATE_DIR)
-	@echo -e "\e[32m Create $<.tar.gz \033[0m"
+	@cd $(APP_DIR) && (tar zcvf $@.tar.gz $(MANAGE_TARGETS_UPDATE); \
+	$(BIN_DIR)/mkdesc.sh $@.tar.gz manage_desc.txt; \
+	cp $@.tar.gz manage_desc.txt $(UPDATE_DIR);)
+	@echo -e "\e[32m Create $@.tar.gz \033[0m"
 
 upgrade_update: dnq_upgrade version.txt
-	@tar zcvf $<.tar.gz $^
-	./mkdesc.sh $<.tar.gz upgrd_desc.txt
-	cp $<.tar.gz upgrd_desc.txt $(UPDATE_DIR)
-	@echo -e "\e[32m Create $<.tar.gz \033[0m"
+	@cd $(APP_DIR) && (tar zcvf $@.tar.gz $(UPGRADE_TARGETS_UPDATE); \
+	$(BIN_DIR)/mkdesc.sh $@.tar.gz upgrd_desc.txt; \
+	cp $@.tar.gz upgrd_desc.txt $(UPDATE_DIR);)
+	@echo -e "\e[32m Create $@.tar.gz \033[0m"
 
 update_all: dnq_upgrade dnq_manage version.txt
-	@tar zcvf $@.tar.gz $^
-	./mkdesc.sh $@.tar.gz update_desc.txt
-	cp $@.tar.gz update_desc.txt $(UPDATE_DIR)
+	@cd $(APP_DIR) && (tar zcvf $@.tar.gz $(ALL_TARGETS_UPDATE); \
+	$(BIN_DIR)/mkdesc.sh $@.tar.gz update_desc.txt; \
+	cp $@.tar.gz update_desc.txt $(UPDATE_DIR);)
 	@echo -e "\e[32m Create $@.tar.gz \e[0m"
 
-update: upgrade_update manage_update update_all
+update_prepare:
+	@cp -rf $(TARGET) $(APP_DIR)
+
+update: update_prepare upgrade_update manage_update update_all
 	@echo -e "\e[32m Create update success! \e[0m"
 
 %.o: %.c
@@ -116,3 +127,4 @@ clean:
 	-@rm -rf *.tar.gz *.txt
 	-@rm -rf $(UPDATE_DIR)
 	-@rm -rf $(TARGET)
+	-@rm -rf $(APP_DIR)/*
