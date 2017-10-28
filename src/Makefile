@@ -128,3 +128,4 @@ clean:
 	-@rm -rf $(UPDATE_DIR)
 	-@rm -rf $(TARGET)
 	-@rm -rf $(APP_DIR)/*
+	-@rm -rf $(IMAGE_DIR)/*.jffs2
