@@ -5,8 +5,7 @@
 cd /root/dnq/
 ./dnq_upgrade
 ./dnq_manage
-date >> exit.dump
-cat /proc/meminfo | grep MemFree >> exit.dump
+date > exit.dump
 echo "dnq_manage exit..."
 sleep 300
 reboot
