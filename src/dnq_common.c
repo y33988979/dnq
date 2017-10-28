@@ -133,7 +133,7 @@ S32 dnq_init()
         return 0;
 
     DNQ_PRINT(DNQ_MOD_OS, "================dnq_mange info==================");
-    DNQ_INFO(DNQ_MOD_OS, "software=0x%d, hardware=0x%d", SWVER, HWVER);
+    DNQ_INFO(DNQ_MOD_OS, "software=0x%x, hardware=0x%x", SWVER, HWVER);
     DNQ_INFO(DNQ_MOD_OS, "Build Time: %s %s", __DATE__ , __TIME__  );
     DNQ_INFO(DNQ_MOD_OS, "================================================");
     
