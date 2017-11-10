@@ -99,7 +99,7 @@ U16 dnq_get_room_temp_error(U32 room_id)
     return temp_error;
 }
 
-static S32 heater_work_status_update(U32 room_id, U32 status)
+S32 heater_work_status_update(U32 room_id, U32 status)
 {
     dnq_msg_t msg = {0};
     room_item_t *room = dnq_get_room_item(room_id);

@@ -934,6 +934,7 @@ static S32 lcd_update_all()
     S8  buildPosition[SIZE_32] = {0};
     S8  hostName[SIZE_32] = {0};
     S8 title_string[128] = {0};
+    S8 cmd_info_string[128] = {0};
 
     lcd_get_title_string_gbk(title_string);
     ret = lcd_title_update(title_string);
@@ -963,7 +964,8 @@ static S32 lcd_update_all()
 
     ret = lcd_mac_info_update(mac_info);
     ret = lcd_net_info_update(NET_INFO_STR);
-    ret = lcd_cmd_info_update(CMD_INFO_STR);
+    sprintf(cmd_info_string, "%s H:0x%x S:0x%x", CMD_INFO_STR,HWVER,SWVER);
+    ret = lcd_cmd_info_update(cmd_info_string);
     ret = lcd_sys_info_update(SYS_INFO_STR);
     ret = lcd_help_info_update(HELP_INFO_STR);
 

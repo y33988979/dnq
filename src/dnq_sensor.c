@@ -282,6 +282,16 @@ void *sensor_task(void *args)
             temperature = dnq_get_room_temperature(i);
             if(temperature < 0)
             {
+                
+                /******************************/
+                /*
+                * 如果温度传感器获取不到温度值，或者温度传感器坏了
+                * 这里让电暖气一直工作。--20171110
+                */
+                dnq_heater_open(i);
+                heater_work_status_update(i, WORK_STATUS);
+                update_temperature(i, rooms[i].set_temp-200);
+                /******************************/
                 update_sn_status(i, STOP_STATUS);
                 dnq_sleep(DNQ_SENSOR_SCAN_INTERVAL);
                 continue;
