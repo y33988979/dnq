@@ -290,7 +290,7 @@ void dnq_config_print()
     U32 j = 0;
 
     dnq_config_t *config = &g_dnq_config;
-
+    DNQ_INFO(DNQ_MOD_CONFIG, "sizeof(policy_config_t)=%d", sizeof(policy_config_t));
     DNQ_DEBUG(DNQ_MOD_CONFIG, "=================================");
     
     DNQ_DEBUG(DNQ_MOD_CONFIG, "====authorization config===");
