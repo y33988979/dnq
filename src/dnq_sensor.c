@@ -286,10 +286,10 @@ void *sensor_task(void *args)
                 /******************************/
                 /*
                 * 如果温度传感器获取不到温度值，或者温度传感器坏了
-                * 这里让电暖气一直工作。--20171110
+                * 这里让电暖气停止工作。--20190915
                 */
-                dnq_heater_open(i);
-                heater_work_status_update(i, WORK_STATUS);
+                dnq_heater_close(i);
+                heater_work_status_update(i, STOP_STATUS);
                 update_temperature(i, rooms[i].set_temp-200);
                 /******************************/
                 update_sn_status(i, STOP_STATUS);

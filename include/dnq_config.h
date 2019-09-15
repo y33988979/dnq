@@ -328,7 +328,8 @@ typedef enum json_type
     JSON_TYPE_POWER_CONFIG,
     JSON_TYPE_RESPONSE,
     JSON_TYPE_CORRECT,
-    JSON_TYPE_INIT
+    JSON_TYPE_INIT,
+    JSON_TYPE_REBOOT
 }json_type_e;
 
 S32 dnq_config_init();

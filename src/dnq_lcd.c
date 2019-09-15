@@ -878,7 +878,8 @@ static S32 lcd_rooms_update_by_page(U32 page_num)
 
 static S32 lcd_get_title_string_gbk(S8 *title_string)
 {
-    S8  gb2312_out[SIZE_32] = {0};
+    S8  gb2312_out[SIZE_64] = {0};
+    S8  utf8_out[SIZE_64] = {0};
     S8  project_name[SIZE_32] = {0};
     S8  building_name[SIZE_32] = {0};
     S8  buildPosition[SIZE_32] = {0};
@@ -894,6 +895,12 @@ static S32 lcd_get_title_string_gbk(S8 *title_string)
     /* strcat title */
     sprintf(title_string, " %s-%s-%s/%s", \
         project_name, building_name, buildPosition, hostName);
+
+	/*
+	 * 控制器LCD标题，保持默认输出："科技，欢迎使用！"
+	 */
+	g2u("欢迎使用", SIZE_64, utf8_out, sizeof(utf8_out));
+	u2g(utf8_out, SIZE_64, title_string, sizeof(gb2312_out));
 
     return 0;
 }
