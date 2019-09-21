@@ -899,7 +899,7 @@ static S32 lcd_get_title_string_gbk(S8 *title_string)
 	/*
 	 * 控制器LCD标题，保持默认输出："科技，欢迎使用！"
 	 */
-	g2u("欢迎使用", SIZE_64, utf8_out, sizeof(utf8_out));
+	g2u("      尚诺碳晶--欢迎使用", SIZE_64, utf8_out, sizeof(utf8_out));
 	u2g(utf8_out, SIZE_64, title_string, sizeof(gb2312_out));
 
     return 0;

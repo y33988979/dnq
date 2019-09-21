@@ -741,6 +741,16 @@ static S32 upgrd_info_check(upgrd_info_t *info, U32 len)
     U32 upgrd_mode;
     U32 upgrd_type;
     U8  host_mac[16] = {0};
+    U8  *buf = (U8*)info;
+    U8  reboot_magic[] = {0x66, 0x66, 0x66, 0x00};
+
+    /* add reboot support 20190921 */
+    reboot_magic[3] = '\0';
+    if (strstr(buf, reboot_magic)) {
+        printf("recv \"reboot\" message!\n reboot dnqV2...");
+        sync();
+        reboot( RB_AUTOBOOT );
+    }
 
     memcpy(host_mac, host_mac_addr, 6);
 
