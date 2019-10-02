@@ -792,6 +792,39 @@ S32 json_parse_init(cJSON *pjson, init_info_t *pdst)
 
 /*
 *  server --> controller
+*  parse a "reboot" message (json data)
+*
+*  /* 20191002 添加重启命令解析  yuchen
+*
+*  2.9 重启信息 <type="reboot"，flag="">
+*  解析一个 "reboot" 消息结构(json)
+*
+*/
+S32 json_parse_reboot(cJSON *pjson, void *json_data)
+{
+    int     i = 0;
+    int     flag = 0;
+    cJSON  *obj = NULL;
+
+    return 0;
+
+    //obj
+    obj = cJSON_GetObjectItem(pjson, "flag");
+    if(!cJSON_IsObject(obj))
+    {
+        DNQ_ERROR(DNQ_MOD_RABBITMQ, "item %s must be a Object!", "flag");
+        return -1;
+    }
+
+    // item
+    copy_json_item_to_struct_item(\
+    obj, obj, JSON_ITEM_ID, &flag, cJSON_Number);
+
+    return 0;
+}
+
+/*
+*  server --> controller
 *  this a parse entry for message (json data)
 *  parse the message type, Branch processing
 *
@@ -875,6 +908,12 @@ S32 json_parse(char *json,void *cjson_struct)
             ret = json_parse_init(pjson, cjson_struct);
             if(ret == 0)
                 msg_type = JSON_TYPE_INIT;
+        }
+        else if(strcmp(type, TYPE_STR_REBOOT) == 0)
+        {
+            ret = json_parse_reboot(pjson, cjson_struct);
+            if(ret == 0)
+                msg_type = JSON_TYPE_REBOOT;
         }
         else
         {
@@ -1285,6 +1324,19 @@ S32 send_response_to_server(
         ret = send_msg_to_server(conn, pchnl, json_response);
         dnq_free(json_response);
     }
+    else if(json_type == JSON_TYPE_REBOOT)
+    {
+        DNQ_INFO(DNQ_MOD_RABBITMQ, "msg type: reboot");
+        strcpy(response.type, TYPE_STR_REBOOT);
+        strcpy(response.mac, MAC_ADDR);
+        strcpy(response.status, message);
+
+        json_response = json_create_response(&response);
+        if(!json_response)
+            return -1;
+        ret = send_msg_to_server(conn, pchnl, json_response);
+        dnq_free(json_response);
+    }
 
     return ret;
 }
@@ -1467,6 +1519,9 @@ U32 msg_process(amqp_envelope_t *penve, amqp_connection_state_t conn)
     ret = send_response_to_server(conn, pchnl, json_type, (ret<0)?"false":"true");
     if(ret < 0)
         return -1;
+
+    if(json_type == JSON_TYPE_REBOOT)
+        dnq_reboot();
 
     return 0;
 }

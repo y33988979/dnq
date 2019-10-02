@@ -880,27 +880,34 @@ static S32 lcd_get_title_string_gbk(S8 *title_string)
 {
     S8  gb2312_out[SIZE_64] = {0};
     S8  utf8_out[SIZE_64] = {0};
-    S8  project_name[SIZE_32] = {0};
-    S8  building_name[SIZE_32] = {0};
-    S8  buildPosition[SIZE_32] = {0};
-    S8  hostName[SIZE_32] = {0};
+    S8  project_name[SIZE_64] = {0};
+    S8  building_name[SIZE_64] = {0};
+    S8  buildPosition[SIZE_64] = {0};
+    S8  hostName[SIZE_64] = {0};
     init_info_t *init_config = dnq_get_init_config(NULL);
-    
+
     /* title */
-    u2g(init_config->project_name, SIZE_32, project_name, sizeof(gb2312_out));
-    u2g(init_config->building_name, SIZE_32, building_name, sizeof(gb2312_out));
-    u2g(init_config->buildPosition, SIZE_32, buildPosition, sizeof(gb2312_out));
-    u2g(init_config->hostName, SIZE_32, hostName, sizeof(gb2312_out));
+    u2g(init_config->project_name, SIZE_64, project_name, sizeof(gb2312_out));
+    u2g(init_config->building_name, SIZE_64, building_name, sizeof(gb2312_out));
+    u2g(init_config->buildPosition, SIZE_64, buildPosition, sizeof(gb2312_out));
+    u2g(init_config->hostName, SIZE_64, hostName, sizeof(gb2312_out));
 
     /* strcat title */
-    sprintf(title_string, " %s-%s-%s/%s", \
-        project_name, building_name, buildPosition, hostName);
-
-	/*
-	 * 控制器LCD标题，保持默认输出："科技，欢迎使用！"
-	 */
-	g2u("      尚诺碳晶--欢迎使用", SIZE_64, utf8_out, sizeof(utf8_out));
-	u2g(utf8_out, SIZE_64, title_string, sizeof(gb2312_out));
+    if (init_config->type[0])
+    {
+        sprintf(title_string, " %s-%s-%s/%s", \
+            project_name, building_name, buildPosition, hostName);
+        DNQ_INFO(DNQ_MOD_LCD, "lcd title show: '%s'", title_string);
+    }
+    else
+    {
+        /*
+         * 控制器LCD标题，保持默认输出："科技，欢迎使用！"
+         */
+        g2u(TITLE_STR, SIZE_64, utf8_out, sizeof(utf8_out));
+        u2g(utf8_out, SIZE_64, title_string, sizeof(gb2312_out));
+        DNQ_INFO(DNQ_MOD_LCD, "use default title to display!");
+    }
 
     return 0;
 }

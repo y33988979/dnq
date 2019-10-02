@@ -491,17 +491,8 @@ S32 dnq_data_file_set_default_value()
         all_config->power_config.rooms[i].power_mode_val = 100;
     }
     
-    g2u("松花江小学", SIZE_32, utf8_out, sizeof(utf8_out));
+    g2u(TITLE_STR, SIZE_32, utf8_out, sizeof(utf8_out));
     strncpy(all_config->init.project_name, utf8_out, SIZE_32);
-    
-    g2u("主楼", SIZE_32, utf8_out, sizeof(utf8_out));
-    strncpy(all_config->init.building_name, utf8_out, SIZE_32);
-    
-    g2u("二楼东", SIZE_32, utf8_out, sizeof(utf8_out));
-    strncpy(all_config->init.buildPosition, utf8_out, SIZE_32);
-    
-    g2u("三号箱", SIZE_32, utf8_out, sizeof(utf8_out));
-    strncpy(all_config->init.hostName, utf8_out, SIZE_32);
 
     return 0;
 }
@@ -1073,6 +1064,9 @@ S32 dnq_config_check_and_sync(json_type_e json_type, U8 *json_data, U32 len, voi
             dnq_heater_set_workmode(\
                 g_dnq_config.init.heater_work_mode?HEATER_MODE_POWER:HEATER_MODE_SWITCH);
             dnq_json_save_file(JSON_FILE_INIT, json_data, len);
+        break;
+        case JSON_TYPE_REBOOT:
+                return 0;
         break;
         default:
             DNQ_ERROR(DNQ_MOD_CONFIG, "unknown json type: %d", json_type);

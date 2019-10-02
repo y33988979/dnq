@@ -25,6 +25,7 @@ typedef struct channel{
 #define TYPE_STR_RESPONSE         "response"
 #define TYPE_STR_CORRECT          "rectify"
 #define TYPE_STR_INIT             "init"
+#define TYPE_STR_REBOOT           "reboot"
 
 /*
 * json item define

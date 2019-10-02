@@ -123,6 +123,7 @@ S32 dnq_reboot()
     DNQ_INFO(DNQ_MOD_ALL, "dnqV2 reboot...\n");
     fflush(stdout);
     sync();
+    sleep(1);
     reboot(0x1234567);
 }
 
